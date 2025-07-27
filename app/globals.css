@@ -1,0 +1,8 @@
+/* app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gradient-to-br from-green-100 via-white to-blue-100;
+}
