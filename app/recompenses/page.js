@@ -13,29 +13,60 @@ export default function RecompensesPage() {
   const [rating, setRating] = useState(0);
   const [minutes, setMinutes] = useState(0);
 
-  const basePrize = useMemo(() => {
-    if (!rank || !participants || rank < 1 || rank > participants || totalPrize <= 0) return 0;
-    const sum = (participants * (participants + 1)) / 2;
-    const percentage = (participants - rank + 1) / sum;
-    return totalPrize * percentage;
-  }, [totalPrize, participants, rank]);
+  // Calculate prize distribution for every position
+  const prizes = useMemo(() => {
+    if (participants < 1 || totalPrize <= 0) return [];
+
+    const equalPrize = (totalPrize * 0.5) / participants;
+    const linearPool = totalPrize * 0.5;
+    const result = [];
+
+    for (let i = 1; i <= participants; i++) {
+      const equal = 100 / participants;
+      let percdue = (participants - i) * equal;
+      let potperc = ((percdue * 256) / 100) * (2 * equal);
+
+      if (potperc === 0) {
+        percdue = 100 - (participants - 1) * equal;
+        potperc = ((percdue * 256) / 100) * (2 * equal);
+      }
+
+      const linearPrize = ((potperc / 100) * linearPool) / 256;
+      const total = equalPrize + linearPrize;
+
+      result.push({
+        position: i,
+        percent: (total / totalPrize) * 100,
+        prize: total,
+      });
+    }
+
+    return result;
+  }, [participants, totalPrize]);
+
+  const teamPrize = useMemo(() => {
+    if (rank < 1 || rank > participants) return 0;
+    return prizes[rank - 1]?.prize || 0;
+  }, [prizes, rank, participants]);
 
   const shareholderEarnings = useMemo(() => {
-    return (basePrize * (clubOwnership / 100)).toFixed(2);
-  }, [basePrize, clubOwnership]);
-
-  const playerEarnings = useMemo(() => {
-    return (basePrize * (playerShares / 100)).toFixed(2);
-  }, [basePrize, playerShares]);
+    return teamPrize * 0.1 * (clubOwnership / 100);
+  }, [teamPrize, clubOwnership]);
 
   const influencePercent = useMemo(() => {
     if (rating === 0 || minutes === 0) return 0;
-    return Math.min(1, (rating / 100) * (minutes / 2700));
+    return Math.min(1, (rating / 100) * (minutes / 3420));
   }, [rating, minutes]);
 
-  const payoutPlayer = useMemo(() => {
-    return (basePrize * 0.001 * influencePercent).toFixed(2);
-  }, [basePrize, influencePercent]);
+  const playerEarnings = useMemo(() => {
+    const base = teamPrize * 0.001 * influencePercent;
+    return base * (playerShares / 100);
+  }, [teamPrize, influencePercent, playerShares]);
+
+  const examplePayout = useMemo(() => {
+    const base = teamPrize * 0.001 * (75 / 100) * (2700 / 3420);
+    return base * 0.01;
+  }, [teamPrize]);
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -78,9 +109,37 @@ export default function RecompensesPage() {
 
         <div className="bg-gray-900 p-6 mt-6 rounded-lg w-full max-w-xl">
           <h2 className="text-lg font-semibold mb-2">Résumé des Récompenses</h2>
-          <p><strong>Récompense brute estimée :</strong> {basePrize.toFixed(2)} $SVC</p>
-          <p><strong>Gains en tant que propriétaire :</strong> {shareholderEarnings} $SVC</p>
-          <p><strong>Gains en tant que détenteur de parts de joueurs :</strong> {playerEarnings} $SVC</p>
+          <p>
+            <strong>Récompense brute estimée :</strong> {teamPrize.toLocaleString(undefined, { maximumFractionDigits: 0 })} $SVC
+          </p>
+          <p>
+            <strong>Gains en tant que propriétaire :</strong> {shareholderEarnings.toLocaleString(undefined, { maximumFractionDigits: 0 })} $SVC
+          </p>
+          <p>
+            <strong>Gains en tant que détenteur de parts de joueurs :</strong> {playerEarnings.toLocaleString(undefined, { maximumFractionDigits: 0 })} $SVC
+          </p>
+        </div>
+
+        <div className="bg-gray-900 p-6 mt-6 rounded-lg w-full overflow-x-auto">
+          <h3 className="text-lg font-semibold mb-2">Répartition des prix</h3>
+          <table className="w-full table-auto text-center">
+            <thead>
+              <tr>
+                <th className="px-2 py-1">Position</th>
+                <th className="px-2 py-1">% du total</th>
+                <th className="px-2 py-1">Récompense ($SVC)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {prizes.map((p) => (
+                <tr key={p.position} className={p.position === rank ? "bg-teal-700" : ""}>
+                  <td className="px-2 py-1">{p.position}</td>
+                  <td className="px-2 py-1">{p.percent.toFixed(2)}%</td>
+                  <td className="px-2 py-1">{Math.round(p.prize).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="bg-yellow-100 text-yellow-800 p-4 rounded mt-8 max-w-xl text-sm">
@@ -103,10 +162,10 @@ export default function RecompensesPage() {
             <tbody>
               <tr>
                 <td className="px-4 py-2">Exemple</td>
-                <td className="px-4 py-2">{rating}</td>
-                <td className="px-4 py-2">{minutes}</td>
-                <td className="px-4 py-2">{(influencePercent * 100).toFixed(1)}%</td>
-                <td className="px-4 py-2">{payoutPlayer} $SVC</td>
+                <td className="px-4 py-2">75</td>
+                <td className="px-4 py-2">2700</td>
+                <td className="px-4 py-2">1%</td>
+                <td className="px-4 py-2">{examplePayout.toLocaleString(undefined, { maximumFractionDigits: 0 })} $SVC</td>
               </tr>
             </tbody>
           </table>
