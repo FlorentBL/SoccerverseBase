@@ -16,23 +16,23 @@ export default function RecompensesPage() {
     return (totalPrize * percentage).toFixed(2);
   }, [totalPrize, participants, rank, sum]);
 
-  const allRewards = useMemo(() => {
-    if (!participants || totalPrize <= 0) return [];
+  const fullRewards = useMemo(() => {
+    if (participants <= 0 || totalPrize <= 0) return [];
     return Array.from({ length: participants }, (_, i) => {
       const r = i + 1;
-      const pct = (participants - r + 1) / sum;
+      const percentage = (participants - r + 1) / sum;
       return {
         rank: r,
-        amount: (totalPrize * pct).toFixed(2),
+        reward: (totalPrize * percentage).toFixed(2),
       };
     });
-  }, [participants, totalPrize, sum]);
+  }, [totalPrize, participants, sum]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white py-12 px-4 flex flex-col items-center">
-      <h1 className="text-4xl font-bold mb-6 text-center">Calculateur de Récompenses – Soccerverse</h1>
+      <h1 className="text-4xl font-bold mb-8 text-center">Calculateur de Récompenses – Soccerverse</h1>
 
-      <div className="w-full max-w-lg bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
+      <div className="w-full max-w-2xl bg-gray-800 rounded-lg shadow-md p-6 mb-10 space-y-6">
         <div>
           <label className="block mb-1 font-medium">Cagnotte totale ($SVC)</label>
           <input
@@ -56,7 +56,7 @@ export default function RecompensesPage() {
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">Classement final</label>
+          <label className="block mb-1 font-medium">Classement de votre club</label>
           <input
             type="number"
             value={rank}
@@ -69,38 +69,37 @@ export default function RecompensesPage() {
 
         <div className="bg-gray-700 p-4 rounded text-center">
           <p className="text-sm text-gray-300">Récompense estimée :</p>
-          <p className="text-2xl font-bold text-blue-400">
+          <p className="text-2xl font-bold text-green-400">
             {reward !== null ? `${reward} $SVC` : "--"}
           </p>
         </div>
       </div>
 
-      <p className="text-gray-400 text-sm mt-8 text-center max-w-md">
-        Le calcul est basé sur une répartition linéaire décroissante d'une cagnotte totale :
-        le 1er reçoit la plus grande part, et le dernier la plus petite, proportionnellement à son classement.
-      </p>
-
-      {allRewards.length > 0 && (
-        <div className="mt-10 w-full max-w-md overflow-auto">
-          <h2 className="text-xl font-semibold mb-4 text-center">Récompenses complètes</h2>
-          <table className="w-full text-sm text-left text-gray-300">
-            <thead className="text-xs uppercase bg-gray-700 text-gray-300">
+      <div className="w-full max-w-4xl">
+        <h2 className="text-2xl font-semibold mb-4 text-center">Tableau complet des récompenses</h2>
+        <div className="overflow-x-auto rounded-lg">
+          <table className="min-w-full bg-gray-800 border border-gray-700 text-sm">
+            <thead className="bg-gray-700 text-gray-300">
               <tr>
-                <th className="px-4 py-2">Classement</th>
-                <th className="px-4 py-2">Montant ($SVC)</th>
+                <th className="px-4 py-2 text-left border-b border-gray-600">Classement</th>
+                <th className="px-4 py-2 text-right border-b border-gray-600">Récompense ($SVC)</th>
               </tr>
             </thead>
             <tbody>
-              {allRewards.map((entry) => (
-                <tr key={entry.rank} className="border-b border-gray-600">
-                  <td className="px-4 py-2">{entry.rank}</td>
-                  <td className="px-4 py-2">{entry.amount}</td>
+              {fullRewards.map((row) => (
+                <tr key={row.rank} className="odd:bg-gray-800 even:bg-gray-700">
+                  <td className="px-4 py-2 border-b border-gray-600">{row.rank}</td>
+                  <td className="px-4 py-2 border-b border-gray-600 text-right">{row.reward}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
+
+      <p className="text-gray-400 text-sm mt-10 text-center max-w-2xl">
+        Ce calcul est basé sur une répartition linéaire décroissante de la cagnotte totale. Le premier reçoit la plus grande part, et chaque rang suivant un peu moins, jusqu'au dernier.
+      </p>
     </div>
   );
 }
