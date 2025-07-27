@@ -5,7 +5,6 @@ import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight } from "react-icons/fi";
 
 export default function HomePage() {
   return (
@@ -20,7 +19,7 @@ export default function HomePage() {
         <Link href="/recompenses">
           <Button className="text-lg px-6 py-4 gap-2 bg-blue-600 hover:bg-blue-700">
             Accéder au Calculateur de Récompenses
-            <ArrowRight size={20} />
+            <span className="ml-2">→</span>
           </Button>
         </Link>
       </div>
