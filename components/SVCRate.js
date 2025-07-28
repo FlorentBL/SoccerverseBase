@@ -17,7 +17,11 @@ export default function SVCRate() {
           }),
         });
         const data = await res.json();
-        setRate(data.result.SVC2USDC);
+        if (data.result && data.result.market && data.result.market.SVC2USDC) {
+          setRate(data.result.market.SVC2USDC);
+        } else {
+          console.error("Réponse JSON inattendue", data);
+        }
       } catch (error) {
         console.error("Erreur récupération SVC2USDC :", error);
       }
