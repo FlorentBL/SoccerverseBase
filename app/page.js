@@ -124,39 +124,72 @@ export default function DebuterPage() {
             </div>
           </div>
 
-          {/* 2. S’inscrire & installer le pack FR */}
-          <div className="bg-gray-900/80 rounded-2xl shadow-xl p-7 border border-white/10 flex flex-col items-start text-left transition hover:scale-[1.01] hover:border-yellow-400">
-            <div className="flex items-center gap-3 mb-3">
-              <FaUserPlus className="text-yellow-400 text-2xl" />
-              <h2 className="text-xl font-bold">2. Inscription & Patch FR</h2>
-            </div>
-            <ul className="list-none mt-2 space-y-3 text-gray-200 text-base">
-              <li className="flex gap-2 items-center">
-                <FaArrowRight className="text-yellow-400" />
-                <span>
-                  <b>Inscris-toi ici :</b>{" "}
-                  <a href="https://play.soccerverse.com/home" target="_blank" rel="noopener" className="underline text-yellow-300 hover:text-yellow-500 font-semibold">
-                    play.soccerverse.com
-                  </a>
-                </span>
-              </li>
-              <li className="flex gap-2 items-center">
-                <FaArrowRight className="text-yellow-400" />
-                <span>
-                  <b>Installe le pack FR (logos, noms officiels) :</b>{" "}
-                  <a href="https://play.soccerverse.com/?pack=https://elrincondeldt.com/sv/rincon_v1.json" target="_blank" rel="noopener" className="underline text-yellow-300 hover:text-yellow-500 font-semibold">
-                    pack officiel
-                  </a>
-                </span>
-              </li>
-              <li className="flex gap-2 items-center">
-                <FaArrowRight className="text-yellow-400" />
-                <span>
-                  Vérifie bien que tu vois les vrais logos et noms en jeu !
-                </span>
-              </li>
-            </ul>
-          </div>
+{2/* ---- RÔLES DANS SOCCERVERSE ---- */}
+<section className="w-full max-w-5xl mb-14">
+  <div className="bg-gradient-to-tr from-green-900/70 via-gray-900/80 to-yellow-900/40 rounded-2xl shadow-2xl p-8 border border-green-400/10">
+    <h2 className="text-2xl md:text-3xl font-bold text-green-300 mb-4 flex items-center gap-3">
+      <FaUsers className="text-green-400 text-2xl" /> Les rôles dans Soccerverse
+    </h2>
+    <p className="text-gray-100 mb-6 text-lg">
+      Soccerverse n'est pas qu'un jeu de gestion classique : vous pouvez endosser plusieurs rôles, parfois en même temps ! Chacun a son importance dans la réussite de votre club, de vos joueurs… et de vos investissements.
+    </p>
+    <div className="grid md:grid-cols-3 gap-6 text-left">
+      {/* ENTRAÎNEUR */}
+      <div className="bg-gray-900/90 rounded-xl border border-green-500/20 shadow p-5 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-green-400 font-bold text-lg mb-2"><FaBookOpen /> Entraîneur</h3>
+        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
+          <li>Prépare les compos, tactiques, remplacements et plans de jeu.</li>
+          <li>Gère le mercato : achats, ventes, gestion des contrats.</li>
+          <li>Travaille main dans la main avec agents & influenceurs : communication clé !</li>
+          <li>Objectif : la performance… mais aussi la rentabilité pour les actionnaires.</li>
+        </ul>
+      </div>
+      {/* AGENT */}
+      <div className="bg-gray-900/90 rounded-xl border border-yellow-400/20 shadow p-5 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-yellow-300 font-bold text-lg mb-2"><FaUserPlus /> Agent</h3>
+        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
+          <li>Négocie contrats, transferts, salaires et moral du joueur.</li>
+          <li>Maximise la carrière et la valeur du joueur : plus il brille, plus vous gagnez.</li>
+          <li>Fait le lien entre entraîneur, influenceurs et joueur.</li>
+          <li>Gère parfois des conflits d’intérêts entre club & joueur !</li>
+        </ul>
+      </div>
+      {/* INFLUENCEUR */}
+      <div className="bg-gray-900/90 rounded-xl border border-blue-400/20 shadow p-5 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-blue-300 font-bold text-lg mb-2"><FaUsers /> Influenceur</h3>
+        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
+          <li>Possède des parts (“influence”) sur un club ou un joueur.</li>
+          <li>Vote pour nommer/virer coachs ou agents, choisir les grandes directions.</li>
+          <li>Participe aux décisions stratégiques, vise la croissance de la valeur.</li>
+          <li>Gagne des revenus selon les performances !</li>
+        </ul>
+      </div>
+      {/* TRADER */}
+      <div className="bg-gray-900/90 rounded-xl border border-pink-400/20 shadow p-5 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-pink-400 font-bold text-lg mb-2"><FaChartLine /> Trader</h3>
+        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
+          <li>Profite des variations de prix sur le marché de l’influence (clubs/joueurs).</li>
+          <li>Achetez bas, revendez haut : la spéculation, façon football.</li>
+          <li>Un club/joueur prend de la valeur ? Réalisez un bénéfice !</li>
+        </ul>
+      </div>
+      {/* SCOUT */}
+      <div className="bg-gray-900/90 rounded-xl border border-purple-400/20 shadow p-5 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-purple-300 font-bold text-lg mb-2"><FaSearch /> Scout</h3>
+        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
+          <li>Repère les jeunes talents et futurs cracks.</li>
+          <li>Détecte les pépites avant tout le monde pour coach, agent, influenceur… ou trader !</li>
+          <li>Scouting = pouvoir maximal si tu es visionnaire !</li>
+        </ul>
+      </div>
+    </div>
+    <p className="text-gray-400 mt-8 text-sm italic">
+      <FaCheckCircle className="inline mr-1 text-green-400" />
+      Vous n’êtes pas limité à un seul rôle : combinez-les selon vos envies et stratégies, et faites évoluer votre profil !
+    </p>
+  </div>
+</section>
+
 
           {/* 3. Les liens magiques */}
           <div className="bg-gray-900/80 rounded-2xl shadow-xl p-7 border border-white/10 flex flex-col items-start text-left transition hover:scale-[1.01] hover:border-purple-400">
