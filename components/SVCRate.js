@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export default function SVCRate() {
   const [rate, setRate] = useState(null);
+  const [debug, setDebug] = useState(null);
 
   useEffect(() => {
     async function fetchRate() {
@@ -17,10 +18,10 @@ export default function SVCRate() {
           }),
         });
         const data = await res.json();
+        setDebug(data); // Affichage complet pour diagnostic
+        // on garde la logique précédente au cas où ça fonctionne
         if (data.result && data.result.data && data.result.data.SVC2USDC) {
           setRate(data.result.data.SVC2USDC);
-        } else {
-          console.error("Réponse JSON inattendue", data);
         }
       } catch (error) {
         console.error("Erreur récupération SVC2USDC :", error);
@@ -29,12 +30,15 @@ export default function SVCRate() {
     fetchRate();
   }, []);
 
-  if (rate === null)
-    return <p className="text-sm text-gray-400">Chargement du taux SVC...</p>;
-
   return (
-    <p className="text-sm text-green-400">
-      💰 Taux SVC actuel : <strong>1 SVC = {rate} USDC</strong>
-    </p>
+    <div className="text-sm text-gray-300">
+      {rate !== null ? (
+        <p className="text-green-400">
+          💰 Taux SVC actuel : <strong>1 SVC = {rate} USDC</strong>
+        </p>
+      ) : (
+        <pre>{JSON.stringify(debug, null, 2)}</pre>
+      )}
+    </div>
   );
 }
