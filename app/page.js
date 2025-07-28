@@ -47,23 +47,66 @@ export default function DebuterPage() {
         {/* --- SECTIONS ESSENTIELLES --- */}
         <section className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
 
-          {/* 1. Comprendre Soccerverse */}
-          <div className="bg-white/10 rounded-2xl shadow-lg p-7 border border-white/10 flex flex-col items-start text-left">
-            <div className="flex items-center gap-3 mb-2">
-              <FaBookOpen className="text-blue-400 text-2xl" />
-              <h2 className="text-xl font-bold">1. Comprendre Soccerverse</h2>
-            </div>
-            <ul className="list-disc pl-6 text-gray-200 text-base space-y-2">
-              <li>Jeu de simulation de management football, connecté à l’IRL (stats réelles et transferts !)</li>
-              <li>Tu peux devenir <b>actionnaire, coach ou agent</b> de joueurs/clubs, avec de vrais impacts et votes communautaires.</li>
-              <li><b>Tout se joue sur la stratégie, la gestion et l’analyse.</b></li>
-            </ul>
-            <Link
-              href="https://guide.soccerverse.com/french"
-              className="inline-flex items-center mt-4 text-blue-300 underline hover:text-blue-500"
-              target="_blank" rel="noopener"
-            >Lire le Guide Officiel <FaArrowRight className="ml-2" /></Link>
-          </div>
+{/* 1. Comprendre Soccerverse */}
+<div className="bg-white/10 rounded-2xl shadow-lg p-7 border border-white/10 flex flex-col items-start text-left">
+  <div className="flex items-center gap-3 mb-2">
+    <FaBookOpen className="text-blue-400 text-2xl" />
+    <h2 className="text-xl font-bold">1. Comprendre Soccerverse</h2>
+  </div>
+  <div className="text-gray-200 text-base space-y-3">
+    <p>
+      <b>Soccerverse</b> est un jeu de simulation de management football en ligne, 
+      unique par son lien avec le football réel : <b>les performances et transferts IRL 
+      influencent directement le jeu</b> !
+    </p>
+    <p>
+      Tu n’es pas un simple coach. Tu peux :
+      <ul className="list-disc pl-6 mt-2">
+        <li>
+          <b>Investir</b> dans des clubs ou des joueurs en achetant des parts ("influence"). 
+          Plus tu possèdes de parts, plus tu as ton mot à dire dans la gestion.
+        </li>
+        <li>
+          <b>Prendre des rôles</b> : deviens coach, agent ou actionnaire majoritaire, chacun ayant un pouvoir réel sur les décisions du club (compo, mercato, finances…).
+        </li>
+        <li>
+          <b>Participer à la vie du club</b> : tu votes pour nommer ou virer un coach, négocier les salaires, transférer les joueurs, choisir les tactiques, etc.
+        </li>
+      </ul>
+    </p>
+    <p>
+      <b>Tout est communautaire</b> : chaque club et chaque joueur appartient à la communauté des actionnaires, agents, fans, etc. Le jeu évolue selon la stratégie, l'organisation collective et les décisions prises ensemble.
+    </p>
+    <p>
+      <b>Les points-clés du gameplay</b> :
+      <ul className="list-disc pl-6 mt-2">
+        <li>
+          <b>Gestion réaliste</b> : effectif, finances, mercato, entraînements, blessures, rotation... tout compte.
+        </li>
+        <li>
+          <b>Marché en temps réel</b> : échanges, ventes aux enchères, recrutement, tout comme dans un vrai club.
+        </li>
+        <li>
+          <b>Gains et récompenses :</b> chaque semaine, puis à la fin de la saison, tu gagnes selon la réussite de tes clubs et joueurs. 
+          Plus ton club ou ton joueur performe, plus tu gagnes !
+        </li>
+        <li>
+          <b>Impact IRL :</b> Un joueur marque en vrai ? Son rating augmente lors de la prochaine MAJ. Un club vend un joueur IRL ? Il bouge aussi dans Soccerverse.
+        </li>
+      </ul>
+    </p>
+    <p>
+      <b>Ce qui rend Soccerverse unique</b> : tout est décidé par la communauté : composition d’équipe, mercato, nominations, votes, tactiques… Tu peux vraiment influencer le destin de clubs réels ou de jeunes espoirs.
+    </p>
+    <p className="mt-3 text-blue-300 text-sm">
+      <b>Exemples :</b><br />
+      – Tu es actionnaire majoritaire d’un club ? C’est toi (et les autres actionnaires) qui choisissez l’entraîneur, les recrues, etc.<br />
+      – Tu es agent d’un joueur ? Tu participes à la négociation de ses contrats.<br />
+      – Tu veux juste investir ? Achète des parts et reçois des récompenses selon la performance.
+    </p>
+  </div>
+</div>
+
 
           {/* 2. S’inscrire & installer le pack FR */}
           <div className="bg-white/10 rounded-2xl shadow-lg p-7 border border-white/10 flex flex-col items-start text-left">
@@ -72,7 +115,7 @@ export default function DebuterPage() {
               <h2 className="text-xl font-bold">2. Inscription & Patch Communauté</h2>
             </div>
             <ul className="list-disc pl-6 text-gray-200 text-base space-y-2">
-              <li><b>Inscris-toi ici :</b> <a href="https://play.soccerverse.com/?ref=XVIX&pack=https://elrincondeldt.com/sv/rincon_v1.json" target="_blank" rel="noopener" className="underline text-green-300 hover:text-green-500">Créer un compte Soccerverse</a></li>
+              <li><b>Inscris-toi ici (penses a nous pour le parrainage : On est dans le discord K-Socios !) :</b> <a href="https://play.soccerverse.com/&pack=https://elrincondeldt.com/sv/rincon_v1.json" target="_blank" rel="noopener" className="underline text-green-300 hover:text-green-500">Créer un compte Soccerverse</a></li>
               <li>Installe le <b>Pack FR</b> (noms, logos, photos officielles) via ce <a href="https://elrincondeldt.com/sv/rincon_v1.json" target="_blank" rel="noopener" className="underline text-yellow-300 hover:text-yellow-500">fichier</a> (juste cliquer !)</li>
               <li>Vérifie que tu vois bien les noms/logos d’équipes françaises.</li>
             </ul>
