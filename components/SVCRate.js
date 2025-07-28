@@ -6,9 +6,18 @@ export default function SVCRate() {
   useEffect(() => {
     async function fetchRate() {
       try {
-        const res = await fetch("https://api.soccerverse.games/api/market");
+        const res = await fetch("https://services.soccerverse.com/gsp/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "market_getMarketData",
+            params: [],
+            id: 1,
+          }),
+        });
         const data = await res.json();
-        setRate(data.SVC2USDC);
+        setRate(data.result.SVC2USDC);
       } catch (error) {
         console.error("Erreur récupération SVC2USDC :", error);
       }
