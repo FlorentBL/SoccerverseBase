@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { FiMenu, FiX } from "react-icons/fi";
 
 export default function Navbar() {
@@ -20,8 +21,18 @@ export default function Navbar() {
   return (
     <header className="bg-gray-800 text-white shadow-md fixed top-0 left-0 w-full z-50">
       <nav className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-        <Link href="/" className="text-xl font-bold">
-          SoccerverseBase ⚽
+        <Link href="/" className="flex items-center gap-2" aria-label="Accueil SoccerverseBase">
+          <Image
+            src="/logo.png"
+            alt="SoccerverseBase logo"
+            width={38}
+            height={38}
+            priority
+            className="rounded-md"
+          />
+          {/* Optionnel: tu peux rajouter le texte "SoccerverseBase" en petit à droite du logo :
+          <span className="ml-2 font-bold text-lg hidden sm:inline">SoccerverseBase</span>
+          */}
         </Link>
 
         <div className="hidden md:flex gap-6 text-sm font-medium">
