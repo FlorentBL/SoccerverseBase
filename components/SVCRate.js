@@ -13,12 +13,12 @@ export default function SVCRate() {
             jsonrpc: "2.0",
             method: "market_getMarketData",
             params: [],
-            id: 1,
+            id: "test",
           }),
         });
         const data = await res.json();
-        if (data.result && data.result.market && data.result.market.SVC2USDC) {
-          setRate(data.result.market.SVC2USDC);
+        if (data.result && data.result.data && data.result.data.SVC2USDC) {
+          setRate(data.result.data.SVC2USDC);
         } else {
           console.error("Réponse JSON inattendue", data);
         }
