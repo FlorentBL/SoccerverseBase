@@ -2,135 +2,172 @@
 
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import SVCRate from "@/components/SVCRate";
+import { FaBookOpen, FaSearch, FaChartLine, FaDiscord, FaYoutube, FaTrophy, FaUsers, FaArrowRight } from "react-icons/fa";
 
-export default function Home() {
+export default function DebuterPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
-      <main className="flex flex-col items-center px-4 pt-28 pb-16">
-        <h1 className="text-4xl md:text-6xl font-extrabold mb-4 text-center">
-          SoccerverseBase <span className="inline-block">⚽</span>
+      <main className="flex flex-col items-center text-center px-4 pt-28 pb-16">
+
+        {/* Titre principal */}
+        <h1 className="text-3xl md:text-5xl font-extrabold mb-3">
+          Bienvenue sur SoccerverseBase ! <span className="inline-block">⚽</span>
         </h1>
-        <p className="text-lg md:text-xl text-gray-300 max-w-2xl text-center mb-8">
-          Découvrez tous les outils et guides pour prendre l’avantage sur Soccerverse.
+        <p className="text-lg md:text-2xl text-gray-300 max-w-2xl mb-8">
+          <span className="text-green-400 font-bold">Nouveau sur Soccerverse ?</span><br />
+          Voici le guide complet pour bien débuter, progresser et profiter à fond de l’expérience !
         </p>
 
-        <Link
-          href="/recompenses"
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg mb-10 transition"
-        >
-          🎁 Accéder au Calculateur de Récompenses
-        </Link>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full mb-12">
-          <div className="bg-white/10 rounded-2xl p-6 border border-white/10 shadow-md">
-            <h3 className="text-xl font-bold text-green-400 mb-2">Récompenses</h3>
-            <p className="text-sm text-gray-300">
-              Calculez vos gains potentiels selon votre division et classement.
+        {/* SECTION K-SOCIOS */}
+        <section className="w-full max-w-3xl mb-10">
+          <div className="bg-gradient-to-r from-yellow-500/80 to-green-500/70 rounded-2xl shadow-lg p-7 border border-yellow-400/30 flex flex-col items-center">
+            <div className="flex items-center gap-3 mb-2">
+              <FaUsers className="text-white text-2xl" />
+              <h2 className="text-2xl font-bold text-white drop-shadow">Rejoins la communauté française K-SOCIOS ! 🇫🇷</h2>
+            </div>
+            <p className="text-base text-white mb-4">
+              Pour poser tes questions, échanger des astuces, trouver un club, organiser des ligues FR ou juste papoter foot : <br />
+              <span className="font-semibold text-yellow-100">Notre Discord K-SOCIOS t’accueille !</span>
+            </p>
+            <a
+              href="https://discord.gg/sd5aa8TW"
+              target="_blank"
+              rel="noopener"
+              className="inline-flex items-center bg-blue-700 hover:bg-blue-900 transition rounded-xl px-8 py-4 text-lg font-semibold shadow-lg gap-2 text-white"
+            >
+              <FaDiscord className="text-2xl" /> Rejoindre le Discord K-SOCIOS
+            </a>
+            <p className="text-sm text-yellow-100 mt-4">
+              (C’est ici que tu trouveras le plus d’aide et d’entraide pour les francophones !)
             </p>
           </div>
-          <div className="bg-white/5 rounded-2xl p-6 border border-white/10 opacity-80 shadow">
-            <h3 className="text-xl font-bold text-gray-300 mb-2">Analyse des Joueurs</h3>
-            <p className="text-sm text-gray-400">
-              Suivez l’évolution de vos stars et repérez les pépites (bientôt dispo).
-            </p>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-6 border border-white/10 opacity-80 shadow">
-            <h3 className="text-xl font-bold text-gray-300 mb-2">Matchs & Statistiques</h3>
-            <p className="text-sm text-gray-400">
-              Analysez vos matchs et la progression de votre club sur le long terme.
-            </p>
-          </div>
-        </div>
-
-        <section className="w-full max-w-3xl bg-white/10 rounded-2xl p-8 border border-white/10 shadow-md">
-          <h2 className="text-2xl font-bold text-green-400 mb-3">Débuter sur Soccerverse 🚀</h2>
-          <ul className="mb-4 space-y-1">
-            <li>
-              <a
-                href="https://soccerverse.com/soccerverse-litepaper"
-                className="text-blue-400 underline hover:text-blue-300"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Litepaper Soccerverse
-              </a>{" "}
-              – Vision & économie du jeu.
-            </li>
-            <li>
-              <a
-                href="https://wiki.soccerverse.com/index.php/Main_Page"
-                className="text-blue-400 underline hover:text-blue-300"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Wiki Soccerverse
-              </a>{" "}
-              – Guide complet à lire absolument.
-            </li>
-          </ul>
-
-          <h3 className="text-lg font-semibold text-green-300 mt-5 mb-2">Outils & Ressources :</h3>
-          <ul className="mb-4 space-y-1">
-            <li>
-              <a href="https://soccerratings.org/players" className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">
-                Soccer Ratings
-              </a>{" "}
-              – Note & évolution de tous les joueurs.
-            </li>
-            <li>
-              <a href="https://www.svfootball.com/" className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">
-                SV Football
-              </a>{" "}
-              – Moteur de recherche.
-            </li>
-            <li>
-              <a href="https://hub.soccerverse.com/" className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">
-                Soccerverse Hub
-              </a>{" "}
-              – Documentation technique.
-            </li>
-            <li>
-              <a href="https://soccerversetool.vercel.app/" className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">
-                Soccerverse Office
-              </a>{" "}
-              – Outils communautaires.
-            </li>
-            <li>
-              <a href="https://elrincondeldt.com/soccerverse-prize-calculator.html" className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">
-                Prize Calculator
-              </a>{" "}
-              – Simulateur de prizepool.
-            </li>
-          </ul>
-
-          <h3 className="text-lg font-semibold text-green-300 mt-5 mb-2">Communauté francophone :</h3>
-          <p>
-            Rejoins le Discord <a href="https://discord.gg/sd5aa8TW" className="text-blue-400 underline hover:text-blue-300" target="_blank" rel="noopener noreferrer">
-              K-SOCIOS
-            </a>{" "}pour échanger et progresser avec les meilleurs managers français !
-          </p>
-
-          <h3 className="text-lg font-semibold text-green-300 mt-5 mb-2">Conseils express pour bien débuter :</h3>
-          <ul className="list-disc list-inside text-gray-200 text-sm space-y-1">
-            <li>2 remplacements anticipés max, toujours garder 1 pour les imprévus.</li>
-            <li>Jamais de blessé/suspendu sur le banc : range-les dans « Extra ».</li>
-            <li>Le rythme rapide donne un impact immédiat, mais fatigue plus vite.</li>
-            <li>Rotation : la forme baisse après chaque match, remonte chaque jour (+7/j).</li>
-            <li>Ratings des joueurs actualisés tous les 6 mois : surveille leurs performances IRL !</li>
-            <li>Les influences (parts) donnent accès aux votes et aux rewards.</li>
-            <li>Mercato : 7 arrivées/départs max par saison. Prêts bientôt disponibles.</li>
-          </ul>
         </section>
 
-        <div className="mt-8">
-          <SVCRate />
-        </div>
+        {/* --- SECTIONS ESSENTIELLES --- */}
+        <section className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+
+          {/* 1. Comprendre Soccerverse */}
+          <div className="bg-white/10 rounded-2xl shadow-lg p-7 border border-white/10 flex flex-col items-start text-left">
+            <div className="flex items-center gap-3 mb-2">
+              <FaBookOpen className="text-blue-400 text-2xl" />
+              <h2 className="text-xl font-bold">1. Comprendre Soccerverse</h2>
+            </div>
+            <ul className="list-disc pl-6 text-gray-200 text-base space-y-2">
+              <li>Jeu de simulation de management football, connecté à l’IRL (stats réelles et transferts !)</li>
+              <li>Tu peux devenir <b>actionnaire, coach ou agent</b> de joueurs/clubs, avec de vrais impacts et votes communautaires.</li>
+              <li><b>Tout se joue sur la stratégie, la gestion et l’analyse.</b></li>
+            </ul>
+            <Link
+              href="https://guide.soccerverse.com/french"
+              className="inline-flex items-center mt-4 text-blue-300 underline hover:text-blue-500"
+              target="_blank" rel="noopener"
+            >Lire le Guide Officiel <FaArrowRight className="ml-2" /></Link>
+          </div>
+
+          {/* 2. S’inscrire & installer le pack FR */}
+          <div className="bg-white/10 rounded-2xl shadow-lg p-7 border border-white/10 flex flex-col items-start text-left">
+            <div className="flex items-center gap-3 mb-2">
+              <FaUsers className="text-green-400 text-2xl" />
+              <h2 className="text-xl font-bold">2. Inscription & Patch Communauté</h2>
+            </div>
+            <ul className="list-disc pl-6 text-gray-200 text-base space-y-2">
+              <li><b>Inscris-toi ici :</b> <a href="https://play.soccerverse.com/?ref=XVIX&pack=https://elrincondeldt.com/sv/rincon_v1.json" target="_blank" rel="noopener" className="underline text-green-300 hover:text-green-500">Créer un compte Soccerverse</a></li>
+              <li>Installe le <b>Pack FR</b> (noms, logos, photos officielles) via ce <a href="https://elrincondeldt.com/sv/rincon_v1.json" target="_blank" rel="noopener" className="underline text-yellow-300 hover:text-yellow-500">fichier</a> (juste cliquer !)</li>
+              <li>Vérifie que tu vois bien les noms/logos d’équipes françaises.</li>
+            </ul>
+          </div>
+
+          {/* 3. Les liens magiques */}
+          <div className="bg-white/10 rounded-2xl shadow-lg p-7 border border-white/10 flex flex-col items-start text-left">
+            <div className="flex items-center gap-3 mb-2">
+              <FaSearch className="text-purple-400 text-2xl" />
+              <h2 className="text-xl font-bold">3. Les liens INDISPENSABLES</h2>
+            </div>
+            <ul className="pl-3 space-y-1 text-gray-200 text-base">
+              <li><a href="https://guide.soccerverse.com/french" target="_blank" rel="noopener" className="underline hover:text-blue-300">Guide FR complet</a></li>
+              <li><a href="https://wiki.soccerverse.com/index.php/Main_Page" target="_blank" rel="noopener" className="underline hover:text-blue-300">Wiki Soccerverse (anglais)</a></li>
+              <li><a href="https://soccerratings.org/players" target="_blank" rel="noopener" className="underline hover:text-blue-300">Ratings à jour de tous les joueurs</a></li>
+              <li><a href="https://soccerverse.com/soccerverse-litepaper/" target="_blank" rel="noopener" className="underline hover:text-blue-300">Litepaper officiel</a></li>
+              <li><a href="https://www.svfootball.com/" target="_blank" rel="noopener" className="underline hover:text-blue-300">Recherche rapide joueurs/clubs</a></li>
+              <li><a href="https://hub.soccerverse.com/" target="_blank" rel="noopener" className="underline hover:text-blue-300">Hub communautaire & articles</a></li>
+              <li><a href="https://soccerversetool.vercel.app/" target="_blank" rel="noopener" className="underline hover:text-blue-300">Outils & calculateurs Soccerverse</a></li>
+              <li><a href="https://elrincondeldt.com/soccerverse-prize-calculator.html" target="_blank" rel="noopener" className="underline hover:text-blue-300">Calculateur de récompenses</a></li>
+            </ul>
+          </div>
+
+          {/* 4. Questions de débutant / Astuces */}
+          <div className="bg-white/10 rounded-2xl shadow-lg p-7 border border-white/10 flex flex-col items-start text-left">
+            <div className="flex items-center gap-3 mb-2">
+              <FaChartLine className="text-pink-400 text-2xl" />
+              <h2 className="text-xl font-bold">4. Astuces de la commu FR</h2>
+            </div>
+            <ul className="list-disc pl-6 text-gray-200 text-base space-y-2">
+              <li><b>Rotation !</b> Les joueurs se fatiguent (perte 26–29 fitness par match de 90min, récup +7/jour). Pense à la rotation de l’effectif.</li>
+              <li><b>Remplacements :</b> Max 2 anticipés, garde 1 pour blessure sinon tu finis à 10 !</li>
+              <li><b>Jamais de blessés/suspendus sur le banc</b> (risque compo aléatoire !)</li>
+              <li><b>Les ratings sont mis à jour tous les 6 mois</b>, regarde Transfermarkt et soccerratings.org pour anticiper !</li>
+              <li><b>Gère bien tes finances :</b> Le salaire dépend du rating OVR du joueur (<a href="https://elrincondeldt.com/soccerverse-agente-de-jugador.html" target="_blank" rel="noopener" className="underline hover:text-yellow-300">tableau salaires ici</a>), pas de l’âge !</li>
+              <li><b>Marché des transferts :</b> max 7 départs/arrivées par saison/club, 2 prêts.</li>
+              <li><b>Enchères</b> : la 1ère mise lance l’enchère (5 jours), n’achète pas trop tôt !</li>
+              <li><b>Influence & récompenses</b> : tu gagnes chaque semaine selon tes parts et à la fin de la saison via le classement du club.</li>
+              <li><b>Wallet in game :</b> permet des transactions gratuites chaque jour.</li>
+            </ul>
+          </div>
+
+        </section>
+
+        {/* --- FAQ Débutants --- */}
+        <section className="w-full max-w-4xl text-left mb-12">
+          <h2 className="text-2xl font-bold text-green-400 mb-4 text-center">FAQ Rapide</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+              <b>Comment investir ?</b>
+              <div className="text-sm text-gray-300 mt-1">Achetez des packs influence pour clubs/joueurs sur le store, ou sur le marché secondaire. Plus d’infos dans le <a href="https://guide.soccerverse.com/french" target="_blank" rel="noopener" className="underline">guide</a>.</div>
+            </div>
+            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+              <b>Puis-je gérer plusieurs clubs ?</b>
+              <div className="text-sm text-gray-300 mt-1">Oui, multi-compte autorisé, mais attention à bien séparer tes wallets !</div>
+            </div>
+            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+              <b>Les salaires dépendent de l’âge ?</b>
+              <div className="text-sm text-gray-300 mt-1">Non, uniquement du rating OVR (voir <a href="https://elrincondeldt.com/soccerverse-agente-de-jugador.html" target="_blank" rel="noopener" className="underline">tableau</a>).</div>
+            </div>
+            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+              <b>Où suivre les updates ?</b>
+              <div className="text-sm text-gray-300 mt-1">Le <a href="https://hub.soccerverse.com/" target="_blank" rel="noopener" className="underline">Hub</a> et le <a href="https://discord.gg/soccerverse" target="_blank" rel="noopener" className="underline">Discord global</a> sont tes alliés !</div>
+            </div>
+            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+              <b>Comment améliorer mon équipe ?</b>
+              <div className="text-sm text-gray-300 mt-1">Scout régulièrement, surveille les jeunes à haut potentiel IRL, et optimise les remplacements !</div>
+            </div>
+            <div className="bg-white/5 rounded-xl p-5 border border-white/10">
+              <b>Existe-t-il des tutos vidéo ?</b>
+              <div className="text-sm text-gray-300 mt-1">Majoritairement en anglais/espagnol sur Youtube. Pas encore de chaîne FR officielle… mais la commu s’active !</div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- Communauté et entraide --- */}
+        <section className="w-full max-w-4xl text-left mb-8">
+          <h2 className="text-2xl font-bold text-blue-300 mb-4 text-center">Communauté & Entraide</h2>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+            <a href="https://discord.gg/soccerverse" target="_blank" rel="noopener" className="bg-blue-600 hover:bg-blue-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg mb-4 md:mb-0">
+              <FaDiscord className="text-2xl" /> Discord FR/EN officiel
+            </a>
+            <a href="https://www.youtube.com/results?search_query=soccerverse+game" target="_blank" rel="noopener" className="bg-red-600 hover:bg-red-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg">
+              <FaYoutube className="text-2xl" /> Youtube (Tutos/Gameplay)
+            </a>
+          </div>
+          <div className="text-center text-sm text-gray-400 mt-4">
+            Besoin d’aide ? Rejoins notre <a href="https://discord.gg/sd5aa8TW" target="_blank" rel="noopener" className="underline text-yellow-200 hover:text-yellow-400">Discord K-SOCIOS FR</a>, le <a href="https://discord.gg/soccerverse" target="_blank" rel="noopener" className="underline text-blue-300 hover:text-blue-500">Discord global</a> ou pose tes questions sur Twitter !
+          </div>
+        </section>
+
+        <footer className="text-center text-gray-500 text-xs py-4 w-full">
+          © 2025 SoccerverseBase – Guide débutant par la communauté FR
+        </footer>
       </main>
-      <footer className="text-center text-gray-500 text-xs py-4">
-        © 2025 SoccerverseBase – Créé par les fans, pour les fans
-      </footer>
     </div>
   );
 }
