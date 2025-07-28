@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import SVCRate from "@/components/SVCRate";
 
 export default function Home() {
   return (
@@ -41,6 +42,10 @@ export default function Home() {
               Analyse tactique poussée des matchs par écart d’OVR et xG.
             </p>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <SVCRate />
         </div>
       </main>
       <footer className="text-center text-gray-500 text-xs py-4">
