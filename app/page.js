@@ -124,71 +124,64 @@ export default function DebuterPage() {
             </div>
           </div>
 
-{2/* ---- RÔLES DANS SOCCERVERSE ---- */}
+{/* ---- RÔLES DANS SOCCERVERSE ---- */}
 <section className="w-full max-w-5xl mb-14">
-  <div className="bg-gradient-to-tr from-green-900/70 via-gray-900/80 to-yellow-900/40 rounded-2xl shadow-2xl p-8 border border-green-400/10">
-    <h2 className="text-2xl md:text-3xl font-bold text-green-300 mb-4 flex items-center gap-3">
+  <div className="bg-gradient-to-tr from-green-900/80 via-gray-900/95 to-yellow-900/50 rounded-2xl shadow-2xl p-8 border border-green-400/10">
+    <h2 className="text-2xl md:text-3xl font-bold text-green-300 mb-3 flex items-center gap-3">
       <FaUsers className="text-green-400 text-2xl" /> Les rôles dans Soccerverse
     </h2>
     <p className="text-gray-100 mb-6 text-lg">
-      Soccerverse n'est pas qu'un jeu de gestion classique : vous pouvez endosser plusieurs rôles, parfois en même temps ! Chacun a son importance dans la réussite de votre club, de vos joueurs… et de vos investissements.
+      Chacun peut jouer <b>plusieurs rôles</b> dans Soccerverse, selon ses envies : bâtisseur, stratège, investisseur ou chasseur de pépites… C’est à toi de choisir (et d’en cumuler !).
     </p>
-    <div className="grid md:grid-cols-3 gap-6 text-left">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
       {/* ENTRAÎNEUR */}
-      <div className="bg-gray-900/90 rounded-xl border border-green-500/20 shadow p-5 flex flex-col h-full">
-        <h3 className="flex items-center gap-2 text-green-400 font-bold text-lg mb-2"><FaBookOpen /> Entraîneur</h3>
-        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
-          <li>Prépare les compos, tactiques, remplacements et plans de jeu.</li>
-          <li>Gère le mercato : achats, ventes, gestion des contrats.</li>
-          <li>Travaille main dans la main avec agents & influenceurs : communication clé !</li>
-          <li>Objectif : la performance… mais aussi la rentabilité pour les actionnaires.</li>
-        </ul>
+      <div className="bg-gray-900/90 rounded-xl border border-green-400/30 shadow p-6 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-green-300 font-bold text-lg mb-1">
+          <FaBookOpen /> Entraîneur
+        </h3>
+        <span className="text-green-400 font-semibold text-sm mb-2">Le stratège</span>
+        <p className="text-gray-200 text-base mb-2">Prépare les matchs, gère l’effectif, le mercato et prend toutes les décisions sportives. Communication et diplomatie : indispensables !</p>
       </div>
       {/* AGENT */}
-      <div className="bg-gray-900/90 rounded-xl border border-yellow-400/20 shadow p-5 flex flex-col h-full">
-        <h3 className="flex items-center gap-2 text-yellow-300 font-bold text-lg mb-2"><FaUserPlus /> Agent</h3>
-        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
-          <li>Négocie contrats, transferts, salaires et moral du joueur.</li>
-          <li>Maximise la carrière et la valeur du joueur : plus il brille, plus vous gagnez.</li>
-          <li>Fait le lien entre entraîneur, influenceurs et joueur.</li>
-          <li>Gère parfois des conflits d’intérêts entre club & joueur !</li>
-        </ul>
+      <div className="bg-gray-900/90 rounded-xl border border-yellow-400/30 shadow p-6 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-yellow-200 font-bold text-lg mb-1">
+          <FaUserPlus /> Agent
+        </h3>
+        <span className="text-yellow-300 font-semibold text-sm mb-2">Le négociateur</span>
+        <p className="text-gray-200 text-base mb-2">Négocie contrats, transferts, moral du joueur. Fait le lien entre joueur, coach, actionnaires. Cherche à booster la carrière de ses poulains.</p>
       </div>
       {/* INFLUENCEUR */}
-      <div className="bg-gray-900/90 rounded-xl border border-blue-400/20 shadow p-5 flex flex-col h-full">
-        <h3 className="flex items-center gap-2 text-blue-300 font-bold text-lg mb-2"><FaUsers /> Influenceur</h3>
-        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
-          <li>Possède des parts (“influence”) sur un club ou un joueur.</li>
-          <li>Vote pour nommer/virer coachs ou agents, choisir les grandes directions.</li>
-          <li>Participe aux décisions stratégiques, vise la croissance de la valeur.</li>
-          <li>Gagne des revenus selon les performances !</li>
-        </ul>
+      <div className="bg-gray-900/90 rounded-xl border border-blue-400/30 shadow p-6 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-blue-200 font-bold text-lg mb-1">
+          <FaUsers /> Influenceur
+        </h3>
+        <span className="text-blue-400 font-semibold text-sm mb-2">L’actionnaire</span>
+        <p className="text-gray-200 text-base mb-2">Possède des parts (club/joueur), vote les grandes décisions, vise le profit à long terme. Plus tu as de parts, plus ton poids est fort !</p>
       </div>
       {/* TRADER */}
-      <div className="bg-gray-900/90 rounded-xl border border-pink-400/20 shadow p-5 flex flex-col h-full">
-        <h3 className="flex items-center gap-2 text-pink-400 font-bold text-lg mb-2"><FaChartLine /> Trader</h3>
-        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
-          <li>Profite des variations de prix sur le marché de l’influence (clubs/joueurs).</li>
-          <li>Achetez bas, revendez haut : la spéculation, façon football.</li>
-          <li>Un club/joueur prend de la valeur ? Réalisez un bénéfice !</li>
-        </ul>
+      <div className="bg-gray-900/90 rounded-xl border border-pink-400/30 shadow p-6 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-pink-300 font-bold text-lg mb-1">
+          <FaChartLine /> Trader
+        </h3>
+        <span className="text-pink-400 font-semibold text-sm mb-2">Le spéculateur</span>
+        <p className="text-gray-200 text-base mb-2">Joue sur les variations du marché d’influence : achète bas, vends haut ! Suis les évolutions pour gagner sur la cote des clubs/joueurs.</p>
       </div>
       {/* SCOUT */}
-      <div className="bg-gray-900/90 rounded-xl border border-purple-400/20 shadow p-5 flex flex-col h-full">
-        <h3 className="flex items-center gap-2 text-purple-300 font-bold text-lg mb-2"><FaSearch /> Scout</h3>
-        <ul className="list-disc pl-5 text-gray-200 space-y-1 text-base">
-          <li>Repère les jeunes talents et futurs cracks.</li>
-          <li>Détecte les pépites avant tout le monde pour coach, agent, influenceur… ou trader !</li>
-          <li>Scouting = pouvoir maximal si tu es visionnaire !</li>
-        </ul>
+      <div className="bg-gray-900/90 rounded-xl border border-purple-400/30 shadow p-6 flex flex-col h-full">
+        <h3 className="flex items-center gap-2 text-purple-300 font-bold text-lg mb-1">
+          <FaSearch /> Scout
+        </h3>
+        <span className="text-purple-300 font-semibold text-sm mb-2">Le découvreur</span>
+        <p className="text-gray-200 text-base mb-2">Repère les jeunes à fort potentiel. Si tu trouves une pépite avant tout le monde, jackpot pour toi (et ton club) !</p>
       </div>
     </div>
-    <p className="text-gray-400 mt-8 text-sm italic">
+    <p className="text-gray-400 mt-8 text-sm italic text-center">
       <FaCheckCircle className="inline mr-1 text-green-400" />
-      Vous n’êtes pas limité à un seul rôle : combinez-les selon vos envies et stratégies, et faites évoluer votre profil !
+      Cumule les rôles selon ta stratégie et évolue dans le jeu à ton rythme !
     </p>
   </div>
 </section>
+
 
 
           {/* 3. Les liens magiques */}
