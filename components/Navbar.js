@@ -6,7 +6,6 @@ import Image from "next/image";
 import { FiMenu, FiX } from "react-icons/fi";
 
 const menuItems = [
-  // { href: "/recompenses", label: "Calculateur de Récompenses" },
   { href: "/revenus", label: "Gains Joueurs" },
   { href: "/scouting", label: "Scouting" },
 ];
@@ -16,53 +15,46 @@ export default function Navbar() {
 
   return (
     <header className="bg-gray-800 text-white shadow-md fixed top-0 left-0 w-full z-50">
-      <nav className="max-w-6xl mx-auto px-4 py-3 flex items-center relative" style={{ minHeight: 62 }}>
-        {/* Flex : 3 colonnes */}
-        <div className="flex-1 flex items-center">
-          <Link href="/" className="flex items-center gap-2" aria-label="Accueil SoccerverseBase">
-            <Image
-              src="/logo.png"
-              alt="SoccerverseBase logo"
-              width={38}
-              height={38}
-              priority
-              className="rounded-md"
-            />
-          </Link>
+      <nav className="flex flex-col items-center max-w-full py-3 px-2">
+        {/* Logo centré */}
+        <Link href="/" className="flex items-center justify-center mb-2" aria-label="Accueil SoccerverseBase">
+          <Image
+            src="/logo.png"
+            alt="SoccerverseBase logo"
+            width={38}
+            height={38}
+            priority
+            className="rounded-md"
+          />
+        </Link>
+
+        {/* Desktop menu CENTRE */}
+        <div className="hidden md:flex gap-8 text-base font-bold items-center justify-center">
+          {menuItems.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className="hover:text-green-400 transition-colors"
+            >
+              {label}
+            </Link>
+          ))}
         </div>
 
-        {/* Menu CENTRÉ */}
-        <div className="flex-1 flex justify-center">
-          <div className="hidden md:flex gap-7 text-base font-bold items-center">
-            {menuItems.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="hover:text-green-400 transition-colors"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Slot à droite (pour actions/user plus tard) */}
-        <div className="flex-1 flex items-center justify-end">
-          {/* Burger menu pour mobile */}
-          <button
-            className="md:hidden text-2xl focus:outline-none"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <FiX /> : <FiMenu />}
-          </button>
-        </div>
+        {/* Burger mobile à droite (absolu pour pas décentrer le reste) */}
+        <button
+          className="absolute top-3 right-4 md:hidden text-2xl focus:outline-none"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
+        >
+          {menuOpen ? <FiX /> : <FiMenu />}
+        </button>
       </nav>
 
-      {/* Mobile menu */}
+      {/* Menu mobile */}
       {menuOpen && (
         <div className="md:hidden bg-gray-800 px-4 pb-4">
-          <ul className="space-y-2">
+          <ul className="space-y-2 text-center">
             {menuItems.map(({ href, label }) => (
               <li key={href}>
                 <Link
