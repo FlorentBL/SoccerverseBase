@@ -1,153 +1,156 @@
-// app/joueurs/page.js
-"use client";
-
 import React, { useState } from "react";
-import Link from "next/link";
 
-export default function JoueursPage() {
+export default function PlayerInfoFetcher() {
   const [playerId, setPlayerId] = useState("");
-  const [soccerverseData, setSoccerverseData] = useState(null);
-  const [tmData, setTmData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState("");
+  const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
-  async function fetchPlayerData(id) {
-    setLoading(true);
+  const fetchPlayer = async () => {
     setError("");
-    setSoccerverseData(null);
-    setTmData(null);
-
-    try {
-      // 1. Soccerverse API: Récupérer infos joueur
-      const resSV = await fetch(`https://services.soccerverse.com/api/players/${id}`);
-      if (!resSV.ok) throw new Error("Joueur introuvable sur Soccerverse.");
-      const dataSV = await resSV.json();
-      setSoccerverseData(dataSV);
-
-      // 2. Transfermarkt API: Chercher joueur via le nom
-      const name = dataSV.name;
-      if (!name) throw new Error("Nom introuvable.");
-      const resTMSearch = await fetch(
-        `https://transfermarkt-api.fly.dev/players/search/${encodeURIComponent(name)}`
-      );
-      const dataTMSearch = await resTMSearch.json();
-
-      if (!dataTMSearch.length) throw new Error("Joueur non trouvé sur Transfermarkt.");
-      const tmId = dataTMSearch[0].id;
-      const resTM = await fetch(`https://transfermarkt-api.fly.dev/players/${tmId}`);
-      const dataTM = await resTM.json();
-      setTmData(dataTM);
-
-    } catch (e) {
-      setError(e.message);
+    setResult(null);
+    if (!playerId || !token) {
+      setError("ID du joueur et token requis.");
+      return;
     }
-    setLoading(false);
-  }
+    try {
+      const res = await fetch(
+        `https://services.soccerverse.com/api/players/${playerId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      if (!res.ok) {
+        const msg = await res.text();
+        setError(`Erreur API : ${res.status} – ${msg}`);
+        return;
+      }
+      const data = await res.json();
+      setResult(data);
+    } catch (e) {
+      setError("Erreur de connexion ou API.");
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white px-4 pt-28 pb-16">
-      <div className="max-w-xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Infos Joueur Soccerverse</h1>
-
-        {/* Aperçu des liens externes */}
-        <div className="flex gap-6 justify-center mb-8">
-          {/* Carte Soccerverse */}
-          <div className="bg-gray-800 rounded-xl p-4 flex flex-col items-center shadow min-w-[180px]">
-            <img
-              src="/soccerverse_logo.png"
-              alt="Soccerverse"
-              className="h-8 mb-2"
-              style={{ filter: "drop-shadow(0 1px 2px #0008)" }}
-            />
-            <div className="font-semibold mb-1">Soccerverse</div>
-            <Link
-              href={`https://play.soccerverse.com/player/${playerId || 1}`}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded mb-2"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Voir la fiche
-            </Link>
-            <span className="text-xs text-gray-400">ID : {playerId || "—"}</span>
-          </div>
-          {/* Carte Soccerratings */}
-          <div className="bg-gray-800 rounded-xl p-4 flex flex-col items-center shadow min-w-[180px]">
-            <img
-              src="/soccerratings_logo.png"
-              alt="SoccerRatings"
-              className="h-8 mb-2"
-              style={{ filter: "drop-shadow(0 1px 2px #0008)" }}
-            />
-            <div className="font-semibold mb-1">SoccerRatings</div>
-            <Link
-              href={`https://soccerratings.org/player/${playerId || 1}`}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded mb-2"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Voir la fiche
-            </Link>
-            <span className="text-xs text-gray-400">ID : {playerId || "—"}</span>
-          </div>
-        </div>
-
-        {/* Formulaire de recherche */}
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            if (playerId) fetchPlayerData(playerId);
-          }}
-          className="flex gap-2 mb-6"
-        >
+    <div style={{
+      background: "#15181c",
+      minHeight: "100vh",
+      color: "#f8f8f8",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "Inter, Arial, sans-serif",
+    }}>
+      <div style={{
+        background: "#23272e",
+        padding: 32,
+        borderRadius: 12,
+        boxShadow: "0 2px 12px #0007",
+        minWidth: 340,
+        maxWidth: 520,
+      }}>
+        <h2 style={{marginBottom: 24, fontWeight: 800, letterSpacing: 1}}>Recherche Joueur Soccerverse</h2>
+        <label style={{display: "block", marginBottom: 12}}>
+          <span style={{fontWeight: 600}}>ID Joueur :</span>
           <input
-            type="number"
-            placeholder="ID Soccerverse"
+            type="text"
             value={playerId}
             onChange={e => setPlayerId(e.target.value)}
-            className="w-full p-2 rounded text-black"
-            required
+            style={{
+              width: "100%",
+              marginTop: 6,
+              padding: "10px 14px",
+              borderRadius: 6,
+              border: "1px solid #363a42",
+              background: "#191d22",
+              color: "#f8f8f8",
+              fontSize: 17,
+              outline: "none",
+              marginBottom: 14
+            }}
+            placeholder="Ex: 123456"
           />
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-bold"
-          >
-            Rechercher
-          </button>
-        </form>
-
-        {/* Affichage des messages */}
-        {loading && (
-          <div className="text-center text-gray-400">Chargement…</div>
-        )}
+        </label>
+        <label style={{display: "block", marginBottom: 16}}>
+          <span style={{fontWeight: 600}}>Bearer Token :</span>
+          <input
+            type="password"
+            value={token}
+            onChange={e => setToken(e.target.value)}
+            style={{
+              width: "100%",
+              marginTop: 6,
+              padding: "10px 14px",
+              borderRadius: 6,
+              border: "1px solid #363a42",
+              background: "#191d22",
+              color: "#f8f8f8",
+              fontSize: 17,
+              outline: "none",
+              marginBottom: 14
+            }}
+            placeholder="Colle ici ton token"
+          />
+        </label>
+        <button
+          onClick={fetchPlayer}
+          style={{
+            background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            padding: "11px 26px",
+            fontWeight: 700,
+            fontSize: 17,
+            cursor: "pointer",
+            boxShadow: "0 1px 5px #0004",
+            marginBottom: 18
+          }}
+        >
+          Rechercher
+        </button>
         {error && (
-          <div className="text-center text-red-400 mb-4">{error}</div>
-        )}
-
-        {/* Affichage des infos */}
-        {soccerverseData && (
-          <div className="bg-gray-800 rounded-xl p-4 shadow mb-4">
-            <h2 className="font-bold text-xl mb-1">{soccerverseData.name}</h2>
-            <div className="text-gray-300">
-              <div>Club : {soccerverseData.clubName || "?"}</div>
-              <div>Poste : {soccerverseData.position || "?"}</div>
-              <div>Âge : {soccerverseData.age || "?"}</div>
-              {/* Ajoute ici d'autres champs Soccerverse si tu veux */}
-            </div>
+          <div style={{ color: "#ff5e57", marginTop: 10, fontWeight: 500 }}>
+            {error}
           </div>
         )}
-
-        {tmData && (
-          <div className="bg-gray-900 rounded-xl p-4 shadow mb-4">
-            <h2 className="font-bold text-lg mb-2">Infos Transfermarkt</h2>
-            <div className="text-gray-300">
-              <div>Nom : {tmData.name || "?"}</div>
-              <div>Club : {tmData.club?.name || "?"}</div>
-              <div>Nationalité : {tmData.nationality || "?"}</div>
-              <div>Âge : {tmData.age || "?"}</div>
-              <div>Poste : {tmData.position || "?"}</div>
-              <div>Valeur marchande : {tmData.marketValue || "?"}</div>
-              {/* Ajoute ici tous les autres champs TM que tu veux */}
-            </div>
+        {result && (
+          <div style={{
+            background: "#191d22",
+            marginTop: 22,
+            padding: 18,
+            borderRadius: 8,
+            fontSize: 16,
+            wordBreak: "break-word",
+            overflowX: "auto",
+            boxShadow: "0 1px 4px #0003"
+          }}>
+            <b>Nom du joueur :</b> {result.name ?? "N/A"}
+            <br/>
+            <b>ID :</b> {result.id}
+            <br/>
+            <b>Nationalité :</b> {result.nationality}
+            <br/>
+            <b>Club ID :</b> {result.club_id}
+            <br/>
+            <b>Autres infos brutes :</b>
+            <pre style={{
+              background: "#101214",
+              color: "#b4e1fa",
+              fontSize: 14,
+              padding: 8,
+              borderRadius: 4,
+              marginTop: 10,
+              maxHeight: 320,
+              overflow: "auto"
+            }}>
+              {JSON.stringify(result, null, 2)}
+            </pre>
           </div>
         )}
       </div>
