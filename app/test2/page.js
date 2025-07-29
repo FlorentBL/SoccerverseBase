@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 
-// Libellés des champs financiers
+// Champs financiers et libellés
 const FIELD_LABELS = {
   cash_injection: "Injection de trésorerie",
   gate_receipts: "Recettes guichets",
@@ -20,29 +20,34 @@ const FIELD_LABELS = {
   shareholder_prize_money: "Gains actionnaires",
   other_outgoings: "Autres dépenses"
 };
-
 const FIELD_ORDER = [
   "cash_injection", "gate_receipts", "tv_revenue", "sponsor", "merchandise",
   "prize_money", "transfers_in", "other_income",
   "player_wages", "agent_wages", "managers_wage", "ground_maintenance",
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
-
-function formatSVC(val) {
+// Dépenses
+const COST_FIELDS = [
+  "player_wages",
+  "agent_wages",
+  "managers_wage",
+  "ground_maintenance",
+  "transfers_out",
+  "shareholder_payouts",
+  "shareholder_prize_money",
+  "other_outgoings"
+];
+// Format montant SVC
+function formatSVC(val, field) {
   if (typeof val !== "number") return "-";
-  const corrected = val / 10000;
-  return corrected.toLocaleString("fr-FR", {
-    maximumFractionDigits: corrected < 1000 ? 2 : 0,
+  const absVal = Math.abs(val / 10000);
+  const isCost = COST_FIELDS.includes(field);
+  const sign = isCost && absVal > 0 ? "-" : "";
+  return sign + absVal.toLocaleString("fr-FR", {
+    maximumFractionDigits: absVal < 1000 ? 2 : 0,
     minimumFractionDigits: 0,
   }) + " $SVC";
 }
-
-function formatDate(timestamp) {
-  if (!timestamp) return "-";
-  const d = new Date(timestamp * 1000);
-  return d.toLocaleDateString("fr-FR");
-}
-
 function formatBigSVC(val) {
   if (typeof val !== "number") return "-";
   const corrected = val / 10000;
@@ -51,6 +56,11 @@ function formatBigSVC(val) {
   if (corrected > 10_000)
     return (corrected / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " k $SVC";
   return corrected.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " $SVC";
+}
+function formatDate(timestamp) {
+  if (!timestamp) return "-";
+  const d = new Date(timestamp * 1000);
+  return d.toLocaleDateString("fr-FR");
 }
 
 export default function ClubFinancesPage() {
@@ -72,12 +82,12 @@ export default function ClubFinancesPage() {
     setBalance(null);
 
     try {
-      // Récupération de la balance club (via /clubs/detailed)
-      const clubsRes = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`);
+      // Récupération de la balance club
+      const clubsRes = await fetch(`/api/clubs?club_id=${clubId}`);
       if (!clubsRes.ok) throw new Error("Erreur API clubs: " + clubsRes.status);
       const clubsJson = await clubsRes.json();
       const foundClub = Array.isArray(clubsJson.items) ? clubsJson.items[0] : (clubsJson.items ?? [])[0];
-      setBalance(foundClub && typeof foundClub.balance === "number" ? foundClub.balance : null);
+      setBalance(foundClub ? foundClub.balance : null);
 
       // Récupération bilan détaillé
       const url = `/api/club_balance_sheet/weeks?club_id=${clubId}&season_id=${seasonId}`;
@@ -154,7 +164,14 @@ export default function ClubFinancesPage() {
                 {FIELD_ORDER.map(k =>
                   <tr key={k} className="border-b border-[#2d3146] hover:bg-[#21262b] transition">
                     <td className="py-1 pr-4 text-gray-200">{FIELD_LABELS[k] || k}</td>
-                    <td className="py-1 text-right font-mono">{formatSVC(bilan[k] ?? 0)}</td>
+                    <td
+                      className={
+                        "py-1 text-right font-mono " +
+                        (COST_FIELDS.includes(k) && bilan[k] !== 0 ? "text-red-400 font-semibold" : "")
+                      }
+                    >
+                      {formatSVC(bilan[k] ?? 0, k)}
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -174,7 +191,7 @@ export default function ClubFinancesPage() {
           <div className="bg-[#23263a] rounded-xl shadow p-5 text-xs border border-gray-800 mb-8">
             <h3 className="font-bold mb-3 text-gray-200">Détail par semaine</h3>
             <div className="overflow-x-auto">
-              <table className="min-w-full border border-[#363a57] text-xs">
+              <table className="min-w-full border border-[#363a57] text-xs text-gray-100">
                 <thead className="bg-[#202330]">
                   <tr>
                     <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Week</th>
@@ -190,7 +207,15 @@ export default function ClubFinancesPage() {
                       <td className="px-2 py-1 border-b border-[#363a57]">{w.game_week}</td>
                       <td className="px-2 py-1 border-b border-[#363a57]">{formatDate(w.date)}</td>
                       {FIELD_ORDER.map(k => (
-                        <td key={k} className="px-2 py-1 border-b border-[#363a57] text-right font-mono">{formatSVC(w[k] ?? 0)}</td>
+                        <td
+                          key={k}
+                          className={
+                            "px-2 py-1 border-b border-[#363a57] text-right font-mono " +
+                            (COST_FIELDS.includes(k) && w[k] !== 0 ? "text-red-400" : "")
+                          }
+                        >
+                          {formatSVC(w[k] ?? 0, k)}
+                        </td>
                       ))}
                     </tr>
                   ))}
