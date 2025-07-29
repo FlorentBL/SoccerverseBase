@@ -1,5 +1,5 @@
+"use client";
 
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import {
   FaBookOpen, FaSearch, FaChartLine, FaDiscord, FaYoutube,
@@ -7,9 +7,8 @@ import {
 } from "react-icons/fa";
 import { useState } from "react";
 
-// --- HERO MASCOTTE/LOGO si tu as une image locale : ---
-// Remplace par le chemin ou retire la balise <img> si pas d'image.
 const LOGO_MASCOTTE = "/logo.png";
+
 const sections = [
   {
     key: "soccerverse",
@@ -164,6 +163,7 @@ const sections = [
     ),
   }
 ];
+
 export default function DebuterPage() {
   const [openSections, setOpenSections] = useState(sections.map((_, idx) => idx === 0));
 
@@ -177,50 +177,52 @@ export default function DebuterPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-white">
       <Navbar />
 
-      {/* --- HERO SECTION --- */}
-      <section className="relative w-full min-h-[480px] flex flex-col items-center justify-center bg-gradient-to-br from-sky-950 via-gray-900 to-emerald-950 pb-16 shadow-2xl">
-        {/* Mascotte ou logo effet fond */}
+      {/* HERO SECTION */}
+      <section className="relative w-full min-h-[430px] flex flex-col items-center justify-center bg-gradient-to-br from-sky-950 via-gray-900 to-emerald-950 pb-16 shadow-2xl pt-10 md:pt-20">
+        {/* Mascotte/logo responsive */}
         <img
           src={LOGO_MASCOTTE}
-          alt=""
-          className="absolute right-10 top-8 w-40 opacity-20 pointer-events-none select-none hidden md:block"
+          alt="SoccerverseBase"
+          className="absolute right-4 top-8 w-28 md:w-40 opacity-20 pointer-events-none select-none hidden md:block"
+          style={{ zIndex: 1 }}
+          onError={e => { e.target.style.display = 'none'; }}
         />
-        <h1 className="text-5xl md:text-7xl font-black bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 bg-clip-text text-transparent drop-shadow-2xl mb-4 mt-20 text-center">
+        <h1 className="text-4xl md:text-7xl font-black bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 bg-clip-text text-transparent drop-shadow-2xl mb-4 mt-4 md:mt-10 text-center z-10">
           SoccerverseBase
         </h1>
-        <p className="text-2xl md:text-3xl text-gray-100 font-semibold mb-6 text-center max-w-3xl drop-shadow">
+        <p className="text-xl md:text-3xl text-gray-100 font-semibold mb-6 text-center max-w-3xl drop-shadow z-10">
           <span className="text-emerald-300 font-extrabold">Le guide ultime pour dominer Soccerverse</span>
           <br />
           Progresse vite, rejoins la commu, prends le pouvoir !
         </p>
-        <div className="flex flex-col sm:flex-row gap-5 justify-center w-full max-w-lg mt-2">
+        <div className="flex flex-col sm:flex-row gap-5 justify-center w-full max-w-lg mt-2 z-10">
           <a
             href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
-            className="flex items-center justify-center gap-3 bg-gradient-to-r from-sky-400 to-sky-600 hover:scale-105 hover:shadow-2xl transition text-white rounded-xl px-8 py-5 text-2xl font-bold shadow-xl"
+            className="flex items-center justify-center gap-3 bg-gradient-to-r from-sky-400 to-sky-600 hover:scale-105 hover:shadow-2xl transition text-white rounded-xl px-8 py-5 text-2xl font-bold shadow-xl focus:outline-none focus:ring-4 focus:ring-sky-400"
           >
             <FaUserPlus className="text-3xl" /> S'inscrire
           </a>
           <a
             href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
-            className="flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-400 to-sky-400 hover:scale-105 hover:shadow-2xl transition text-white rounded-xl px-8 py-5 text-2xl font-bold shadow-xl"
+            className="flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-400 to-sky-400 hover:scale-105 hover:shadow-2xl transition text-white rounded-xl px-8 py-5 text-2xl font-bold shadow-xl focus:outline-none focus:ring-4 focus:ring-emerald-400"
           >
             <FaPuzzlePiece className="text-3xl" /> Patch FR
           </a>
         </div>
-        <div className="mt-8 text-lg text-gray-300 text-center max-w-2xl">
+        <div className="mt-8 text-lg text-gray-300 text-center max-w-2xl z-10">
           Rejoins la plus grosse commu FR, découvre tous les secrets du jeu et maximise tes gains !
         </div>
       </section>
 
-      {/* --- SEPARATEUR ANIME --- */}
+      {/* SEPARATEUR ANIME */}
       <div className="w-full flex justify-center items-center my-0">
-        <div className="h-2 w-1/2 bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 rounded-full blur-sm opacity-50" />
+        <div className="h-2 w-4/5 md:w-1/2 bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 rounded-full blur-sm opacity-50" />
       </div>
 
-      {/* --- DISCORD + PREUVE SOCIALE --- */}
-      <section className="flex flex-col md:flex-row items-center justify-center gap-10 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-3xl shadow-2xl px-10 py-10 border border-emerald-600/30 max-w-4xl mx-auto mt-10 mb-10">
+      {/* DISCORD + PREUVE SOCIALE */}
+      <section className="flex flex-col md:flex-row items-center justify-center gap-10 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-3xl shadow-2xl px-6 md:px-10 py-8 md:py-10 border border-emerald-600/30 max-w-4xl mx-auto mt-10 mb-10">
         <FaDiscord className="text-6xl text-sky-400 mr-8 hidden md:block" />
         <div className="flex-1 flex flex-col items-center md:items-start">
           <h2 className="text-3xl font-extrabold mb-2 text-white drop-shadow-xl">Communauté K-SOCIOS 🇫🇷</h2>
@@ -229,7 +231,7 @@ export default function DebuterPage() {
             href="https://discord.gg/sd5aa8TW"
             target="_blank"
             rel="noopener"
-            className="inline-flex items-center bg-gradient-to-r from-sky-600 to-sky-400 hover:scale-105 hover:shadow-2xl transition rounded-xl px-8 py-4 text-2xl font-bold shadow-lg gap-3 text-white mb-2"
+            className="inline-flex items-center bg-gradient-to-r from-sky-600 to-sky-400 hover:scale-105 hover:shadow-2xl transition rounded-xl px-8 py-4 text-2xl font-bold shadow-lg gap-3 text-white mb-2 focus:outline-none focus:ring-4 focus:ring-sky-400"
           >
             <FaDiscord className="text-3xl" /> Rejoindre la commu
           </a>
@@ -248,14 +250,14 @@ export default function DebuterPage() {
         </div>
       </section>
 
-      {/* --- SEPARATEUR ANIME --- */}
+      {/* SEPARATEUR ANIME */}
       <div className="w-full flex justify-center items-center my-0">
-        <div className="h-2 w-1/2 bg-gradient-to-r from-emerald-400 via-sky-400 to-emerald-400 rounded-full blur-sm opacity-40" />
+        <div className="h-2 w-4/5 md:w-1/2 bg-gradient-to-r from-emerald-400 via-sky-400 to-emerald-400 rounded-full blur-sm opacity-40" />
       </div>
 
       <main className="flex flex-col items-center px-2 sm:px-4 pt-4 pb-16 w-full">
 
-        {/* --- Accordéon SECTIONS (inchangé, mais icônes plus visibles et titre plus gros) --- */}
+        {/* ACCORDÉON SECTIONS */}
         <section className="w-full max-w-5xl mb-14 flex flex-col gap-7 mt-10">
           {sections.map((s, idx) => (
             <div key={s.key} className="rounded-3xl shadow-2xl border border-gray-700 bg-gradient-to-tr from-gray-900/90 to-gray-800/70">
@@ -275,31 +277,35 @@ export default function DebuterPage() {
                   <FaChevronDown className="text-gray-400 text-2xl" />
                 )}
               </button>
-              {openSections[idx] && (
-                <div className="px-7 pb-6 pt-1 transition-all duration-300 text-base">
-                  {s.content}
-                </div>
-              )}
+              {/* Animation simple ouverture (opacity+translateY) */}
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out
+                ${openSections[idx] ? 'max-h-[1000px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
+                {openSections[idx] && (
+                  <div className="px-7 pb-6 pt-1 transition-all duration-300 text-base">
+                    {s.content}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </section>
 
-        {/* --- FAQ Débutants (inchangé mais styling + padding + gros titres) --- */}
+        {/* FAQ Débutants */}
         <section className="w-full max-w-4xl text-left mb-12">
           <h2 className="text-3xl font-bold text-sky-400 mb-5 text-center">FAQ Rapide</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
-            {/* ... tes FAQ cards inchangées ici ... */}
+            {/* Ajoute ici tes cards FAQ ou place un TODO */}
           </div>
         </section>
 
-        {/* --- Communauté et entraide --- */}
+        {/* Communauté et entraide */}
         <section className="w-full max-w-4xl text-left mb-8">
           <h2 className="text-3xl font-bold text-emerald-300 mb-5 text-center">Communauté & Entraide</h2>
           <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-            <a href="https://discord.gg/soccerverse" target="_blank" rel="noopener" className="bg-gradient-to-r from-sky-700 to-sky-400 hover:bg-sky-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg mb-4 md:mb-0">
+            <a href="https://discord.gg/soccerverse" target="_blank" rel="noopener" className="bg-gradient-to-r from-sky-700 to-sky-400 hover:bg-sky-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg mb-4 md:mb-0 focus:outline-none focus:ring-4 focus:ring-sky-400">
               <FaDiscord className="text-2xl" /> Discord FR/EN officiel
             </a>
-            <a href="https://www.youtube.com/results?search_query=soccerverse+game" target="_blank" rel="noopener" className="bg-gradient-to-r from-red-600 to-pink-500 hover:bg-red-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg">
+            <a href="https://www.youtube.com/results?search_query=soccerverse+game" target="_blank" rel="noopener" className="bg-gradient-to-r from-red-600 to-pink-500 hover:bg-red-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg focus:outline-none focus:ring-4 focus:ring-red-400">
               <FaYoutube className="text-2xl" /> Youtube (Tutos/Gameplay)
             </a>
           </div>
