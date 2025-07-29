@@ -44,12 +44,8 @@ function formatSVC(val, field) {
 }
 function formatBigSVC(val) {
   if (typeof val !== "number") return "-";
-  const corrected = val / 10000;
-  if (corrected > 1_000_000)
-    return (corrected / 1_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " M $SVC";
-  if (corrected > 10_000)
-    return (corrected / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " k $SVC";
-  return corrected.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " $SVC";
+  const corrected = Math.round(val / 10000);
+  return corrected.toLocaleString("fr-FR") + " $SVC";
 }
 function formatDate(timestamp) {
   if (!timestamp) return "-";
