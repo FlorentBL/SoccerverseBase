@@ -188,7 +188,7 @@ export default function DebuterPage() {
         {/* Boutons Inscription & Patch FR */}
         <div className="flex flex-col sm:flex-row gap-5 mb-10 w-full max-w-2xl">
           <a
-            href="https://play.soccerverse.com/home"
+            href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
             className="flex items-center justify-center gap-2 bg-sky-700 hover:bg-sky-800 rounded-xl px-6 py-4 text-lg font-bold shadow transition w-full"
           >
