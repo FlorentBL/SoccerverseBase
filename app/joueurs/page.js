@@ -1,9 +1,13 @@
 "use client";
 import React, { useState } from "react";
 const RINCON_URL = "/rincon_mapping.json";
+
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
-  return (val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " SVC";
+  // Affichage sans unité, séparateur milliers
+  return val % 1
+    ? val.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : val.toLocaleString("fr-FR");
 }
 
 export default function SoccerverseScouting() {
@@ -51,192 +55,134 @@ export default function SoccerverseScouting() {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh", background: "#181c21", color: "#f6f6f7",
-      fontFamily: "Inter, Arial, sans-serif", paddingTop: 48
-    }}>
-      <h2 style={{ fontWeight: 800, fontSize: 32, marginBottom: 32, letterSpacing: 1, textAlign: "center" }}>
-        Scouting Soccerverse (détail)
+    <div className="min-h-screen bg-[#181c21] text-gray-100 font-sans flex flex-col items-center pt-14 px-2">
+      <h2 className="font-extrabold text-3xl md:text-4xl mb-10 text-center tracking-wide">
+        <span className="text-green-400">Soccerverse</span> &ndash; Scouting Joueur
       </h2>
-      <div style={{
-        margin: "0 auto", maxWidth: 1200,
-        display: "flex", flexDirection: "column", alignItems: "center"
-      }}>
-        {/* Zone de recherche */}
-        <div style={{
-          background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008",
-          width: "100%", maxWidth: 520, marginBottom: 34
-        }}>
-          <label style={{ fontWeight: 600, fontSize: 17 }}>ID Joueur :</label>
+
+      <div className="w-full max-w-3xl flex flex-col gap-8">
+
+        {/* Recherche joueur */}
+        <div className="bg-[#21252b] rounded-2xl shadow-xl p-6 md:p-8 mx-auto w-full max-w-lg flex flex-col items-center">
+          <label className="font-bold text-lg mb-2 w-full text-left">ID Joueur :</label>
           <input
             type="number"
             value={playerId}
             onChange={e => setPlayerId(e.target.value)}
-            style={{
-              width: "100%", margin: "12px 0 16px 0", padding: "12px 16px", borderRadius: 6,
-              border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-            }}
+            className="w-full mb-5 p-3 rounded-lg bg-[#181d23] text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 font-mono text-lg"
             placeholder="Ex : 17"
             min={1}
+            autoFocus
           />
           <button
             onClick={fetchPlayer}
             disabled={loading || !playerId}
-            style={{
-              background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
-              border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
-              cursor: loading || !playerId ? "not-allowed" : "pointer",
-              boxShadow: "0 1px 5px #0004"
-            }}
+            className={`w-full py-3 rounded-lg font-bold text-lg shadow transition 
+              ${loading || !playerId
+                ? "bg-gray-500 cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-500 to-green-500 hover:opacity-90 cursor-pointer"
+              }`}
           >
             {loading ? "Recherche..." : "Afficher infos"}
           </button>
-          {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
+          {err && <div className="text-red-400 font-bold mt-5">{err}</div>}
         </div>
 
-        {/* Bloc double colonne desktop / colonne mobile */}
+        {/* Résultat scouting */}
         {playerInfo && (
-          <div
-            style={{
-              width: "100%",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 32,
-              marginTop: 0,
-              marginBottom: 32
-            }}
-          >
-            {/* Colonne gauche : Infos joueur */}
-            <div style={{
-              flex: "1 1 0",
-              minWidth: 330,
-              maxWidth: 450,
-              background: "#181d23",
-              borderRadius: 14,
-              padding: 28,
-              boxShadow: "0 2px 8px #0003"
-            }}>
-              <div style={{ fontSize: 14, color: "#ffd700", fontWeight: 500, marginBottom: 10 }}>
-                Toutes les valeurs sont en SVC
+          <div className="flex flex-col md:flex-row gap-8 w-full">
+
+            {/* Infos joueur */}
+            <div className="flex-1 bg-[#191f25] rounded-2xl shadow-lg p-7">
+              <div className="text-xs mb-2 text-green-400 font-semibold tracking-wide">
+                Toutes les valeurs sont en SVC (Soccerverse Coin)
               </div>
-              <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 18 }}>
+              <table className="w-full text-[17px] leading-snug mb-3">
                 <tbody>
                   <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Nom</td>
-                    <td style={{ padding: 5 }}>{playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}</td>
+                    <td className="font-bold pr-2 py-2 text-gray-300">Nom</td>
+                    <td className="py-2">{playerInfo.nom || <span className="text-yellow-300">Non dispo</span>}</td>
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Âge</td>
-                    <td style={{ padding: 5 }}>{playerInfo.age || "-"}</td>
+                    <td className="font-bold pr-2 py-2 text-gray-300">Âge</td>
+                    <td className="py-2">{playerInfo.age || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Club</td>
-                    <td style={{ padding: 5 }}>{playerInfo.club || playerInfo.club_id || "-"}</td>
+                    <td className="font-bold pr-2 py-2 text-gray-300">Club</td>
+                    <td className="py-2">{playerInfo.club || playerInfo.club_id || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Position(s)</td>
-                    <td style={{ padding: 5 }}>{Array.isArray(playerInfo.positions) ? playerInfo.positions.join(", ") : playerInfo.positions || "-"}</td>
+                    <td className="font-bold pr-2 py-2 text-gray-300">Position(s)</td>
+                    <td className="py-2">{Array.isArray(playerInfo.positions) ? playerInfo.positions.join(", ") : playerInfo.positions || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Note</td>
-                    <td style={{ padding: 5 }}>{playerInfo.rating || "-"}</td>
+                    <td className="font-bold pr-2 py-2 text-gray-300">Note</td>
+                    <td className="py-2">{playerInfo.rating || "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Valeur</td>
-                    <td style={{ padding: 5 }}>{formatSVC(playerInfo.value)}</td>
+                    <td className="font-bold pr-2 py-2 text-gray-300">Valeur</td>
+                    <td className="py-2">{playerInfo.value !== undefined ? `${formatSVC(playerInfo.value)} SVC` : "-"}</td>
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Salaire</td>
-                    <td style={{ padding: 5 }}>{formatSVC(playerInfo.wages)}</td>
+                    <td className="font-bold pr-2 py-2 text-gray-300">Salaire</td>
+                    <td className="py-2">{playerInfo.wages !== undefined ? `${formatSVC(playerInfo.wages)} SVC` : "-"}</td>
                   </tr>
                 </tbody>
               </table>
               <button
                 onClick={() => setShowDetails(!showDetails)}
-                style={{
-                  background: "#222", color: "#ffd700", fontWeight: 600, fontSize: 16, border: "none",
-                  borderRadius: 5, marginTop: 16, padding: "8px 22px", cursor: "pointer"
-                }}>
-                {showDetails ? "Masquer les détails" : "Afficher les détails"}
+                className="w-full mt-2 py-2 rounded font-semibold text-md bg-[#242a32] hover:bg-[#242f3a] text-yellow-300 transition"
+              >
+                {showDetails ? "Masquer les détails" : "Afficher plus de détails"}
               </button>
               {showDetails && (
-                <table style={{ width: "100%", marginTop: 15, borderCollapse: "collapse", color: "#b0b0b0", fontSize: 16 }}>
+                <table className="w-full mt-4 text-[15px] text-gray-400">
                   <tbody>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Player ID</td><td style={{ padding: 5 }}>{playerInfo.player_id}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Pays</td><td style={{ padding: 5 }}>{playerInfo.country || playerInfo.country_id || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Rating GK</td><td style={{ padding: 5 }}>{playerInfo.rating_gk || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Tackling</td><td style={{ padding: 5 }}>{playerInfo.rating_tackling || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Passing</td><td style={{ padding: 5 }}>{playerInfo.rating_passing || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Shooting</td><td style={{ padding: 5 }}>{playerInfo.rating_shooting || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Stamina</td><td style={{ padding: 5 }}>{playerInfo.rating_stamina || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Aggression</td><td style={{ padding: 5 }}>{playerInfo.rating_aggression || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Fitness</td><td style={{ padding: 5 }}>{playerInfo.fitness ?? "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Blessé ?</td><td style={{ padding: 5 }}>{playerInfo.injured ? "Oui" : "Non"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Moral</td><td style={{ padding: 5 }}>{playerInfo.morale ?? "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Contrat</td><td style={{ padding: 5 }}>{playerInfo.contract ?? "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Dernier prix</td><td style={{ padding: 5 }}>{formatSVC(playerInfo.last_price)}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Player ID</td><td>{playerInfo.player_id}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Pays</td><td>{playerInfo.country || playerInfo.country_id || "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Rating GK</td><td>{playerInfo.rating_gk || "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Tackling</td><td>{playerInfo.rating_tackling || "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Passing</td><td>{playerInfo.rating_passing || "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Shooting</td><td>{playerInfo.rating_shooting || "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Stamina</td><td>{playerInfo.rating_stamina || "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Aggression</td><td>{playerInfo.rating_aggression || "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Fitness</td><td>{playerInfo.fitness ?? "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Blessé ?</td><td>{playerInfo.injured ? "Oui" : "Non"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Moral</td><td>{playerInfo.morale ?? "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Contrat</td><td>{playerInfo.contract ?? "-"}</td></tr>
+                    <tr><td className="font-bold pr-2 py-1">Dernier prix</td><td>{playerInfo.last_price !== undefined ? `${formatSVC(playerInfo.last_price)} SVC` : "-"}</td></tr>
                   </tbody>
                 </table>
               )}
             </div>
-            {/* Colonne droite : Iframe */}
-            <div style={{
-              flex: "2 1 0",
-              minWidth: 350,
-              background: "#181d23",
-              borderRadius: 14,
-              padding: 0,
-              boxShadow: "0 2px 8px #0003",
-              marginLeft: 0,
-              display: "flex",
-              flexDirection: "column"
-            }}>
-              <div style={{
-                fontSize: 16, fontWeight: 700, color: "#4f47ff",
-                background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
-              }}>
+
+            {/* Analyse externe */}
+            <div className="flex-1 min-w-[300px] bg-[#191f25] rounded-2xl shadow-lg overflow-hidden flex flex-col">
+              <div className="text-base font-bold text-blue-400 bg-[#20252e] px-5 py-3">
                 Analyse SoccerRatings.org
               </div>
               <iframe
                 src={`https://soccerratings.org/player/${playerId}`}
-                style={{
-                  width: "100%",
-                  minHeight: 650,
-                  border: "none",
-                  borderRadius: "0 0 14px 14px",
-                  background: "#191d22"
-                }}
+                className="w-full min-h-[340px] md:min-h-[650px] bg-[#1b2028] border-none"
                 title="Soccer Ratings"
                 sandbox="allow-same-origin allow-scripts allow-popups"
+                style={{ borderRadius: "0 0 16px 16px" }}
               />
-              <div style={{ marginTop: 0, textAlign: "center", padding: 12 }}>
+              <div className="mt-0 text-center p-3">
                 <a
                   href={`https://soccerratings.org/player/${playerId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    display: "inline-block",
-                    background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
-                    color: "#fff", borderRadius: 8, padding: "8px 24px",
-                    fontWeight: 700, fontSize: 16, textDecoration: "none"
-                  }}>
+                  className="inline-block bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-lg px-6 py-2 font-bold text-md hover:opacity-90"
+                >
                   Ouvrir sur SoccerRatings.org
                 </a>
               </div>
             </div>
           </div>
         )}
-      </div>
 
-      {/* Responsive : repasse en colonne sur écran étroit */}
-      <style>{`
-        @media (max-width: 900px) {
-          .scouting-responsive {
-            flex-direction: column !important;
-          }
-        }
-      `}</style>
+      </div>
     </div>
   );
 }
