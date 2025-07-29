@@ -34,6 +34,21 @@ export default function Navbar() {
 
         {/* Menu desktop */}
         <div className="hidden md:flex gap-8 text-base font-bold items-center justify-center">
+          {/* Logo centré */}
+        <Link
+          href="/"
+          className="flex items-center justify-center mb-2"
+          aria-label="Accueil SoccerverseBase"
+        >
+          <Image
+            src="/logo.png"
+            alt="SoccerverseBase logo"
+            width={38}
+            height={38}
+            priority
+            className="rounded-md"
+          />
+        </Link>
           {menuItems.map(({ href, label }) => (
             <Link
               key={href}
