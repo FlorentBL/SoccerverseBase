@@ -103,17 +103,19 @@ export default function LeagueTab() {
       <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
         <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>Pays :</label>
         <select
-          value={country}
-          onChange={e => setCountry(e.target.value)}
-          style={{
-            width: "100%", marginBottom: 14, padding: "12px 16px", borderRadius: 6,
-            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-          }}>
-          <option value="">Sélectionner un pays</option>
-          {countryMap.map(c => (
-            <option key={c.code} value={c.code}>{c.flag} {c.country}</option>
-          ))}
-        </select>
+  value={country}
+  onChange={e => setCountry(e.target.value)}
+  style={{
+    width: "100%", marginBottom: 14, padding: "12px 16px", borderRadius: 6,
+    border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
+  }}>
+  <option value="">Sélectionner un pays</option>
+  {[...countryMap]
+    .sort((a, b) => a.country.localeCompare(b.country, "fr"))
+    .map(c => (
+      <option key={c.code} value={c.code}>{c.flag} {c.country}</option>
+  ))}
+</select>
 
         <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>Division :</label>
         <select
