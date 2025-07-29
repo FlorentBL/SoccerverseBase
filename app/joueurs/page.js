@@ -38,7 +38,7 @@ export default function SoccerverseScouting() {
       const playerApi = j.items[0];
       // Chargement JSON externe
       const rincon = await fetchRincon();
-      const playerRincon = rincon.find((p) => `${p.id}` === `${playerId}`);
+      const playerRincon = rincon[playerId] ?? null;
       setPlayerInfo({ ...playerApi, ...playerRincon });
     } catch (e) {
       setErr("Erreur réseau ou parsing données.");
