@@ -85,7 +85,7 @@ export default function ClubScouting() {
         {clubInfo && (
           <div
             style={{
-              width: "100%", maxWidth: 850, margin: "0 auto",
+              width: "100%", maxWidth: 1000, margin: "0 auto",
               background: "#181d23",
               borderRadius: 14,
               padding: 28,
@@ -140,6 +140,61 @@ export default function ClubScouting() {
                 </tr>
               </tbody>
             </table>
+            {/* Bloc Ratings/Stats */}
+            <div style={{ margin: "32px 0 18px 0", padding: 0 }}>
+              <h3 style={{ fontSize: 20, color: "#4f47ff", marginBottom: 10, fontWeight: 700 }}>Moyennes & Ratings</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "22px 40px" }}>
+                <div>
+                  <span style={{ color: "#ffd700" }}>⭑ Rating équipe</span><br />
+                  <b>{clubInfo.avg_player_rating ?? "-"}</b>
+                </div>
+                <div>
+                  <span style={{ color: "#ffd700" }}>⭑ Rating top 21</span><br />
+                  <b>{clubInfo.avg_player_rating_top21 ?? "-"}</b>
+                </div>
+                <div>
+                  <span style={{ color: "#ffd700" }}>🏹 Shooting</span><br />
+                  <b>{clubInfo.avg_shooting ?? "-"}</b>
+                </div>
+                <div>
+                  <span style={{ color: "#ffd700" }}>🎯 Passing</span><br />
+                  <b>{clubInfo.avg_passing ?? "-"}</b>
+                </div>
+                <div>
+                  <span style={{ color: "#ffd700" }}>🛡️ Tackling</span><br />
+                  <b>{clubInfo.avg_tackling ?? "-"}</b>
+                </div>
+                <div>
+                  <span style={{ color: "#ffd700" }}>🧤 GK</span><br />
+                  <b>{clubInfo.gk_rating ?? "-"}</b>
+                </div>
+                <div>
+                  <span style={{ color: "#ffd700" }}>💸 Avg Wages</span><br />
+                  <b>{formatSVC(clubInfo.avg_wages)}</b>
+                </div>
+              </div>
+            </div>
+            {/* Bloc Influenceurs */}
+            <div style={{ marginBottom: 10, marginTop: 14 }}>
+              <h3 style={{ fontSize: 20, color: "#4f47ff", marginBottom: 10, fontWeight: 700 }}>Top Influenceurs</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                {clubInfo.top_influencers && clubInfo.top_influencers.length > 0 ? clubInfo.top_influencers.slice(0, 5).map((inf, i) => (
+                  <div key={i} style={{
+                    background: "#21242c", borderRadius: 8, padding: "10px 18px", minWidth: 120, textAlign: "center"
+                  }}>
+                    <img src={inf.profile_pic || "/default_profile.jpg"} alt={inf.name} style={{
+                      width: 40, height: 40, borderRadius: "50%", objectFit: "cover", marginBottom: 4
+                    }} />
+                    <div style={{ fontWeight: 600, fontSize: 16 }}>{inf.name}</div>
+                    <div style={{ color: "#ffd700", fontWeight: 700, fontSize: 15 }}>{inf.num}</div>
+                    <div style={{ fontSize: 12, color: "#aaa" }}>
+                      {inf.last_active_unix ? formatDate(inf.last_active_unix) : ""}
+                    </div>
+                  </div>
+                )) : <span style={{ color: "#ccc" }}>Aucun</span>}
+              </div>
+            </div>
+            {/* Bouton détail */}
             <button
               onClick={() => setShowDetails(!showDetails)}
               style={{
