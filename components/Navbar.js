@@ -1,21 +1,29 @@
-// components/Navbar.js
 "use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FiMenu, FiX } from "react-icons/fi";
+import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scoutingOpen, setScoutingOpen] = useState(false);
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
 
+  // Menu pour les sous-rubriques Scouting
+  const scoutingItems = [
+    { href: "/joueurs", label: "Joueurs" },
+    { href: "/clubs", label: "Clubs" },
+    { href: "/championnats", label: "Championnat" },
+  ];
+
+  // Menu principal, on remplace Scout Joueurs par un vrai menu déroulant
   const menuItems = [
     { href: "/convertisseur", label: "Convertisseur SVC" },
     { href: "/recompenses", label: "Calculateur de Récompenses" },
-    { href: "/joueurs", label: "Scout Joueurs" },
-    { href: "/revenus", label: "Gadonins Joueurs " },
+    // Scouting est traité à part
+    { href: "/revenus", label: "Gadonins Joueurs" },
     { href: "/fitness", label: "Calculateur Fitness" },
   ];
 
@@ -31,19 +39,49 @@ export default function Navbar() {
             priority
             className="rounded-md"
           />
-          {/* Optionnel: tu peux rajouter le texte "SoccerverseBase" en petit à droite du logo :
-          <span className="ml-2 font-bold text-lg hidden sm:inline">SoccerverseBase</span>
-          */}
         </Link>
 
-        <div className="hidden md:flex gap-6 text-sm font-medium">
+        {/* Desktop menu */}
+        <div className="hidden md:flex gap-6 text-sm font-medium items-center">
+          {/* Autres menus */}
           {menuItems.map(({ href, label }) => (
             <Link key={href} href={href} className="hover:text-green-400">
               {label}
             </Link>
           ))}
+
+          {/* Menu déroulant SCOUTING */}
+          <div className="relative group">
+            <button
+              className="flex items-center gap-1 hover:text-green-400 font-semibold px-2"
+              onClick={() => setScoutingOpen(!scoutingOpen)}
+              onMouseEnter={() => setScoutingOpen(true)}
+              onMouseLeave={() => setScoutingOpen(false)}
+            >
+              Scouting <FiChevronDown />
+            </button>
+            {/* Sous-menu visible au hover */}
+            <div
+              className={`absolute left-0 mt-2 w-44 bg-gray-900 border border-gray-700 rounded-lg shadow-lg py-1 transition-all duration-150
+              ${scoutingOpen ? "block" : "hidden"} group-hover:block`}
+              onMouseEnter={() => setScoutingOpen(true)}
+              onMouseLeave={() => setScoutingOpen(false)}
+            >
+              {scoutingItems.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="block px-4 py-2 hover:bg-gray-800 hover:text-green-400 transition"
+                  onClick={() => setScoutingOpen(false)}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
 
+        {/* Mobile burger */}
         <button
           className="md:hidden text-2xl focus:outline-none"
           onClick={toggleMenu}
@@ -53,6 +91,7 @@ export default function Navbar() {
         </button>
       </nav>
 
+      {/* Menu mobile avec sous-menu Scouting */}
       {menuOpen && (
         <div className="md:hidden bg-gray-800 px-4 pb-4">
           <ul className="space-y-2">
@@ -67,6 +106,34 @@ export default function Navbar() {
                 </Link>
               </li>
             ))}
+            {/* Scouting dropdown mobile */}
+            <li>
+              <button
+                onClick={() => setScoutingOpen(!scoutingOpen)}
+                className="flex items-center w-full py-2 border-b border-gray-700 hover:text-green-400 font-semibold"
+              >
+                <span className="flex-1 text-left">Scouting</span>
+                <FiChevronDown className={`transition-transform ${scoutingOpen ? "rotate-180" : ""}`} />
+              </button>
+              {scoutingOpen && (
+                <ul className="pl-4 mt-1 space-y-1">
+                  {scoutingItems.map(({ href, label }) => (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setScoutingOpen(false);
+                        }}
+                        className="block py-1 text-sm hover:text-green-400"
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
           </ul>
         </div>
       )}
