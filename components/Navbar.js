@@ -43,10 +43,6 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
-        </div>
-
-        {/* BuyMeACoffee desktop (à droite) */}
-        <div className="hidden md:block absolute right-6 top-1.5">
           <a
             href="https://buymeacoffee.com/klov"
             target="_blank"
@@ -61,6 +57,8 @@ export default function Navbar() {
           </a>
         </div>
 
+        
+
         {/* Burger mobile (droite) */}
         <button
           className="absolute top-3 right-4 md:hidden text-2xl focus:outline-none"
@@ -74,6 +72,20 @@ export default function Navbar() {
       {/* Menu mobile */}
       {menuOpen && (
         <div className="md:hidden bg-gray-800 px-4 pb-4">
+          
+          <ul className="space-y-2 text-center">
+            {menuItems.map(({ href, label }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className="block py-2 border-b border-gray-700 hover:text-green-400 font-bold"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
           {/* Bouton BuyMeACoffee dans le menu mobile */}
           <div className="flex justify-center mt-2 mb-3">
             <a
@@ -91,19 +103,6 @@ export default function Navbar() {
               </div>
             </a>
           </div>
-          <ul className="space-y-2 text-center">
-            {menuItems.map(({ href, label }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  onClick={() => setMenuOpen(false)}
-                  className="block py-2 border-b border-gray-700 hover:text-green-400 font-bold"
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
     </header>
