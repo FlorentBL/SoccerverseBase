@@ -3,12 +3,12 @@
 import React, { useState, useMemo } from "react";
 import { Info } from "lucide-react";
 
+// Nouveau format, plus de "SVC" dans la case !
 function formatSVC(val) {
   const isInt = Number.isInteger(val);
-  const formatted = isInt
+  return isInt
     ? val.toLocaleString("fr-FR")
     : val.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${formatted} SVC`;
 }
 
 const columns = [
@@ -57,11 +57,17 @@ export default function SVCRewardsTable({ data }) {
           />
         </label>
       </div>
-      <table className="w-full text-center text-sm sm:text-base">
+
+      {/* Ajout du rappel SVC ici */}
+      <div className="text-sm text-green-400 font-semibold mb-2 text-center">
+        Toutes les valeurs du tableau sont exprimées en SVC (Soccerverse Coin).
+      </div>
+
+      <table className="w-full text-center text-sm sm:text-base table-fixed">
         <thead>
           <tr className="bg-[#22272f] text-white">
             {columns.map(col => (
-              <th key={col.key} className="px-2 py-2 font-semibold">
+              <th key={col.key} className="px-1 py-2 font-semibold whitespace-nowrap">
                 <div className="flex items-center justify-center gap-1">
                   {col.label}
                   {col.tip && (
@@ -81,7 +87,10 @@ export default function SVCRewardsTable({ data }) {
           {filtered.map(row => (
             <tr key={row.rating} className="border-b border-gray-800 hover:bg-[#22272f]">
               {columns.map(col => (
-                <td key={col.key} className="px-2 py-2 font-mono">
+                <td
+                  key={col.key}
+                  className="px-1 py-2 font-mono whitespace-nowrap"
+                >
                   {col.key === "rating"
                     ? row[col.key]
                     : formatSVC(row[col.key])}
@@ -96,10 +105,7 @@ export default function SVCRewardsTable({ data }) {
           <b>Titulaire :</b> doit jouer au moins 45 minutes.<br />
           <b>Clean Sheet :</b> uniquement pour gardien/défenseur ayant joué au moins 70 min, aucun but encaissé.<br />
           <b>Prime Influenceur :</b> proportionnelle à la part détenue.<br />
-          <b>Rémunération Agent :</b> versée à chaque match joué.<br />
-          <span className="block mt-1 text-green-400">
-            Tous les montants sont exprimés en <b>SVC (Soccerverse Coin)</b>.
-          </span>
+          <b>Rémunération Agent :</b> versée à chaque match joué.
         </div>
       </div>
     </div>
