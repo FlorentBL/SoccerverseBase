@@ -5,16 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { FiMenu, FiX } from "react-icons/fi";
 
-const scoutingItems = [
-  { href: "/joueurs", label: "Joueurs" },
-  { href: "/clubs", label: "Clubs" },
-  { href: "/championnats", label: "Championnat" },
-];
-
-// Menus principaux sans dropdown
 const menuItems = [
   { href: "/recompenses", label: "Calculateur de Récompenses" },
   { href: "/revenus", label: "Gains Joueurs" },
+  { href: "/scouting", label: "Scouting" }, // Page unique avec les onglets
 ];
 
 export default function Navbar() {
@@ -35,20 +29,12 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop menu */}
-        <div className="hidden md:flex gap-6 text-sm font-medium items-center">
+        <div className="hidden md:flex gap-6 text-sm font-bold items-center">
           {menuItems.map(({ href, label }) => (
-            <Link key={href} href={href} className="hover:text-green-400">
-              {label}
-            </Link>
-          ))}
-          <span className="mx-2 h-7 border-l border-gray-600"></span>
-          {/* Scouting Section */}
-          <span className="text-green-400 font-bold tracking-wide">Scouting :</span>
-          {scoutingItems.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
-              className="hover:text-green-400 ml-2"
+              className="hover:text-green-400"
             >
               {label}
             </Link>
@@ -65,7 +51,7 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {/* Menu mobile */}
+      {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden bg-gray-800 px-4 pb-4">
           <ul className="space-y-2">
@@ -74,30 +60,12 @@ export default function Navbar() {
                 <Link
                   href={href}
                   onClick={() => setMenuOpen(false)}
-                  className="block py-2 border-b border-gray-700 hover:text-green-400"
+                  className="block py-2 border-b border-gray-700 hover:text-green-400 font-bold"
                 >
                   {label}
                 </Link>
               </li>
             ))}
-            <li>
-              <span className="block mt-3 mb-2 text-green-400 font-bold tracking-wide">
-                Scouting
-              </span>
-              <ul>
-                {scoutingItems.map(({ href, label }) => (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      onClick={() => setMenuOpen(false)}
-                      className="block py-1 pl-2 text-sm hover:text-green-400"
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </li>
           </ul>
         </div>
       )}
