@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 
-// Libellés pour chaque champ financier
+// Champs financiers à afficher
 const FIELD_LABELS = {
   cash_injection: "Injection de trésorerie",
   gate_receipts: "Recettes guichets",
@@ -21,7 +21,6 @@ const FIELD_LABELS = {
   other_outgoings: "Autres dépenses"
 };
 
-// Ordre d’affichage (et inclusion) des champs financiers
 const FIELD_ORDER = [
   "cash_injection", "gate_receipts", "tv_revenue", "sponsor", "merchandise",
   "prize_money", "transfers_in", "other_income",
@@ -29,7 +28,7 @@ const FIELD_ORDER = [
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
 
-// Formatage montant en SVC, division par 10 000 pour coller à l’UI officielle
+// Formatage montant en SVC, division par 10 000
 function formatSVC(val) {
   if (typeof val !== "number") return "-";
   const corrected = val / 10000;
@@ -37,6 +36,13 @@ function formatSVC(val) {
     maximumFractionDigits: corrected < 1000 ? 2 : 0,
     minimumFractionDigits: 0,
   }) + " $SVC";
+}
+
+// Formatage date UNIX -> JJ/MM/AAAA
+function formatDate(timestamp) {
+  if (!timestamp) return "-";
+  const d = new Date(timestamp * 1000);
+  return d.toLocaleDateString("fr-FR");
 }
 
 export default function ClubFinancesPage() {
@@ -78,9 +84,9 @@ export default function ClubFinancesPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
+    <div className="max-w-5xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6 text-center">Test – Bilan financier d’un club Soccerverse</h1>
-      <form className="flex gap-2 mb-6 items-end" onSubmit={handleSubmit}>
+      <form className="flex gap-2 mb-6 items-end flex-wrap" onSubmit={handleSubmit}>
         <div>
           <label className="block text-xs font-semibold mb-1">Club ID</label>
           <input
@@ -112,7 +118,7 @@ export default function ClubFinancesPage() {
       {bilan && (
         <div className="bg-gray-800 text-white rounded-xl shadow-lg p-6 mb-6">
           <h2 className="text-lg font-bold mb-4">Bilan saison {seasonId} – Club {clubId}</h2>
-          <table className="w-full">
+          <table className="w-full text-sm">
             <tbody>
               {FIELD_ORDER.map(k =>
                 <tr key={k} className="border-b border-gray-700">
@@ -135,21 +141,26 @@ export default function ClubFinancesPage() {
 
       {showDetail && data.length > 0 && (
         <div className="bg-white rounded-xl shadow p-4 text-xs">
-          <h3 className="font-bold mb-2">Détail par semaine</h3>
+          <h3 className="font-bold mb-3 text-gray-700">Détail par semaine</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-200">
-              <thead>
+            <table className="min-w-full border border-gray-200 text-xs">
+              <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-2 py-1 border-b text-left">Week</th>
+                  <th className="px-2 py-1 border-b text-left font-semibold">Week</th>
+                  <th className="px-2 py-1 border-b text-left font-semibold">Date</th>
                   {FIELD_ORDER.map(k => (
-                    <th key={k} className="px-2 py-1 border-b">{FIELD_LABELS[k] || k}</th>
+                    <th key={k} className="px-2 py-1 border-b font-semibold">{FIELD_LABELS[k] || k}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {data.map((w, i) => (
-                  <tr key={i}>
+                  <tr
+                    key={i}
+                    className={i % 2 ? "bg-gray-50 hover:bg-yellow-50" : "bg-white hover:bg-yellow-100"}
+                  >
                     <td className="px-2 py-1 border-b">{w.game_week}</td>
+                    <td className="px-2 py-1 border-b">{formatDate(w.date)}</td>
                     {FIELD_ORDER.map(k => (
                       <td key={k} className="px-2 py-1 border-b text-right">{formatSVC(w[k] ?? 0)}</td>
                     ))}
