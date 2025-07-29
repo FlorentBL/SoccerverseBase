@@ -84,12 +84,10 @@ export default function SVCRewardsTable({ data }) {
                       <span className="group relative cursor-pointer">
   <Info size={14} className="text-green-400" />
   <span
-    className="fixed left-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 pointer-events-none bg-black bg-opacity-90 text-gray-200 text-xs rounded shadow-md px-2 py-1 z-[99] whitespace-nowrap transition-opacity"
+    className="absolute left-1/2 -translate-x-1/2 top-0 -translate-y-full mb-2 opacity-0 group-hover:opacity-100 pointer-events-none bg-black bg-opacity-90 text-gray-200 text-xs rounded shadow-md px-2 py-1 z-50 whitespace-normal transition-opacity"
     style={{
-      transform: "translateX(-50%)",
       minWidth: 140,
       maxWidth: 220,
-      whiteSpace: "normal",
       textAlign: "center"
     }}
   >
