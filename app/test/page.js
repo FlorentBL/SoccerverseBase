@@ -2,8 +2,7 @@
 
 import Navbar from "@/components/Navbar";
 import {
-  FaBookOpen, FaSearch, FaChartLine, FaDiscord, FaYoutube,
-  FaUsers, FaCheckCircle, FaUserPlus, FaPuzzlePiece
+  FaBookOpen, FaSearch, FaChartLine, FaDiscord, FaUsers, FaCheckCircle, FaUserPlus, FaPuzzlePiece
 } from "react-icons/fa";
 import { useState } from "react";
 
@@ -42,34 +41,7 @@ const roles = [
   }
 ];
 
-const faq = [
-  {
-    q: "C’est gratuit ?",
-    a: "Oui, Soccerverse est 100% gratuit à l’inscription. Pas besoin de crypto ou de wallet pour débuter."
-  },
-  {
-    q: "Je dois tout comprendre dès le début ?",
-    a: "Non, tu peux tester plusieurs rôles, prendre ton temps et demander de l’aide à la commu."
-  },
-  {
-    q: "Dois-je acheter ou investir pour jouer ?",
-    a: "Non, la progression se fait sans paiement. L’investissement est une option, jamais une obligation."
-  },
-  {
-    q: "Je peux jouer sur mobile ?",
-    a: "Oui, Soccerverse est accessible sur navigateur desktop et mobile."
-  }
-];
-
 export default function AccueilSoccerverseBase() {
-  const [openFAQ, setOpenFAQ] = useState(Array(faq.length).fill(false));
-
-  const toggleFAQ = idx => {
-    setOpenFAQ(prev =>
-      prev.map((open, i) => (i === idx ? !open : open))
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-white">
       <Navbar />
@@ -78,8 +50,8 @@ export default function AccueilSoccerverseBase() {
       <div className="w-full flex justify-center pt-5">
         <div className="bg-sky-900/80 border border-sky-400/40 px-6 py-3 rounded-xl shadow max-w-2xl text-center text-base md:text-lg font-semibold text-white">
           <span>
-            <b>Soccerverse</b> est un <b>jeu gratuit de management de football</b> où tu incarnes coach, agent ou investisseur. 
-            <span className="text-sky-300 font-bold block md:inline"> Joue à ton rythme, progresse et gagne, sans prise de tête.</span>
+            <b>Soccerverse</b> est un <b>jeu de management de football</b> où tu incarnes coach, agent ou investisseur. 
+            <span className="text-sky-300 font-bold block md:inline"> Joue à ton rythme, progresse et gagne !</span>
           </span>
         </div>
       </div>
@@ -116,6 +88,32 @@ export default function AccueilSoccerverseBase() {
         </div>
       </section>
 
+      {/* Bandeau chiffres clés */}
+      <section className="w-full flex justify-center mt-6 mb-10">
+        <div className="flex flex-wrap items-center justify-center gap-6 px-4 py-6 bg-gradient-to-r from-sky-900/80 via-emerald-900/70 to-sky-900/80 rounded-2xl shadow-lg border border-sky-500/10 max-w-4xl w-full">
+          <div className="flex flex-col items-center min-w-[110px]">
+            <span className="text-3xl font-bold text-sky-300">5 350</span>
+            <span className="text-sm text-gray-200 mt-1">Clubs jouables</span>
+          </div>
+          <div className="flex flex-col items-center min-w-[110px]">
+            <span className="text-3xl font-bold text-emerald-300">145 000</span>
+            <span className="text-sm text-gray-200 mt-1">Joueurs réels</span>
+          </div>
+          <div className="flex flex-col items-center min-w-[110px]">
+            <span className="text-3xl font-bold text-pink-300">322</span>
+            <span className="text-sm text-gray-200 mt-1">Ligues</span>
+          </div>
+          <div className="flex flex-col items-center min-w-[110px]">
+            <span className="text-3xl font-bold text-yellow-200">+3 000</span>
+            <span className="text-sm text-gray-200 mt-1">Managers actifs</span>
+          </div>
+          <div className="flex flex-col items-center min-w-[110px]">
+            <span className="text-3xl font-bold text-purple-300">100%</span>
+            <span className="text-sm text-gray-200 mt-1">Multijoueur</span>
+          </div>
+        </div>
+      </section>
+
       {/* Simplicity + Process */}
       <div className="flex flex-col items-center bg-emerald-800/80 border border-emerald-400/40 rounded-xl py-3 px-4 mt-6 max-w-2xl mx-auto">
         <span className="font-semibold text-white text-lg">Débuter, c'est simple :</span>
@@ -145,6 +143,47 @@ export default function AccueilSoccerverseBase() {
           <FaCheckCircle className="inline mr-1 text-emerald-400" />
           Tu peux cumuler les rôles ou te spécialiser, à toi de jouer.
         </p>
+      </section>
+
+      {/* Étapes simples */}
+      <section className="w-full max-w-3xl mx-auto px-2 mt-10 mb-8">
+        <h2 className="text-xl font-bold mb-4 text-white text-center">Comment ça marche&nbsp;?</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="flex flex-col items-center p-4 bg-gray-900/80 rounded-xl shadow">
+            <FaUserPlus className="text-3xl text-sky-300 mb-2" />
+            <span className="font-bold text-white mb-1">1. Je m’inscris</span>
+            <span className="text-gray-300 text-sm text-center">30s via Discord, Google, ou e-mail</span>
+          </div>
+          <div className="flex flex-col items-center p-4 bg-gray-900/80 rounded-xl shadow">
+            <FaBookOpen className="text-3xl text-emerald-300 mb-2" />
+            <span className="font-bold text-white mb-1">2. Je choisis mon rôle</span>
+            <span className="text-gray-300 text-sm text-center">Coach, agent, trader, ou tout tester</span>
+          </div>
+          <div className="flex flex-col items-center p-4 bg-gray-900/80 rounded-xl shadow">
+            <FaChartLine className="text-3xl text-pink-300 mb-2" />
+            <span className="font-bold text-white mb-1">3. Je joue & je progresse</span>
+            <span className="text-gray-300 text-sm text-center">Découvre, gagne, et rejoins la commu !</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Témoignages express */}
+      <section className="w-full max-w-3xl mx-auto px-2 mt-6 mb-10">
+        <h2 className="text-xl font-bold mb-4 text-white text-center">Ils/Elles ont testé pour toi</h2>
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+          <div className="bg-gray-900/80 border-l-4 border-sky-400 rounded-xl p-4 text-gray-100 text-sm shadow max-w-xs">
+            « J’ai rejoint Soccerverse sans rien connaître, j’ai monté mon équipe en 3 jours ! »
+            <div className="text-xs text-sky-300 mt-2">– Julie, coach débutante</div>
+          </div>
+          <div className="bg-gray-900/80 border-l-4 border-emerald-400 rounded-xl p-4 text-gray-100 text-sm shadow max-w-xs">
+            « La commu m’a tout expliqué, super accueil pour progresser vite. »
+            <div className="text-xs text-emerald-300 mt-2">– Max, agent</div>
+          </div>
+          <div className="bg-gray-900/80 border-l-4 border-pink-400 rounded-xl p-4 text-gray-100 text-sm shadow max-w-xs">
+            « Pas besoin de crypto pour jouer, tout est simple et fun. »
+            <div className="text-xs text-pink-300 mt-2">– Seb, investisseur</div>
+          </div>
+        </div>
       </section>
 
       {/* Communauté Discord */}
@@ -185,7 +224,7 @@ export default function AccueilSoccerverseBase() {
       </section>
 
       {/* Astuces communautaires */}
-      <section className="w-full max-w-2xl mx-auto px-2 mb-10">
+      <section className="w-full max-w-2xl mx-auto px-2 mb-12">
         <h2 className="text-xl font-bold mb-3 text-white flex items-center gap-2">
           <FaChartLine className="text-pink-400" /> Astuces pour bien débuter
         </h2>
@@ -199,30 +238,6 @@ export default function AccueilSoccerverseBase() {
           <li><b>Influence :</b> récompenses chaque semaine + en fin de saison.</li>
           <li><b>Wallet in game :</b> transactions gratuites chaque jour.</li>
         </ul>
-      </section>
-
-      {/* FAQ express */}
-      <section className="w-full max-w-2xl mx-auto px-2 mb-12">
-        <h2 className="text-xl font-bold mb-3 text-white flex items-center gap-2">
-          <FaBookOpen className="text-sky-400" /> FAQ Express
-        </h2>
-        <div className="flex flex-col gap-3">
-          {faq.map((item, idx) => (
-            <div key={idx} className="border border-gray-700 rounded-lg px-4 py-3 bg-gray-900/80">
-              <button
-                className="w-full flex items-center justify-between text-left focus:outline-none"
-                onClick={() => toggleFAQ(idx)}
-                aria-expanded={openFAQ[idx]}
-              >
-                <span className="font-semibold">{item.q}</span>
-                <span className="text-sky-300">{openFAQ[idx] ? "▲" : "▼"}</span>
-              </button>
-              {openFAQ[idx] && (
-                <div className="mt-2 text-gray-300 text-sm">{item.a}</div>
-              )}
-            </div>
-          ))}
-        </div>
       </section>
 
       <footer className="text-center text-gray-500 text-xs py-4 w-full">
