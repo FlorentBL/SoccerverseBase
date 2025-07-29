@@ -154,24 +154,6 @@ export default function PlayerTab() {
               >
                 Voir sur Transfermarkt
               </a>
-              <a
-                href={`https://www.sofascore.com/fr/recherche?q=${encodeURIComponent(playerInfo.nom || "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-block",
-                  background: "linear-gradient(90deg, #17b978, #43e97b)",
-                  color: "#fff",
-                  borderRadius: 8,
-                  padding: "10px 28px",
-                  fontWeight: 700,
-                  fontSize: 16,
-                  textDecoration: "none",
-                  boxShadow: "0 2px 6px #0af2"
-                }}
-              >
-                Voir sur SofaScore
-              </a>
             </div>
           </div>
 
