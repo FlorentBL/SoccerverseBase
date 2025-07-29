@@ -19,7 +19,7 @@ export default function Navbar() {
         {/* Logo centré */}
         <Link
           href="/"
-          className="flex items-center justify-center mb-2"
+          className="flex items-center justify-center mb-2 md:hidden"
           aria-label="Accueil SoccerverseBase"
         >
           <Image
