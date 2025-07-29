@@ -57,7 +57,6 @@ function formatDate(timestamp) {
   return d.toLocaleDateString("fr-FR");
 }
 
-// Bilan saison (ou projection)
 function FinanceTable({ bilan, weeks, isProj }) {
   return (
     <div className="bg-[#23263a] text-white rounded-xl shadow-lg p-5 mb-2 border border-gray-800">
@@ -90,7 +89,6 @@ function FinanceTable({ bilan, weeks, isProj }) {
   );
 }
 
-// Détail hebdo
 function DetailWeeksTable({ weeks }) {
   return (
     <div className="bg-[#23263a] rounded-xl shadow p-5 text-xs border border-gray-800 mb-6">
@@ -172,6 +170,7 @@ export default function ClubProjectionPage() {
       // Nombre de semaines basé sur S1
       const weeksTotal = s1.length;
       const weeksPlayed = s2.length;
+      const weeksRestantes = weeksTotal - weeksPlayed;
 
       // Moyenne hebdo S2
       const moyS2 = {};
@@ -181,7 +180,12 @@ export default function ClubProjectionPage() {
       // Projection S2 (alignée sur nb semaines S1)
       const projS2 = {};
       FIELD_ORDER.forEach(k => {
-        projS2[k] = moyS2[k] * weeksTotal;
+        if (["transfers_in", "transfers_out"].includes(k)) {
+          // Transferts : on garde la valeur observée (pas de projection sur le futur)
+          projS2[k] = bilanS2[k] ?? 0;
+        } else {
+          projS2[k] = moyS2[k] * weeksTotal;
+        }
       });
 
       const soldeFinS2 = solde + Object.entries(projS2).reduce((acc, [k, v]) => {
@@ -203,7 +207,7 @@ export default function ClubProjectionPage() {
 
       setResults({
         solde, bilanS1, bilanS2, moyS2, projS2, soldeFinS2, capaciteInvest, chargeFixeProj,
-        weeksPlayed, weeksTotal, s1, s2
+        weeksPlayed, weeksTotal, weeksRestantes, s1, s2
       });
     } catch (e) {
       setErr(e.message);
@@ -224,11 +228,11 @@ export default function ClubProjectionPage() {
 
   // Calcul simulation
   let simSoldeFin = null, simCapacite = null, simChargeFixe = null;
-  if (results && transfertSim && salaireSim) {
-    const nWeeks = results.weeksTotal || 0;
-    const transfert = parseFloat(transfertSim.replace(",", "."));
-    const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
-    const chargeSalaireTotale = salaireHebdo * nWeeks;
+  if (results && transfertSim !== "" && salaireSim !== "") {
+    const weeksRestantes = results.weeksRestantes || 0;
+    const transfert = parseFloat(transfertSim.replace(",", ".")) || 0;
+    const salaireHebdo = parseFloat(salaireSim.replace(",", ".")) || 0;
+    const chargeSalaireTotale = salaireHebdo * weeksRestantes;
 
     simChargeFixe = results.chargeFixeProj + chargeSalaireTotale;
     simSoldeFin = results.soldeFinS2 - transfert - chargeSalaireTotale;
@@ -352,6 +356,9 @@ export default function ClubProjectionPage() {
                   <div>
                     <span className="text-gray-200">Nouvelles charges fixes projetées sur S2 : </span>
                     <span className="font-bold text-red-300">{formatBigSVC(simChargeFixe)}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    (La charge salariale supplémentaire est calculée sur {results.weeksRestantes} semaine(s) restante(s))
                   </div>
                 </div>
               )}
