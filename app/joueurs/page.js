@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 
-const RINCON_URL = "/rincon_v1.json"; // hébergé local
+const RINCON_URL = "/rincon_mapping.json"; // hébergé local
 
 export default function SoccerverseScouting() {
   const [playerId, setPlayerId] = useState("");
