@@ -1,5 +1,6 @@
 import "./globals.css";
 import Navbar from "../components/Navbar"; // adapte le chemin si besoin
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata = {
   title: "SoccerverseBase",
