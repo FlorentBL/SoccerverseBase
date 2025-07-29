@@ -28,14 +28,8 @@ const FIELD_ORDER = [
 ];
 
 const COST_FIELDS = [
-  "player_wages",
-  "agent_wages",
-  "managers_wage",
-  "ground_maintenance",
-  "transfers_out",
-  "shareholder_payouts",
-  "shareholder_prize_money",
-  "other_outgoings"
+  "player_wages", "agent_wages", "managers_wage", "ground_maintenance",
+  "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
 
 function formatSVC(val, field) {
@@ -63,14 +57,91 @@ function formatDate(timestamp) {
   return d.toLocaleDateString("fr-FR");
 }
 
+// Bilan saison (ou projection)
+function FinanceTable({ bilan, weeks, isProj }) {
+  return (
+    <div className="bg-[#23263a] text-white rounded-xl shadow-lg p-5 mb-2 border border-gray-800">
+      <table className="w-full text-base">
+        <thead>
+          <tr>
+            <th className="py-1 pr-4 text-left text-gray-400 font-semibold">Flux</th>
+            <th className="py-1 text-right text-gray-400 font-semibold">
+              Montant {weeks && ("(" + (isProj ? "projection " : "total ") + weeks + " sem.)")}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {FIELD_ORDER.map(k =>
+            <tr key={k} className="border-b border-[#2d3146] hover:bg-[#21262b] transition">
+              <td className="py-1 pr-4 text-gray-200">{FIELD_LABELS[k] || k}</td>
+              <td
+                className={
+                  "py-1 text-right font-mono " +
+                  (COST_FIELDS.includes(k) && bilan[k] !== 0 ? "text-red-400 font-semibold" : "")
+                }
+              >
+                {formatSVC(bilan[k] ?? 0, k)}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Détail hebdo
+function DetailWeeksTable({ weeks }) {
+  return (
+    <div className="bg-[#23263a] rounded-xl shadow p-5 text-xs border border-gray-800 mb-6">
+      <h3 className="font-bold mb-3 text-gray-200">Détail par semaine</h3>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border border-[#363a57] text-xs text-gray-100">
+          <thead className="bg-[#202330]">
+            <tr>
+              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Week</th>
+              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Date</th>
+              {FIELD_ORDER.map(k => (
+                <th key={k} className="px-2 py-1 border-b border-[#363a57] font-semibold text-gray-300">{FIELD_LABELS[k] || k}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {weeks.map((w, i) => (
+              <tr key={i} className={i % 2 ? "bg-[#222436]" : "bg-[#1b1e29]"}>
+                <td className="px-2 py-1 border-b border-[#363a57]">{w.game_week}</td>
+                <td className="px-2 py-1 border-b border-[#363a57]">{formatDate(w.date)}</td>
+                {FIELD_ORDER.map(k => (
+                  <td
+                    key={k}
+                    className={
+                      "px-2 py-1 border-b border-[#363a57] text-right font-mono " +
+                      (COST_FIELDS.includes(k) && w[k] !== 0 ? "text-red-400" : "")
+                    }
+                  >
+                    {formatSVC(w[k] ?? 0, k)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function ClubProjectionPage() {
   const [clubId, setClubId] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  // Ajout pour le détail par semaine
   const [showS1Detail, setShowS1Detail] = useState(false);
   const [showS2Detail, setShowS2Detail] = useState(false);
+
+  // Simulation
+  const [transfertSim, setTransfertSim] = useState("");
+  const [salaireSim, setSalaireSim] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,6 +150,8 @@ export default function ClubProjectionPage() {
     setLoading(true);
     setShowS1Detail(false);
     setShowS2Detail(false);
+    setTransfertSim("");
+    setSalaireSim("");
     try {
       // Solde actuel
       const clubRes = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`);
@@ -96,13 +169,16 @@ export default function ClubProjectionPage() {
       const bilanS1 = aggregateBilan(s1);
       const bilanS2 = aggregateBilan(s2);
 
-      // Projection S2
+      // Nombre de semaines basé sur S1
+      const weeksTotal = s1.length;
       const weeksPlayed = s2.length;
-      const weeksTotal = s1.length; // on projette S2 sur la même durée que S1
+
+      // Moyenne hebdo S2
       const moyS2 = {};
       FIELD_ORDER.forEach(k => {
         moyS2[k] = weeksPlayed > 0 ? (bilanS2[k] ?? 0) / weeksPlayed : 0;
       });
+      // Projection S2 (alignée sur nb semaines S1)
       const projS2 = {};
       FIELD_ORDER.forEach(k => {
         projS2[k] = moyS2[k] * weeksTotal;
@@ -146,6 +222,19 @@ export default function ClubProjectionPage() {
     return sum;
   }
 
+  // Calcul simulation
+  let simSoldeFin = null, simCapacite = null, simChargeFixe = null;
+  if (results && transfertSim && salaireSim) {
+    const nWeeks = results.weeksTotal || 0;
+    const transfert = parseFloat(transfertSim.replace(",", "."));
+    const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
+    const chargeSalaireTotale = salaireHebdo * nWeeks;
+
+    simChargeFixe = results.chargeFixeProj + chargeSalaireTotale;
+    simSoldeFin = results.soldeFinS2 - transfert - chargeSalaireTotale;
+    simCapacite = results.capaciteInvest - transfert - chargeSalaireTotale;
+  }
+
   return (
     <div className="min-h-screen bg-[#181B23] py-8 px-4 flex flex-col items-center">
       <div className="w-full max-w-3xl">
@@ -181,7 +270,7 @@ export default function ClubProjectionPage() {
             </div>
             {/* Saison 1 */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">Bilan Saison 1</h2>
-            <FinanceTable bilan={results.bilanS1} weeks={results.s1.length} />
+            <FinanceTable bilan={results.bilanS1} weeks={results.weeksTotal} />
             <div className="mt-2 mb-4 flex justify-end">
               <button
                 className="text-sm underline text-gray-300 hover:text-green-300"
@@ -190,10 +279,7 @@ export default function ClubProjectionPage() {
                 {showS1Detail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
               </button>
             </div>
-            {showS1Detail && (
-              <DetailWeeksTable weeks={results.s1} />
-            )}
-
+            {showS1Detail && <DetailWeeksTable weeks={results.s1} />}
             {/* Saison 2 */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">Bilan Saison 2 (en cours)</h2>
             <FinanceTable bilan={results.bilanS2} weeks={results.weeksPlayed} />
@@ -205,10 +291,7 @@ export default function ClubProjectionPage() {
                 {showS2Detail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
               </button>
             </div>
-            {showS2Detail && (
-              <DetailWeeksTable weeks={results.s2} />
-            )}
-
+            {showS2Detail && <DetailWeeksTable weeks={results.s2} />}
             {/* Projection */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-yellow-300 text-center">Projection Fin Saison 2</h2>
             <FinanceTable bilan={results.projS2} weeks={results.weeksTotal} isProj />
@@ -229,82 +312,52 @@ export default function ClubProjectionPage() {
                 </div>
               </div>
             </div>
+            {/* Simulation */}
+            <div className="my-10 bg-[#23263a] rounded-xl shadow-lg p-7 border border-gray-800">
+              <h2 className="text-xl font-bold mb-3 text-center text-yellow-300">Simulation de recrutement</h2>
+              <div className="flex flex-wrap gap-4 mb-5 items-end justify-center">
+                <div>
+                  <label className="block text-xs font-semibold mb-1 text-gray-300">Montant du transfert</label>
+                  <input
+                    type="number"
+                    value={transfertSim}
+                    onChange={e => setTransfertSim(e.target.value)}
+                    className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+                    placeholder="ex: 2000000"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1 text-gray-300">Salaire hebdo (SVC/semaine)</label>
+                  <input
+                    type="number"
+                    value={salaireSim}
+                    onChange={e => setSalaireSim(e.target.value)}
+                    className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+                    placeholder="ex: 7000"
+                    min="0"
+                  />
+                </div>
+              </div>
+              {(simSoldeFin !== null && simCapacite !== null && simChargeFixe !== null) && (
+                <div className="flex flex-col gap-2 items-center text-lg">
+                  <div>
+                    <span className="text-gray-200">Solde projeté fin S2 : </span>
+                    <span className="font-bold text-green-300">{formatBigSVC(simSoldeFin)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-200">Capacité d'investissement restante : </span>
+                    <span className="font-bold text-yellow-300">{formatBigSVC(simCapacite)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-200">Nouvelles charges fixes projetées sur S2 : </span>
+                    <span className="font-bold text-red-300">{formatBigSVC(simChargeFixe)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-// Synthèse finance par saison/projection
-function FinanceTable({ bilan, weeks, isProj }) {
-  return (
-    <div className="bg-[#23263a] text-white rounded-xl shadow-lg p-5 mb-2 border border-gray-800">
-      <table className="w-full text-base">
-        <thead>
-          <tr>
-            <th className="py-1 pr-4 text-left text-gray-400 font-semibold">Flux</th>
-            <th className="py-1 text-right text-gray-400 font-semibold">
-              Montant {weeks && ("(" + (isProj ? "projection " : "total ") + weeks + " sem.)")}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {FIELD_ORDER.map(k =>
-            <tr key={k} className="border-b border-[#2d3146] hover:bg-[#21262b] transition">
-              <td className="py-1 pr-4 text-gray-200">{FIELD_LABELS[k] || k}</td>
-              <td
-                className={
-                  "py-1 text-right font-mono " +
-                  (COST_FIELDS.includes(k) && bilan[k] !== 0 ? "text-red-400 font-semibold" : "")
-                }
-              >
-                {formatSVC(bilan[k] ?? 0, k)}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// Détail par semaine (tableau)
-function DetailWeeksTable({ weeks }) {
-  return (
-    <div className="bg-[#23263a] rounded-xl shadow p-5 text-xs border border-gray-800 mb-6">
-      <h3 className="font-bold mb-3 text-gray-200">Détail par semaine</h3>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border border-[#363a57] text-xs text-gray-100">
-          <thead className="bg-[#202330]">
-            <tr>
-              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Week</th>
-              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Date</th>
-              {FIELD_ORDER.map(k => (
-                <th key={k} className="px-2 py-1 border-b border-[#363a57] font-semibold text-gray-300">{FIELD_LABELS[k] || k}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {weeks.map((w, i) => (
-              <tr key={i} className={i % 2 ? "bg-[#222436]" : "bg-[#1b1e29]"}>
-                <td className="px-2 py-1 border-b border-[#363a57]">{w.game_week}</td>
-                <td className="px-2 py-1 border-b border-[#363a57]">{formatDate(w.date)}</td>
-                {FIELD_ORDER.map(k => (
-                  <td
-                    key={k}
-                    className={
-                      "px-2 py-1 border-b border-[#363a57] text-right font-mono " +
-                      (COST_FIELDS.includes(k) && w[k] !== 0 ? "text-red-400" : "")
-                    }
-                  >
-                    {formatSVC(w[k] ?? 0, k)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );
