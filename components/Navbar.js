@@ -9,22 +9,16 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scoutingOpen, setScoutingOpen] = useState(false);
 
-  const toggleMenu = () => setMenuOpen(!menuOpen);
-
-  // Menu pour les sous-rubriques Scouting
   const scoutingItems = [
     { href: "/joueurs", label: "Joueurs" },
     { href: "/clubs", label: "Clubs" },
     { href: "/championnats", label: "Championnat" },
   ];
 
-  // Menu principal, on remplace Scout Joueurs par un vrai menu déroulant
+  // Retiré Convertisseur SVC et Calculateur Fitness
   const menuItems = [
-    { href: "/convertisseur", label: "Convertisseur SVC" },
     { href: "/recompenses", label: "Calculateur de Récompenses" },
-    // Scouting est traité à part
-    { href: "/revenus", label: "Gadonins Joueurs" },
-    { href: "/fitness", label: "Calculateur Fitness" },
+    { href: "/revenus", label: "Gains Joueurs" },
   ];
 
   return (
@@ -43,7 +37,6 @@ export default function Navbar() {
 
         {/* Desktop menu */}
         <div className="hidden md:flex gap-6 text-sm font-medium items-center">
-          {/* Autres menus */}
           {menuItems.map(({ href, label }) => (
             <Link key={href} href={href} className="hover:text-green-400">
               {label}
@@ -51,21 +44,22 @@ export default function Navbar() {
           ))}
 
           {/* Menu déroulant SCOUTING */}
-          <div className="relative group">
+          <div
+            className="relative group"
+            onMouseEnter={() => setScoutingOpen(true)}
+            onMouseLeave={() => setScoutingOpen(false)}
+          >
             <button
               className="flex items-center gap-1 hover:text-green-400 font-semibold px-2"
-              onClick={() => setScoutingOpen(!scoutingOpen)}
-              onMouseEnter={() => setScoutingOpen(true)}
-              onMouseLeave={() => setScoutingOpen(false)}
+              tabIndex={0}
+              aria-haspopup="true"
+              aria-expanded={scoutingOpen}
             >
               Scouting <FiChevronDown />
             </button>
-            {/* Sous-menu visible au hover */}
             <div
               className={`absolute left-0 mt-2 w-44 bg-gray-900 border border-gray-700 rounded-lg shadow-lg py-1 transition-all duration-150
-              ${scoutingOpen ? "block" : "hidden"} group-hover:block`}
-              onMouseEnter={() => setScoutingOpen(true)}
-              onMouseLeave={() => setScoutingOpen(false)}
+              ${scoutingOpen ? "block" : "hidden"}`}
             >
               {scoutingItems.map(({ href, label }) => (
                 <Link
@@ -84,7 +78,7 @@ export default function Navbar() {
         {/* Mobile burger */}
         <button
           className="md:hidden text-2xl focus:outline-none"
-          onClick={toggleMenu}
+          onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
         >
           {menuOpen ? <FiX /> : <FiMenu />}
