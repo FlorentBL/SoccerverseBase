@@ -20,6 +20,12 @@ function formatSVC(val) {
   return (val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " SVC";
 }
 
+// Détection mobile (peut être déplacé dans un hook si tu veux)
+function isMobile() {
+  if (typeof window === "undefined") return false;
+  return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+}
+
 export default function PlayerTab() {
   const [playerId, setPlayerId] = useState("");
   const [playerInfo, setPlayerInfo] = useState(null);
@@ -210,7 +216,7 @@ export default function PlayerTab() {
         >{loading ? "Recherche..." : "Afficher infos"}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
-      {/* Carte détaillée + iframe */}
+      {/* Carte détaillée + iframe/bouton */}
       {playerInfo && (
         <div style={{ width: "100%", maxWidth: 1200 }}>
           <PlayerDetailsCard />
@@ -241,29 +247,49 @@ export default function PlayerTab() {
               }}>
                 Analyse SoccerRatings.org
               </div>
-              <iframe
-                src={`https://soccerratings.org/player/${playerId}`}
-                style={{
-                  width: "100%",
-                  minHeight: 450,
-                  border: "none",
-                  borderRadius: "0 0 0 0",
-                  background: "#191d22"
-                }}
-                title="Soccer Ratings"
-                sandbox="allow-same-origin allow-scripts allow-popups"
-              />
-              <div style={{ textAlign: "center", padding: 12 }}>
-                <a href={`https://soccerratings.org/player/${playerId}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: "inline-block", background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
-                    color: "#fff", borderRadius: 8, padding: "8px 24px",
-                    fontWeight: 700, fontSize: 16, textDecoration: "none"
-                  }}>
-                  Ouvrir sur SoccerRatings.org
-                </a>
-              </div>
+              {isMobile() ? (
+                <div style={{ textAlign: "center", padding: 24 }}>
+                  <a
+                    href={`https://soccerratings.org/player/${playerId}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: "inline-block", background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
+                      color: "#fff", borderRadius: 8, padding: "16px 36px",
+                      fontWeight: 800, fontSize: 18, textDecoration: "none"
+                    }}>
+                    Voir l’analyse complète sur SoccerRatings.org
+                  </a>
+                  <div style={{ marginTop: 10, color: "#bbb", fontSize: 13 }}>
+                    (L’aperçu n’est pas disponible sur mobile)
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <iframe
+                    src={`https://soccerratings.org/player/${playerId}`}
+                    style={{
+                      width: "100%",
+                      minHeight: 550,
+                      border: "none",
+                      borderRadius: "0 0 0 0",
+                      background: "#191d22"
+                    }}
+                    title="Soccer Ratings"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                  />
+                  <div style={{ textAlign: "center", padding: 12 }}>
+                    <a href={`https://soccerratings.org/player/${playerId}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display: "inline-block", background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
+                        color: "#fff", borderRadius: 8, padding: "8px 24px",
+                        fontWeight: 700, fontSize: 16, textDecoration: "none"
+                      }}>
+                      Ouvrir sur SoccerRatings.org
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
