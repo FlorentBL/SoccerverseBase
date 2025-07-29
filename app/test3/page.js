@@ -232,17 +232,18 @@ export default function ClubProjectionPage() {
   }
 
   // Simulation
-  let simSoldeFin = null, simCapacite = null, simChargeFixe = null, simChargeSalaire = null;
-  if (results && transfertSim && salaireSim) {
-    const nWeeksRestantes = results.weeksRestantes || 0;
-    const transfert = Number(transfertSim) || 0;
-    const salaireHebdo = Number(salaireSim) || 0;
-    simChargeSalaire = salaireHebdo * nWeeksRestantes;
+ let simSoldeFin = null, simCapacite = null, simChargeFixe = null, nWeeksRestantes = null;
+if (results && transfertSim && salaireSim) {
+  nWeeksRestantes = results.weeksRestantes;
+  const transfert = parseFloat(transfertSim.replace(",", "."));
+  const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
+  const chargeSalaireSupp = salaireHebdo * nWeeksRestantes;
 
-    simChargeFixe = results.chargeFixeProj + simChargeSalaire;
-    simSoldeFin = results.soldeFinS2 - transfert - simChargeSalaire;
-    simCapacite = results.capaciteInvest - transfert - simChargeSalaire;
-  }
+  // Correction : on multiplie BIEN le salaire par le nb de semaines restantes !
+  simChargeFixe = results.chargeFixeProj + chargeSalaireSupp;
+  simSoldeFin = results.soldeFinS2 - transfert - chargeSalaireSupp;
+  simCapacite = results.capaciteInvest - transfert - chargeSalaireSupp;
+}
 
   return (
     <div className="min-h-screen bg-[#181B23] py-8 px-4 flex flex-col items-center">
