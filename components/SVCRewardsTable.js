@@ -30,7 +30,7 @@ export default function SVCRewardsTable({ data }) {
   );
 
   return (
-    <div className="bg-[#181c23] rounded-2xl shadow-2xl overflow-x-auto py-7 px-2 sm:px-8 max-w-full">
+    <div className="bg-[#181c23] rounded-2xl shadow-2xl overflow-x-auto py-10 px-4 sm:px-14 max-w-full">
       {/* Filtres */}
       <div className="flex flex-wrap gap-7 mb-5 justify-center items-end">
         <label className="flex flex-col items-center text-base text-gray-200 font-semibold">
@@ -64,7 +64,7 @@ export default function SVCRewardsTable({ data }) {
 
       {/* Tableau */}
       <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-        <table className="w-full min-w-[700px] text-center text-[15px] sm:text-base font-medium">
+        <table className="w-full min-w-[1100px] text-center text-[17px] font-medium">
           <thead>
             <tr className="bg-[#23282f] text-white">
               {columns.map(col => (
