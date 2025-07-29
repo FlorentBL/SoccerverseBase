@@ -42,6 +42,8 @@ function formatSVC(val, field) {
     minimumFractionDigits: 0,
   }) + " $SVC";
 }
+
+// VERSION FORTE = pas de millions ni milliers abrégés
 function formatBigSVC(val) {
   if (typeof val !== "number") return "-";
   const corrected = Math.round(val / 10000);
@@ -176,13 +178,13 @@ export default function ClubProjectionPage() {
       // Projection S2 (alignée sur nb semaines S1)
       const projS2 = {};
       FIELD_ORDER.forEach(k => {
-        if (["transfers_in", "transfers_out"].includes(k)) {
-          // Transferts : on garde la valeur observée (pas de projection sur le futur)
-          projS2[k] = bilanS2[k] ?? 0;
-        } else {
-          projS2[k] = moyS2[k] * weeksTotal;
-        }
-      });
+      if (["transfers_in", "transfers_out", "cash_injection"].includes(k)) {
+        // Pour cash_injection et les transferts, pas de projection, on garde la valeur observée.
+        projS2[k] = bilanS2[k] ?? 0;
+      } else {
+        projS2[k] = moyS2[k] * weeksTotal;
+      }
+    });
 
       const soldeFinS2 = solde + Object.entries(projS2).reduce((acc, [k, v]) => {
         return COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v;
@@ -223,17 +225,17 @@ export default function ClubProjectionPage() {
   }
 
   // Calcul simulation
-let simSoldeFin = null, simCapacite = null, simChargeFixe = null, simChargeSalaire = null, nWeeksRestantes = null;
-if (results && transfertSim && salaireSim) {
-  const nWeeksRestantes = (results.weeksTotal || 0) - (results.weeksPlayed || 0);
-  const transfert = parseFloat(transfertSim.replace(",", "."));
-  const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
-  simChargeSalaire = salaireHebdo * nWeeksRestantes;
+  let simSoldeFin = null, simCapacite = null, simChargeFixe = null, simChargeSalaire = null, nWeeksRestantes = null;
+  if (results && transfertSim && salaireSim) {
+    const nWeeksRestantes = (results.weeksTotal || 0) - (results.weeksPlayed || 0);
+    const transfert = parseFloat(transfertSim.replace(",", "."));
+    const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
+    simChargeSalaire = salaireHebdo * nWeeksRestantes;
 
-  simChargeFixe = results.chargeFixeProj + simChargeSalaire;
-  simSoldeFin = results.soldeFinS2 - transfert - simChargeSalaire;
-  simCapacite = results.capaciteInvest - transfert - simChargeSalaire;
-}
+    simChargeFixe = results.chargeFixeProj + simChargeSalaire;
+    simSoldeFin = results.soldeFinS2 - transfert - simChargeSalaire;
+    simCapacite = results.capaciteInvest - transfert - simChargeSalaire;
+  }
 
   return (
     <div className="min-h-screen bg-[#181B23] py-8 px-4 flex flex-col items-center">
