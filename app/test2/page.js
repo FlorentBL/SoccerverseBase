@@ -1,45 +1,43 @@
 "use client";
 import React, { useState } from "react";
 
-// Helper pour formater les montants
-function formatMoney(val) {
-  if (typeof val !== "number") return "-";
-  // Correction de l'unité : divise par 10 000 pour correspondre à l'UI officielle
-  const corrected = val / 10000;
-  return corrected.toLocaleString("fr-FR", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: corrected < 1000 ? 2 : 0, // Arrondi sympa
-    minimumFractionDigits: 0,
-  });
-}
-
-
+// Libellés pour chaque champ financier
 const FIELD_LABELS = {
-  agent_wages: "Salaires agents",
   cash_injection: "Injection de trésorerie",
   gate_receipts: "Recettes guichets",
-  ground_maintenance: "Entretien stade",
-  managers_wage: "Salaire entraîneur",
+  tv_revenue: "Droits TV",
+  sponsor: "Sponsors",
   merchandise: "Produits dérivés",
-  other_income: "Autres revenus",
-  other_outgoings: "Autres dépenses",
-  player_wages: "Salaires joueurs",
   prize_money: "Gains compétitions",
+  transfers_in: "Transferts (entrées)",
+  other_income: "Autres revenus",
+  player_wages: "Salaires joueurs",
+  agent_wages: "Salaires agents",
+  managers_wage: "Salaire entraîneur",
+  ground_maintenance: "Entretien stade",
+  transfers_out: "Transferts (sorties)",
   shareholder_payouts: "Dividendes",
   shareholder_prize_money: "Gains actionnaires",
-  sponsor: "Sponsors",
-  transfers_in: "Transferts (entrées)",
-  transfers_out: "Transferts (sorties)",
-  tv_revenue: "Droits TV"
+  other_outgoings: "Autres dépenses"
 };
 
+// Ordre d’affichage (et inclusion) des champs financiers
 const FIELD_ORDER = [
   "cash_injection", "gate_receipts", "tv_revenue", "sponsor", "merchandise",
   "prize_money", "transfers_in", "other_income",
   "player_wages", "agent_wages", "managers_wage", "ground_maintenance",
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
+
+// Formatage montant en SVC, division par 10 000 pour coller à l’UI officielle
+function formatSVC(val) {
+  if (typeof val !== "number") return "-";
+  const corrected = val / 10000;
+  return corrected.toLocaleString("fr-FR", {
+    maximumFractionDigits: corrected < 1000 ? 2 : 0,
+    minimumFractionDigits: 0,
+  }) + " $SVC";
+}
 
 export default function ClubFinancesPage() {
   const [clubId, setClubId] = useState("");
@@ -80,7 +78,7 @@ export default function ClubFinancesPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
+    <div className="max-w-3xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6 text-center">Test – Bilan financier d’un club Soccerverse</h1>
       <form className="flex gap-2 mb-6 items-end" onSubmit={handleSubmit}>
         <div>
@@ -119,7 +117,7 @@ export default function ClubFinancesPage() {
               {FIELD_ORDER.map(k =>
                 <tr key={k} className="border-b border-gray-700">
                   <td className="py-1 pr-4">{FIELD_LABELS[k] || k}</td>
-                  <td className="py-1 text-right">{formatMoney(bilan[k] ?? 0)}</td>
+                  <td className="py-1 text-right">{formatSVC(bilan[k] ?? 0)}</td>
                 </tr>
               )}
             </tbody>
@@ -153,7 +151,7 @@ export default function ClubFinancesPage() {
                   <tr key={i}>
                     <td className="px-2 py-1 border-b">{w.game_week}</td>
                     {FIELD_ORDER.map(k => (
-                      <td key={k} className="px-2 py-1 border-b text-right">{formatMoney(w[k] ?? 0)}</td>
+                      <td key={k} className="px-2 py-1 border-b text-right">{formatSVC(w[k] ?? 0)}</td>
                     ))}
                   </tr>
                 ))}
