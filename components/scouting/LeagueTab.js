@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 
 const CLUB_MAPPING_URL = "/club_mapping.json";
-const LEAGUE_MAPPING_URL = "/league_mapping.json";
+const COUNTRY_MAPPING_URL = "/country_mapping.json";
 
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
@@ -9,17 +9,18 @@ function formatSVC(val) {
 }
 
 export default function LeagueTab() {
-  const [leagueId, setLeagueId] = useState("");
+  const [country, setCountry] = useState("");
+  const [division, setDivision] = useState("");
   const [standings, setStandings] = useState([]);
   const [clubsDetails, setClubsDetails] = useState({});
   const [clubMap, setClubMap] = useState({});
-  const [leagueMap, setLeagueMap] = useState({});
+  const [countryMap, setCountryMap] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   const loadedClubMap = useRef(false);
-  const loadedLeagueMap = useRef(false);
+  const loadedCountryMap = useRef(false);
 
   // Charge le mapping des clubs
   const fetchClubMap = async () => {
@@ -31,15 +32,26 @@ export default function LeagueTab() {
     return data;
   };
 
-  // Charge le mapping des leagues
-  const fetchLeagueMap = async () => {
-    if (loadedLeagueMap.current) return leagueMap;
-    const resp = await fetch(LEAGUE_MAPPING_URL);
+  // Charge le mapping des pays/divisions
+  const fetchCountryMap = async () => {
+    if (loadedCountryMap.current) return countryMap;
+    const resp = await fetch(COUNTRY_MAPPING_URL);
     const data = await resp.json();
-    setLeagueMap(data);
-    loadedLeagueMap.current = true;
+    setCountryMap(data);
+    loadedCountryMap.current = true;
     return data;
   };
+
+  // Mise à jour du menu pays au premier rendu
+  React.useEffect(() => {
+    fetchCountryMap();
+    fetchClubMap();
+  }, []);
+
+  // Remise à zéro de la division si on change de pays
+  React.useEffect(() => {
+    setDivision("");
+  }, [country]);
 
   // Recherche du classement, charge aussi les mappings
   const fetchTable = async () => {
@@ -48,8 +60,10 @@ export default function LeagueTab() {
     setClubsDetails({});
     setLoading(true);
     try {
-      await Promise.all([fetchClubMap(), fetchLeagueMap()]);
-      const api = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${leagueId}`);
+      const selectedCountry = countryMap.find(c => c.code === country);
+      const selectedDivision = selectedCountry?.divisions.find(d => d.leagueId === Number(division));
+      if (!selectedDivision) throw new Error("Division non trouvée");
+      const api = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${division}`);
       const j = await api.json();
       if (!Array.isArray(j) || j.length === 0) {
         setErr("Aucun championnat trouvé ou aucune équipe.");
@@ -81,40 +95,59 @@ export default function LeagueTab() {
   };
 
   // Rendu principal
+  const selectedCountry = countryMap.find(c => c.code === country);
+  const selectedDivision = selectedCountry?.divisions.find(d => d.leagueId === Number(division));
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
-        <label style={{ fontWeight: 600, fontSize: 17 }}>ID Championnat (league_id) :</label>
-        <input type="number" value={leagueId} onChange={e => setLeagueId(e.target.value)}
+        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>Pays :</label>
+        <select
+          value={country}
+          onChange={e => setCountry(e.target.value)}
           style={{
-            width: "100%", margin: "12px 0 16px 0", padding: "12px 16px", borderRadius: 6,
+            width: "100%", marginBottom: 14, padding: "12px 16px", borderRadius: 6,
+            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
+          }}>
+          <option value="">Sélectionner un pays</option>
+          {countryMap.map(c => (
+            <option key={c.code} value={c.code}>{c.flag} {c.country}</option>
+          ))}
+        </select>
+
+        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>Division :</label>
+        <select
+          value={division}
+          onChange={e => setDivision(e.target.value)}
+          style={{
+            width: "100%", marginBottom: 18, padding: "12px 16px", borderRadius: 6,
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}
-          placeholder="Ex : 549" min={1}
-        />
-        <button onClick={fetchTable} disabled={loading || !leagueId}
+          disabled={!selectedCountry}>
+          <option value="">Sélectionner une division</option>
+          {selectedCountry?.divisions.map(d => (
+            <option key={d.leagueId} value={d.leagueId}>{d.label} (ID {d.leagueId})</option>
+          ))}
+        </select>
+
+        <button onClick={fetchTable} disabled={loading || !country || !division}
           style={{
             background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
             border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
-            cursor: loading || !leagueId ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
+            cursor: loading || !country || !division ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
           }}
         >{loading ? "Recherche..." : detailsLoading ? "Chargement stats clubs..." : "Afficher classement"}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
+
       {standings.length > 0 && (
         <div style={{ width: "100%", maxWidth: 1200, background: "#181d23", borderRadius: 16, padding: 18, marginBottom: 30, boxShadow: "0 2px 8px #0003" }}>
-          {/* Header enrichi avec league_mapping.json */}
+          {/* Header enrichi */}
           <div style={{ fontSize: 17, color: "#ffd700", fontWeight: 500, marginBottom: 12 }}>
-            {leagueMap[leagueId]?.name
-              ? <>Championnat : <span style={{ color: "#4f47ff" }}>{leagueMap[leagueId].name}</span></>
+            {selectedCountry && selectedDivision
+              ? <>Championnat : <span style={{ color: "#4f47ff" }}>{selectedCountry.flag} {selectedCountry.country} - {selectedDivision.label}</span></>
               : "Classement"}
-            {standings[0]?.division ? ` (Division ${standings[0].division})` : ""}
           </div>
-          {leagueMap[leagueId]?.desc && (
-            <div style={{ fontSize: 13, color: "#aaa", marginBottom: 8 }}>
-              {leagueMap[leagueId].desc}
-            </div>
-          )}
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 15, textAlign: "center" }}>
               <thead>
