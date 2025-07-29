@@ -114,6 +114,26 @@ export default function AccueilSoccerverseBase() {
         </div>
       </section>
 
+      {/* Communauté Discord */}
+      <section className="flex flex-col md:flex-row items-center justify-center gap-8 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-2xl shadow-lg px-6 md:px-10 py-8 md:py-10 border border-emerald-600/20 max-w-3xl mx-auto mb-10">
+        <FaDiscord className="text-5xl text-sky-400 hidden md:block mr-6" />
+        <div className="flex-1 flex flex-col items-center md:items-start">
+          <h2 className="text-2xl font-bold mb-2 text-white">Communauté française K-SOCIOS</h2>
+          <p className="text-base text-gray-200 mb-4">
+            Espace d’entraide, discussions, astuces, infos en direct.<br />
+            Rejoins le Discord pour poser tes questions ou échanger avec la commu.
+          </p>
+          <a
+            href="https://discord.gg/sd5aa8TW"
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center bg-sky-700 hover:bg-sky-900 transition rounded-xl px-7 py-3 text-lg font-semibold shadow gap-2 text-white mb-1"
+          >
+            <FaDiscord className="text-xl" /> Rejoindre le Discord K-SOCIOS
+          </a>
+        </div>
+      </section>
+
       {/* Simplicity + Process */}
       <div className="flex flex-col items-center bg-emerald-800/80 border border-emerald-400/40 rounded-xl py-3 px-4 mt-6 max-w-2xl mx-auto">
         <span className="font-semibold text-white text-lg">Débuter, c'est simple :</span>
@@ -167,44 +187,7 @@ export default function AccueilSoccerverseBase() {
         </div>
       </section>
 
-      {/* Témoignages express */}
-      <section className="w-full max-w-3xl mx-auto px-2 mt-6 mb-10">
-        <h2 className="text-xl font-bold mb-4 text-white text-center">Ils/Elles ont testé pour toi</h2>
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-          <div className="bg-gray-900/80 border-l-4 border-sky-400 rounded-xl p-4 text-gray-100 text-sm shadow max-w-xs">
-            « J’ai rejoint Soccerverse sans rien connaître, j’ai monté mon équipe en 3 jours ! »
-            <div className="text-xs text-sky-300 mt-2">– Julie, coach débutante</div>
-          </div>
-          <div className="bg-gray-900/80 border-l-4 border-emerald-400 rounded-xl p-4 text-gray-100 text-sm shadow max-w-xs">
-            « La commu m’a tout expliqué, super accueil pour progresser vite. »
-            <div className="text-xs text-emerald-300 mt-2">– Max, agent</div>
-          </div>
-          <div className="bg-gray-900/80 border-l-4 border-pink-400 rounded-xl p-4 text-gray-100 text-sm shadow max-w-xs">
-            « Pas besoin de crypto pour jouer, tout est simple et fun. »
-            <div className="text-xs text-pink-300 mt-2">– Seb, investisseur</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Communauté Discord */}
-      <section className="flex flex-col md:flex-row items-center justify-center gap-8 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-2xl shadow-lg px-6 md:px-10 py-8 md:py-10 border border-emerald-600/20 max-w-3xl mx-auto mb-10">
-        <FaDiscord className="text-5xl text-sky-400 hidden md:block mr-6" />
-        <div className="flex-1 flex flex-col items-center md:items-start">
-          <h2 className="text-2xl font-bold mb-2 text-white">Communauté française K-SOCIOS</h2>
-          <p className="text-base text-gray-200 mb-4">
-            Espace d’entraide, discussions, astuces, infos en direct.<br />
-            Rejoins le Discord pour poser tes questions ou échanger avec la commu.
-          </p>
-          <a
-            href="https://discord.gg/sd5aa8TW"
-            target="_blank"
-            rel="noopener"
-            className="inline-flex items-center bg-sky-700 hover:bg-sky-900 transition rounded-xl px-7 py-3 text-lg font-semibold shadow gap-2 text-white mb-1"
-          >
-            <FaDiscord className="text-xl" /> Rejoindre le Discord K-SOCIOS
-          </a>
-        </div>
-      </section>
+      
 
       {/* Liens essentiels */}
       <section className="w-full max-w-2xl mx-auto px-2 mt-5 mb-6">
