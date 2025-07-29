@@ -70,7 +70,7 @@ export default function SVCRewardsTable({ data }) {
 
       {/* Tableau */}
       <div className="overflow-x-auto -mx-2 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
-        <table className="w-full min-w-[650px] sm:min-w-[1100px] text-center text-[14px] sm:text-[17px] font-medium">
+  <table className="w-full min-w-[600px] text-center text-[14px] sm:text-[17px] font-medium">
           <thead>
             <tr className="bg-[#23282f] text-white">
               {columns.map(col => (
