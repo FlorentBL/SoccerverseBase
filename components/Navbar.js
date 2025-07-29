@@ -14,7 +14,8 @@ export default function Navbar() {
   const menuItems = [
     { href: "/convertisseur", label: "Convertisseur SVC" },
     { href: "/recompenses", label: "Calculateur de Récompenses" },
-    { href: "/joueurs", label: "Infos Joueurs" },
+    { href: "/joueurs", label: "Scout Joueurs" },
+    { href: "/gains", label: "Gains Joueurs " },
     { href: "/fitness", label: "Calculateur Fitness" },
   ];
 
