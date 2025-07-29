@@ -67,7 +67,7 @@ export default function PlayerTab() {
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
 
-      {/* Infos joueur + Iframes */}
+      {/* Infos joueur + liens rapides + Iframe */}
       {playerInfo && (
         <div style={{ width: "100%", maxWidth: 1200 }}>
           {/* Infos générales (toujours au-dessus) */}
@@ -77,7 +77,7 @@ export default function PlayerTab() {
             borderRadius: 14,
             padding: "28px 32px",
             boxShadow: "0 2px 8px #0003",
-            marginBottom: 24,
+            marginBottom: 18,
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-start"
@@ -125,9 +125,57 @@ export default function PlayerTab() {
                 </tbody>
               </table>
             )}
+
+            {/* Bloc liens rapides */}
+            <div style={{
+              display: "flex",
+              gap: 16,
+              justifyContent: "center",
+              alignItems: "center",
+              margin: "22px 0 0 0",
+              width: "100%",
+              flexWrap: "wrap"
+            }}>
+              <a
+                href={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  background: "linear-gradient(90deg, #2050b0, #40bff7)",
+                  color: "#fff",
+                  borderRadius: 8,
+                  padding: "10px 28px",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  textDecoration: "none",
+                  boxShadow: "0 2px 6px #0af2"
+                }}
+              >
+                Voir sur Transfermarkt
+              </a>
+              <a
+                href={`https://www.sofascore.com/fr/recherche?q=${encodeURIComponent(playerInfo.nom || "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  background: "linear-gradient(90deg, #17b978, #43e97b)",
+                  color: "#fff",
+                  borderRadius: 8,
+                  padding: "10px 28px",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  textDecoration: "none",
+                  boxShadow: "0 2px 6px #0af2"
+                }}
+              >
+                Voir sur SofaScore
+              </a>
+            </div>
           </div>
 
-          {/* Bloc des iframes : flex row sur desktop, column sur mobile */}
+          {/* Bloc Iframe SoccerRatings (full width sur mobile, 2/3 sur desktop) */}
           <div style={{
             display: "flex",
             flexDirection: "row",
@@ -176,49 +224,6 @@ export default function PlayerTab() {
                     fontWeight: 700, fontSize: 16, textDecoration: "none"
                   }}>
                   Ouvrir sur SoccerRatings.org
-                </a>
-              </div>
-            </div>
-
-            {/* Transfermarkt */}
-            <div style={{
-              flex: "1 1 440px",
-              minWidth: 360,
-              background: "#181d23",
-              borderRadius: 14,
-              padding: 0,
-              boxShadow: "0 2px 8px #0003",
-              display: "flex",
-              flexDirection: "column",
-              marginBottom: 18
-            }}>
-              <div style={{
-                fontSize: 16, fontWeight: 700, color: "#23c281",
-                background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
-              }}>
-                Recherche Transfermarkt
-              </div>
-              <iframe
-                src={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
-                style={{
-                  width: "100%",
-                  minHeight: 450,
-                  border: "none",
-                  borderRadius: "0 0 0 0",
-                  background: "#191d22"
-                }}
-                title="Transfermarkt"
-                sandbox="allow-same-origin allow-scripts allow-popups"
-              />
-              <div style={{ textAlign: "center", padding: 12 }}>
-                <a href={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: "inline-block", background: "linear-gradient(90deg, #23c281, #29aafc)",
-                    color: "#fff", borderRadius: 8, padding: "8px 24px",
-                    fontWeight: 700, fontSize: 16, textDecoration: "none"
-                  }}>
-                  Voir sur Transfermarkt
                 </a>
               </div>
             </div>
