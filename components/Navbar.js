@@ -16,21 +16,6 @@ export default function Navbar() {
   return (
     <header className="bg-gray-800 text-white shadow-md fixed top-0 left-0 w-full z-50">
       <nav className="flex flex-col items-center max-w-full py-3 px-2 relative">
-        {/* Logo centré */}
-        <Link
-          href="/"
-          className="flex items-center justify-center mb-2"
-          aria-label="Accueil SoccerverseBase"
-        >
-          <Image
-            src="/logo.png"
-            alt="SoccerverseBase logo"
-            width={38}
-            height={38}
-            priority
-            className="rounded-md"
-          />
-        </Link>
 
         {/* Menu desktop */}
         <div className="hidden md:flex gap-8 text-base font-bold items-center justify-center">
