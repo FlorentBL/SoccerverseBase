@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 
 const PLAYER_MAPPING_URL = "/player_mapping.json";
 
-// Icônes colorisées sans dépendance externe
 function getEmoji(label) {
   switch (label) {
     case "Rating GK": return <span style={{ color: "#b891ff" }}>🧤</span>;
@@ -85,7 +84,28 @@ export default function PlayerTab() {
         }}>
           {/* Colonne gauche : identité joueur */}
           <div style={{ minWidth: 220, maxWidth: 350, flex: 1 }}>
-            <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", marginBottom: 10, lineHeight: 1.1 }}>{playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}</div>
+            <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", marginBottom: 6, lineHeight: 1.1 }}>
+              {playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}
+              {playerInfo.player_id && (
+                <>{" "}
+                  <a
+                    href={`https://play.soccerverse.com/player/${playerInfo.player_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "#76b4ff",
+                      fontWeight: 700,
+                      fontSize: 18,
+                      textDecoration: "underline",
+                      marginLeft: 4,
+                    }}
+                    title="Voir le joueur sur Soccerverse"
+                  >
+                    ({playerInfo.player_id})
+                  </a>
+                </>
+              )}
+            </div>
             <div style={{ fontSize: 16, color: "#ffd700", fontWeight: 700, marginBottom: 5 }}>
               {playerInfo.positions && (Array.isArray(playerInfo.positions) ? playerInfo.positions.join(", ") : playerInfo.positions)}
             </div>
@@ -117,37 +137,6 @@ export default function PlayerTab() {
             <div style={{ fontSize: 16, marginBottom: 6, color: "#eee" }}>
               Salaire : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.wages)}</span>
             </div>
-            <div style={{ fontSize: 15, color: "#ffd700", fontWeight: 500, margin: "18px 0 6px 0" }}>
-              Détails :
-            </div>
-            <table style={{ fontSize: 15, color: "#dde6f7", borderCollapse: "collapse" }}>
-              <tbody>
-                <tr>
-                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Pays</td>
-                  <td>{playerInfo.country || playerInfo.country_id || "-"}</td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Player ID</td>
-                  <td>{playerInfo.player_id}</td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Blessé ?</td>
-                  <td>{playerInfo.injured ? "Oui" : "Non"}</td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Moral</td>
-                  <td>{playerInfo.morale ?? "-"}</td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Contrat</td>
-                  <td>{playerInfo.contract ?? "-"}</td>
-                </tr>
-                <tr>
-                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Dernier prix</td>
-                  <td>{formatSVC(playerInfo.last_price)}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
           {/* Colonne droite : stats */}
           <div style={{
