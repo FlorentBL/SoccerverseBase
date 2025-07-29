@@ -1,52 +1,56 @@
 "use client";
 import React, { useState } from "react";
-const RINCON_URL = "/rincon_mapping.json";
+
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " SVC";
 }
+function formatDate(ts) {
+  if (!ts || isNaN(ts)) return "-";
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
+}
 
-export default function SoccerverseScouting() {
-  const [playerId, setPlayerId] = useState("");
-  const [playerInfo, setPlayerInfo] = useState(null);
-  const [rinconData, setRinconData] = useState(null);
+export default function LeagueTablePage() {
+  const [leagueId, setLeagueId] = useState("");
+  const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
+  const [details, setDetails] = useState({}); // {club_id: {clubInfo, loading}}
 
-  const fetchRincon = async () => {
-    if (!rinconData) {
-      const resp = await fetch(RINCON_URL);
-      const data = await resp.json();
-      setRinconData(data);
-      return data;
-    }
-    return rinconData;
-  };
-
-  const fetchPlayer = async () => {
+  const fetchTable = async () => {
     setErr("");
-    setPlayerInfo(null);
+    setStandings([]);
     setLoading(true);
     try {
-      const api = await fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${playerId}`);
+      const api = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${leagueId}`);
       const j = await api.json();
-      if (!j.items || j.items.length === 0) {
-        setErr("Aucun joueur trouvé pour cet ID.");
+      if (!Array.isArray(j) || j.length === 0) {
+        setErr("Aucun championnat trouvé ou aucune équipe.");
         setLoading(false);
         return;
       }
-      const playerApi = j.items[0];
-      const rincon = await fetchRincon();
-      const playerRincon = rincon[playerId] ?? {};
-      let nom = playerRincon.name;
-      if (!nom && (playerRincon.f || playerRincon.s))
-        nom = `${playerRincon.f ?? ""} ${playerRincon.s ?? ""}`.trim();
-      setPlayerInfo({ ...playerApi, nom });
+      setStandings(j.sort((a, b) => b.pts - a.pts)); // tri sur points
     } catch (e) {
       setErr("Erreur réseau ou parsing données.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch stats avancées club à la demande
+  const fetchClubDetails = async (club_id) => {
+    setDetails(d => ({ ...d, [club_id]: { loading: true, clubInfo: null } }));
+    try {
+      const api = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${club_id}`);
+      const j = await api.json();
+      if (j.items && j.items[0]) {
+        setDetails(d => ({ ...d, [club_id]: { loading: false, clubInfo: j.items[0] } }));
+      } else {
+        setDetails(d => ({ ...d, [club_id]: { loading: false, clubInfo: null } }));
+      }
+    } catch (e) {
+      setDetails(d => ({ ...d, [club_id]: { loading: false, clubInfo: null } }));
     }
   };
 
@@ -56,187 +60,154 @@ export default function SoccerverseScouting() {
       fontFamily: "Inter, Arial, sans-serif", paddingTop: 48
     }}>
       <h2 style={{ fontWeight: 800, fontSize: 32, marginBottom: 32, letterSpacing: 1, textAlign: "center" }}>
-        Scouting Soccerverse (détail)
+        Tableau Championnat Soccerverse
       </h2>
-      <div style={{
-        margin: "0 auto", maxWidth: 1200,
-        display: "flex", flexDirection: "column", alignItems: "center"
-      }}>
-        {/* Zone de recherche */}
+      <div style={{ margin: "0 auto", maxWidth: 1100, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* Recherche */}
         <div style={{
           background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008",
           width: "100%", maxWidth: 520, marginBottom: 34
         }}>
-          <label style={{ fontWeight: 600, fontSize: 17 }}>ID Joueur :</label>
+          <label style={{ fontWeight: 600, fontSize: 17 }}>ID Championnat (league_id) :</label>
           <input
             type="number"
-            value={playerId}
-            onChange={e => setPlayerId(e.target.value)}
+            value={leagueId}
+            onChange={e => setLeagueId(e.target.value)}
             style={{
               width: "100%", margin: "12px 0 16px 0", padding: "12px 16px", borderRadius: 6,
               border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
             }}
-            placeholder="Ex : 17"
+            placeholder="Ex : 549"
             min={1}
           />
           <button
-            onClick={fetchPlayer}
-            disabled={loading || !playerId}
+            onClick={fetchTable}
+            disabled={loading || !leagueId}
             style={{
               background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
               border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
-              cursor: loading || !playerId ? "not-allowed" : "pointer",
+              cursor: loading || !leagueId ? "not-allowed" : "pointer",
               boxShadow: "0 1px 5px #0004"
             }}
           >
-            {loading ? "Recherche..." : "Afficher infos"}
+            {loading ? "Recherche..." : "Afficher classement"}
           </button>
           {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
         </div>
 
-        {/* Bloc double colonne desktop / colonne mobile */}
-        {playerInfo && (
-          <div
-            style={{
-              width: "100%",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 32,
-              marginTop: 0,
-              marginBottom: 32
-            }}
-          >
-            {/* Colonne gauche : Infos joueur */}
-            <div style={{
-              flex: "1 1 0",
-              minWidth: 330,
-              maxWidth: 450,
-              background: "#181d23",
-              borderRadius: 14,
-              padding: 28,
-              boxShadow: "0 2px 8px #0003"
-            }}>
-              <div style={{ fontSize: 14, color: "#ffd700", fontWeight: 500, marginBottom: 10 }}>
-                Toutes les valeurs sont en SVC
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 18 }}>
+        {standings.length > 0 && (
+          <div style={{
+            width: "100%", maxWidth: 1100, background: "#181d23",
+            borderRadius: 16, padding: 18, marginBottom: 30, boxShadow: "0 2px 8px #0003"
+          }}>
+            <div style={{ fontSize: 17, color: "#ffd700", fontWeight: 500, marginBottom: 12 }}>
+              Classement {standings[0].division ? `(Division ${standings[0].division})` : ""}
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 16 }}>
+                <thead>
+                  <tr style={{ background: "#22252a" }}>
+                    <th>#</th>
+                    <th>Club</th>
+                    <th>Manager</th>
+                    <th>Pts</th>
+                    <th>J</th>
+                    <th>G</th>
+                    <th>N</th>
+                    <th>P</th>
+                    <th>BP</th>
+                    <th>BC</th>
+                    <th>Fanbase</th>
+                    <th>Rating</th>
+                    <th>Détails</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Nom</td>
-                    <td style={{ padding: 5 }}>{playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Âge</td>
-                    <td style={{ padding: 5 }}>{playerInfo.age || "-"}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Club</td>
-                    <td style={{ padding: 5 }}>{playerInfo.club || playerInfo.club_id || "-"}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Position(s)</td>
-                    <td style={{ padding: 5 }}>{Array.isArray(playerInfo.positions) ? playerInfo.positions.join(", ") : playerInfo.positions || "-"}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Note</td>
-                    <td style={{ padding: 5 }}>{playerInfo.rating || "-"}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Valeur</td>
-                    <td style={{ padding: 5 }}>{formatSVC(playerInfo.value)}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 700, padding: 5 }}>Salaire</td>
-                    <td style={{ padding: 5 }}>{formatSVC(playerInfo.wages)}</td>
-                  </tr>
+                  {standings.map((club, idx) => (
+                    <React.Fragment key={club.club_id}>
+                      <tr style={{ background: idx % 2 === 0 ? "#22252a" : "#181d23" }}>
+                        <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <img src={club.manager_profile_pic || "/default_profile.jpg"} alt={club.manager_name} style={{
+                            width: 24, height: 24, borderRadius: "50%", verticalAlign: "middle", marginRight: 8, border: "1px solid #444"
+                          }} />
+                          {club.club_id}
+                        </td>
+                        <td>{club.manager_name || "-"}</td>
+                        <td style={{ fontWeight: 700 }}>{club.pts}</td>
+                        <td>{club.played}</td>
+                        <td>{club.won}</td>
+                        <td>{club.drawn}</td>
+                        <td>{club.lost}</td>
+                        <td>{club.goals_for}</td>
+                        <td>{club.goals_against}</td>
+                        <td>{club.fanbase || "-"}</td>
+                        <td>{club.avg_player_rating || "-"}</td>
+                        <td>
+                          <button
+                            style={{
+                              background: "#222", color: "#ffd700", border: "none", borderRadius: 6,
+                              padding: "4px 12px", fontWeight: 600, cursor: "pointer", fontSize: 15
+                            }}
+                            onClick={() => fetchClubDetails(club.club_id)}
+                            disabled={details[club.club_id]?.loading}
+                          >
+                            {details[club.club_id]?.loading ? "..." : "Stats"}
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Détails stats avancées */}
+                      {details[club.club_id]?.clubInfo && (
+                        <tr style={{ background: "#23252e" }}>
+                          <td colSpan={13}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "26px 40px", padding: "16px 4px" }}>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>💸 Avg Wages</span><br />
+                                <b>{formatSVC(details[club.club_id].clubInfo.avg_wages)}</b>
+                              </div>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>💸 Total Wages</span><br />
+                                <b>{formatSVC(details[club.club_id].clubInfo.total_wages)}</b>
+                              </div>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>🏦 Total Value</span><br />
+                                <b>{formatSVC(details[club.club_id].clubInfo.total_player_value)}</b>
+                              </div>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>⭑ Rating Top 21</span><br />
+                                <b>{details[club.club_id].clubInfo.avg_player_rating_top21 ?? "-"}</b>
+                              </div>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>🏹 Shooting</span><br />
+                                <b>{details[club.club_id].clubInfo.avg_shooting ?? "-"}</b>
+                              </div>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>🎯 Passing</span><br />
+                                <b>{details[club.club_id].clubInfo.avg_passing ?? "-"}</b>
+                              </div>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>🛡️ Tackling</span><br />
+                                <b>{details[club.club_id].clubInfo.avg_tackling ?? "-"}</b>
+                              </div>
+                              <div>
+                                <span style={{ color: "#ffd700" }}>🧤 GK</span><br />
+                                <b>{details[club.club_id].clubInfo.gk_rating ?? "-"}</b>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </tbody>
               </table>
-              <button
-                onClick={() => setShowDetails(!showDetails)}
-                style={{
-                  background: "#222", color: "#ffd700", fontWeight: 600, fontSize: 16, border: "none",
-                  borderRadius: 5, marginTop: 16, padding: "8px 22px", cursor: "pointer"
-                }}>
-                {showDetails ? "Masquer les détails" : "Afficher les détails"}
-              </button>
-              {showDetails && (
-                <table style={{ width: "100%", marginTop: 15, borderCollapse: "collapse", color: "#b0b0b0", fontSize: 16 }}>
-                  <tbody>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Player ID</td><td style={{ padding: 5 }}>{playerInfo.player_id}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Pays</td><td style={{ padding: 5 }}>{playerInfo.country || playerInfo.country_id || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Rating GK</td><td style={{ padding: 5 }}>{playerInfo.rating_gk || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Tackling</td><td style={{ padding: 5 }}>{playerInfo.rating_tackling || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Passing</td><td style={{ padding: 5 }}>{playerInfo.rating_passing || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Shooting</td><td style={{ padding: 5 }}>{playerInfo.rating_shooting || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Stamina</td><td style={{ padding: 5 }}>{playerInfo.rating_stamina || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Aggression</td><td style={{ padding: 5 }}>{playerInfo.rating_aggression || "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Fitness</td><td style={{ padding: 5 }}>{playerInfo.fitness ?? "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Blessé ?</td><td style={{ padding: 5 }}>{playerInfo.injured ? "Oui" : "Non"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Moral</td><td style={{ padding: 5 }}>{playerInfo.morale ?? "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Contrat</td><td style={{ padding: 5 }}>{playerInfo.contract ?? "-"}</td></tr>
-                    <tr><td style={{ fontWeight: 700, padding: 5 }}>Dernier prix</td><td style={{ padding: 5 }}>{formatSVC(playerInfo.last_price)}</td></tr>
-                  </tbody>
-                </table>
-              )}
             </div>
-            {/* Colonne droite : Iframe */}
-            <div style={{
-              flex: "2 1 0",
-              minWidth: 350,
-              background: "#181d23",
-              borderRadius: 14,
-              padding: 0,
-              boxShadow: "0 2px 8px #0003",
-              marginLeft: 0,
-              display: "flex",
-              flexDirection: "column"
-            }}>
-              <div style={{
-                fontSize: 16, fontWeight: 700, color: "#4f47ff",
-                background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
-              }}>
-                Analyse SoccerRatings.org
-              </div>
-              <iframe
-                src={`https://soccerratings.org/player/${playerId}`}
-                style={{
-                  width: "100%",
-                  minHeight: 650,
-                  border: "none",
-                  borderRadius: "0 0 14px 14px",
-                  background: "#191d22"
-                }}
-                title="Soccer Ratings"
-                sandbox="allow-same-origin allow-scripts allow-popups"
-              />
-              <div style={{ marginTop: 0, textAlign: "center", padding: 12 }}>
-                <a
-                  href={`https://soccerratings.org/player/${playerId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-block",
-                    background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
-                    color: "#fff", borderRadius: 8, padding: "8px 24px",
-                    fontWeight: 700, fontSize: 16, textDecoration: "none"
-                  }}>
-                  Ouvrir sur SoccerRatings.org
-                </a>
-              </div>
+            <div style={{ fontSize: 13, color: "#aaa", marginTop: 14 }}>
+              Pour voir les stats avancées d'un club, clique sur <span style={{ color: "#ffd700" }}>Stats</span>.
             </div>
           </div>
         )}
       </div>
-
-      {/* Responsive : repasse en colonne sur écran étroit */}
-      <style>{`
-        @media (max-width: 900px) {
-          .scouting-responsive {
-            flex-direction: column !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
