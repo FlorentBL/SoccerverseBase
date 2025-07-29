@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import { Info } from "lucide-react";
+import Tooltip from "@/components/Tooltip"; // Assure ce chemin selon ton projet
 
 function formatSVC(val) {
   const isInt = Number.isInteger(val);
@@ -81,19 +82,9 @@ export default function SVCRewardsTable({ data }) {
                   <div className="flex items-center justify-center gap-1">
                     {col.label}
                     {col.tip && (
-                      <span className="group relative cursor-pointer">
-  <Info size={14} className="text-green-400" />
-  <span
-    className="absolute left-1/2 -translate-x-1/2 top-0 -translate-y-full mb-2 opacity-0 group-hover:opacity-100 pointer-events-none bg-black bg-opacity-90 text-gray-200 text-xs rounded shadow-md px-2 py-1 z-50 whitespace-normal transition-opacity"
-    style={{
-      minWidth: 140,
-      maxWidth: 220,
-      textAlign: "center"
-    }}
-  >
-    {col.tip}
-  </span>
-</span>
+                      <Tooltip content={col.tip}>
+                        <Info size={14} className="text-green-400 cursor-pointer" />
+                      </Tooltip>
                     )}
                   </div>
                 </th>
