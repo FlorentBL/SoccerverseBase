@@ -177,145 +177,105 @@ export default function DebuterPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-white">
       <Navbar />
 
-      {/* HERO SECTION */}
-      <section className="relative w-full min-h-[430px] flex flex-col items-center justify-center bg-gradient-to-br from-sky-950 via-gray-900 to-emerald-950 pb-16 shadow-2xl pt-10 md:pt-20">
-        {/* Mascotte/logo responsive */}
+      {/* Hero section sobre */}
+      <section className="relative w-full min-h-[420px] flex flex-col items-center justify-center bg-gradient-to-br from-sky-950 via-gray-900 to-emerald-950 pb-14 pt-8 shadow-2xl">
         <img
           src={LOGO_MASCOTTE}
-          alt="SoccerverseBase"
-          className="absolute right-4 top-8 w-28 md:w-40 opacity-20 pointer-events-none select-none hidden md:block"
-          style={{ zIndex: 1 }}
+          alt="Logo"
+          className="absolute right-6 top-10 w-28 md:w-40 opacity-20 pointer-events-none select-none hidden md:block"
           onError={e => { e.target.style.display = 'none'; }}
         />
-        <h1 className="text-4xl md:text-7xl font-black bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 bg-clip-text text-transparent drop-shadow-2xl mb-4 mt-4 md:mt-10 text-center z-10">
+        <h1 className="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-sky-400 via-emerald-300 to-sky-500 bg-clip-text text-transparent drop-shadow-lg mb-3 mt-8 text-center">
           SoccerverseBase
         </h1>
-        <p className="text-xl md:text-3xl text-gray-100 font-semibold mb-6 text-center max-w-3xl drop-shadow z-10">
-          <span className="text-emerald-300 font-extrabold">Le guide ultime pour dominer Soccerverse</span>
-          <br />
-          Progresse vite, rejoins la commu, prends le pouvoir !
+        <p className="text-lg md:text-xl text-gray-200 mb-8 text-center max-w-2xl">
+          Guide pratique pour débuter et progresser sur Soccerverse.<br />
+          Accède rapidement aux ressources, infos et à la communauté FR.
         </p>
-        <div className="flex flex-col sm:flex-row gap-5 justify-center w-full max-w-lg mt-2 z-10">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-lg mt-2">
           <a
             href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
-            className="flex items-center justify-center gap-3 bg-gradient-to-r from-sky-400 to-sky-600 hover:scale-105 hover:shadow-2xl transition text-white rounded-xl px-8 py-5 text-2xl font-bold shadow-xl focus:outline-none focus:ring-4 focus:ring-sky-400"
+            className="flex items-center justify-center gap-2 bg-sky-700 hover:bg-sky-800 rounded-xl px-7 py-4 text-lg font-bold shadow transition w-full focus:outline-none"
           >
-            <FaUserPlus className="text-3xl" /> S'inscrire
+            <FaUserPlus className="text-xl" /> Inscription Soccerverse
           </a>
           <a
             href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
-            className="flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-400 to-sky-400 hover:scale-105 hover:shadow-2xl transition text-white rounded-xl px-8 py-5 text-2xl font-bold shadow-xl focus:outline-none focus:ring-4 focus:ring-emerald-400"
+            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl px-7 py-4 text-lg font-bold shadow transition w-full focus:outline-none"
           >
-            <FaPuzzlePiece className="text-3xl" /> Patch FR
+            <FaPuzzlePiece className="text-xl" /> Patch FR (logos, noms)
           </a>
-        </div>
-        <div className="mt-8 text-lg text-gray-300 text-center max-w-2xl z-10">
-          Rejoins la plus grosse commu FR, découvre tous les secrets du jeu et maximise tes gains !
         </div>
       </section>
 
-      {/* SEPARATEUR ANIME */}
+      {/* Séparateur sobre */}
       <div className="w-full flex justify-center items-center my-0">
-        <div className="h-2 w-4/5 md:w-1/2 bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 rounded-full blur-sm opacity-50" />
+        <div className="h-1 w-1/2 bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 rounded-full opacity-40" />
       </div>
 
-      {/* DISCORD + PREUVE SOCIALE */}
-      <section className="flex flex-col md:flex-row items-center justify-center gap-10 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-3xl shadow-2xl px-6 md:px-10 py-8 md:py-10 border border-emerald-600/30 max-w-4xl mx-auto mt-10 mb-10">
-        <FaDiscord className="text-6xl text-sky-400 mr-8 hidden md:block" />
+      {/* Discord K-SOCIOS sobre */}
+      <section className="flex flex-col md:flex-row items-center justify-center gap-8 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-2xl shadow-lg px-6 md:px-10 py-8 md:py-10 border border-emerald-600/20 max-w-3xl mx-auto mt-10 mb-10">
+        <FaDiscord className="text-5xl text-sky-400 hidden md:block mr-6" />
         <div className="flex-1 flex flex-col items-center md:items-start">
-          <h2 className="text-3xl font-extrabold mb-2 text-white drop-shadow-xl">Communauté K-SOCIOS 🇫🇷</h2>
-          <p className="text-lg text-emerald-300 mb-4">Le Discord FR #1 pour progresser, s’entraider et vibrer Soccerverse</p>
+          <h2 className="text-2xl font-bold mb-2 text-white">Communauté française K-SOCIOS</h2>
+          <p className="text-base text-gray-200 mb-4">
+            Espace d’entraide, discussion et informations pour les francophones.<br />
+            Rejoins le Discord pour poser tes questions ou échanger avec la commu.
+          </p>
           <a
             href="https://discord.gg/sd5aa8TW"
             target="_blank"
             rel="noopener"
-            className="inline-flex items-center bg-gradient-to-r from-sky-600 to-sky-400 hover:scale-105 hover:shadow-2xl transition rounded-xl px-8 py-4 text-2xl font-bold shadow-lg gap-3 text-white mb-2 focus:outline-none focus:ring-4 focus:ring-sky-400"
+            className="inline-flex items-center bg-sky-700 hover:bg-sky-900 transition rounded-xl px-7 py-3 text-lg font-semibold shadow gap-2 text-white mb-1"
           >
-            <FaDiscord className="text-3xl" /> Rejoindre la commu
+            <FaDiscord className="text-xl" /> Rejoindre le Discord K-SOCIOS
           </a>
-          <div className="mt-2 text-xs text-emerald-200">+ de 500 francophones – entraide 24/7</div>
-        </div>
-        {/* Témoignages express */}
-        <div className="flex flex-col gap-2 items-start">
-          <div className="bg-gray-800/90 rounded-xl px-4 py-3 text-gray-200 text-sm max-w-xs">
-            “La commu FR m'a tout appris, Discord indispensable !” <br />
-            <span className="text-emerald-300">– Julie, coach</span>
-          </div>
-          <div className="bg-gray-800/90 rounded-xl px-4 py-3 text-gray-200 text-sm max-w-xs">
-            “En 2 semaines sur Soccerverse, j'ai déjà gagné mon 1er tournoi !” <br />
-            <span className="text-emerald-300">– Max, manager FC Lyon</span>
-          </div>
         </div>
       </section>
 
-      {/* SEPARATEUR ANIME */}
-      <div className="w-full flex justify-center items-center my-0">
-        <div className="h-2 w-4/5 md:w-1/2 bg-gradient-to-r from-emerald-400 via-sky-400 to-emerald-400 rounded-full blur-sm opacity-40" />
-      </div>
+      <main className="flex flex-col items-center px-2 sm:px-4 pt-4 pb-12 w-full">
 
-      <main className="flex flex-col items-center px-2 sm:px-4 pt-4 pb-16 w-full">
-
-        {/* ACCORDÉON SECTIONS */}
-        <section className="w-full max-w-5xl mb-14 flex flex-col gap-7 mt-10">
+        {/* Accordéon sections (sobre) */}
+        <section className="w-full max-w-5xl mb-14 flex flex-col gap-7 mt-6">
           {sections.map((s, idx) => (
-            <div key={s.key} className="rounded-3xl shadow-2xl border border-gray-700 bg-gradient-to-tr from-gray-900/90 to-gray-800/70">
+            <div key={s.key} className="rounded-2xl shadow-xl border border-gray-700 bg-gradient-to-tr from-gray-900/90 to-gray-800/70">
               <button
-                className={`w-full flex items-center justify-between text-left px-7 py-5 focus:outline-none rounded-t-3xl transition
+                className={`w-full flex items-center justify-between text-left px-7 py-5 focus:outline-none rounded-t-2xl transition
                   ${openSections[idx] ? "bg-gradient-to-r from-sky-950/60 to-emerald-950/50" : "bg-transparent hover:bg-gray-900/40"}`}
                 onClick={() => toggleSection(idx)}
                 aria-expanded={openSections[idx]}
               >
-                <span className="flex items-center text-2xl md:text-3xl font-bold gap-3">
+                <span className="flex items-center text-xl md:text-2xl font-bold">
                   {s.icon}
                   {s.title}
                 </span>
                 {openSections[idx] ? (
-                  <FaChevronUp className="text-sky-300 text-2xl" />
+                  <FaChevronUp className="text-sky-300 text-xl" />
                 ) : (
-                  <FaChevronDown className="text-gray-400 text-2xl" />
+                  <FaChevronDown className="text-gray-400 text-xl" />
                 )}
               </button>
-              {/* Animation simple ouverture (opacity+translateY) */}
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out
-                ${openSections[idx] ? 'max-h-[1000px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4'}`}>
-                {openSections[idx] && (
-                  <div className="px-7 pb-6 pt-1 transition-all duration-300 text-base">
-                    {s.content}
-                  </div>
-                )}
-              </div>
+              {openSections[idx] && (
+                <div className="px-7 pb-6 pt-1 transition-all duration-300 text-base">
+                  {s.content}
+                </div>
+              )}
             </div>
           ))}
         </section>
 
-        {/* FAQ Débutants */}
-        <section className="w-full max-w-4xl text-left mb-12">
-          <h2 className="text-3xl font-bold text-sky-400 mb-5 text-center">FAQ Rapide</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
-            {/* Ajoute ici tes cards FAQ ou place un TODO */}
-          </div>
-        </section>
-
-        {/* Communauté et entraide */}
+        {/* FAQ rapide sobre */}
         <section className="w-full max-w-4xl text-left mb-8">
-          <h2 className="text-3xl font-bold text-emerald-300 mb-5 text-center">Communauté & Entraide</h2>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-            <a href="https://discord.gg/soccerverse" target="_blank" rel="noopener" className="bg-gradient-to-r from-sky-700 to-sky-400 hover:bg-sky-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg mb-4 md:mb-0 focus:outline-none focus:ring-4 focus:ring-sky-400">
-              <FaDiscord className="text-2xl" /> Discord FR/EN officiel
-            </a>
-            <a href="https://www.youtube.com/results?search_query=soccerverse+game" target="_blank" rel="noopener" className="bg-gradient-to-r from-red-600 to-pink-500 hover:bg-red-800 transition rounded-xl px-8 py-4 text-xl flex items-center gap-3 shadow-lg focus:outline-none focus:ring-4 focus:ring-red-400">
-              <FaYoutube className="text-2xl" /> Youtube (Tutos/Gameplay)
-            </a>
-          </div>
-          <div className="text-center text-sm text-gray-400 mt-4">
-            Besoin d’aide ? Rejoins notre <a href="https://discord.gg/sd5aa8TW" target="_blank" rel="noopener" className="underline text-emerald-300 hover:text-emerald-400">Discord K-SOCIOS FR</a>, le <a href="https://discord.gg/soccerverse" target="_blank" rel="noopener" className="underline text-sky-300 hover:text-sky-500">Discord global</a> ou pose tes questions sur Twitter !
+          <h2 className="text-2xl font-bold text-sky-400 mb-4 text-center">FAQ Débutants</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Place tes FAQ ici comme d’hab, sans superlatif */}
           </div>
         </section>
 
         <footer className="text-center text-gray-500 text-xs py-4 w-full">
-          © 2025 SoccerverseBase – Guide débutant par la communauté FR
+          © 2025 SoccerverseBase – Guide FR Soccerverse
         </footer>
       </main>
     </div>
