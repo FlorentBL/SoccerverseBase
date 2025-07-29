@@ -2,18 +2,16 @@ import React, { useState, useRef } from "react";
 
 const PLAYER_MAPPING_URL = "/player_mapping.json";
 
-// Icônes light sans dépendance externe
+// Icônes colorisées sans dépendance externe
 function getEmoji(label) {
   switch (label) {
-    case "Rating GK": return "🧤";
-    case "Tackling": return "🛡️";
-    case "Passing": return "🎯";
-    case "Shooting": return "🏹";
-    case "Stamina": return "💪";
-    case "Aggression": return "🔥";
-    case "Fitness": return "⚡";
-    case "Moral": return "🙂";
-    case "Dernier prix": return "💸";
+    case "Rating GK": return <span style={{ color: "#b891ff" }}>🧤</span>;
+    case "Tackling": return <span style={{ color: "#77e5ff" }}>🛡️</span>;
+    case "Passing": return <span style={{ color: "#ff8cfa" }}>🎯</span>;
+    case "Shooting": return <span style={{ color: "#ffb347" }}>🏹</span>;
+    case "Stamina": return <span style={{ color: "#ffe074" }}>💪</span>;
+    case "Aggression": return <span style={{ color: "#ff5959" }}>🔥</span>;
+    case "Fitness": return <span style={{ color: "#ffd000" }}>⚡</span>;
     default: return "";
   }
 }
@@ -29,7 +27,6 @@ export default function PlayerTab() {
   const [playerMap, setPlayerMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
   const loadedMap = useRef(false);
 
   const fetchPlayerMap = async () => {
@@ -61,53 +58,110 @@ export default function PlayerTab() {
     } finally { setLoading(false); }
   };
 
-  // Bloc détails stylé
   function PlayerDetailsCard() {
     if (!playerInfo) return null;
     return (
       <div
         style={{
+          margin: "0 auto",
           width: "100%",
+          maxWidth: 650,
           background: "linear-gradient(115deg, #23272e 80%, #1a1c23 100%)",
           borderRadius: 18,
           boxShadow: "0 4px 20px #000b",
           padding: "36px 36px 28px 36px",
-          marginBottom: 24,
+          marginBottom: 34,
           display: "flex",
           flexDirection: "column",
-          alignItems: "stretch",
-          maxWidth: 750,
+          alignItems: "center",
           border: "2px solid #282d38",
         }}
       >
-        <div style={{ fontSize: 15, color: "#ffd700", fontWeight: 600, marginBottom: 14, letterSpacing: ".04em" }}>
+        <div style={{ fontSize: 15, color: "#ffd700", fontWeight: 600, marginBottom: 14, letterSpacing: ".04em", alignSelf: "flex-start" }}>
           Toutes les valeurs sont en SVC
         </div>
         <div style={{
-          display: "flex", width: "100%", justifyContent: "space-between", gap: 30, flexWrap: "wrap"
+          display: "flex", width: "100%", justifyContent: "center", gap: 34, flexWrap: "wrap", alignItems: "flex-start"
         }}>
           {/* Colonne gauche : identité joueur */}
-          <div style={{ minWidth: 210, maxWidth: 320, flex: 1 }}>
-            <div style={{ fontSize: 25, fontWeight: 800, color: "#fff", marginBottom: 10 }}>{playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}</div>
-            <div style={{ fontSize: 16, color: "#ffd700", fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ minWidth: 220, maxWidth: 350, flex: 1 }}>
+            <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", marginBottom: 10, lineHeight: 1.1 }}>{playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}</div>
+            <div style={{ fontSize: 16, color: "#ffd700", fontWeight: 700, marginBottom: 5 }}>
               {playerInfo.positions && (Array.isArray(playerInfo.positions) ? playerInfo.positions.join(", ") : playerInfo.positions)}
             </div>
-            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>Âge : <span style={{ fontWeight: 700 }}>{playerInfo.age || "-"}</span></div>
             <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
-              Club : {playerInfo.club || playerInfo.club_id || "-"}
-              {playerInfo.club_id && (
-                <> <a href={`https://play.soccerverse.com/club/${playerInfo.club_id}`} target="_blank" rel="noopener noreferrer" style={{ color: "#4f47ff", marginLeft: 8, fontSize: 14, fontWeight: 600 }}>Lien</a></>
+              Âge : <span style={{ fontWeight: 700 }}>{playerInfo.age || "-"}</span>
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
+              Club :{" "}
+              {playerInfo.club_id ? (
+                <a
+                  href={`https://play.soccerverse.com/club/${playerInfo.club_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#4f47ff", fontWeight: 700, textDecoration: "underline", fontSize: 16 }}
+                  title="Voir le club"
+                >
+                  {playerInfo.club_id}
+                </a>
+              ) : (
+                playerInfo.club || "-"
               )}
             </div>
-            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>Note : <b style={{ color: "#76ffb1" }}>{playerInfo.rating || "-"}</b></div>
-            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>Valeur : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.value)}</span></div>
-            <div style={{ fontSize: 16, marginBottom: 4, color: "#eee" }}>Salaire : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.wages)}</span></div>
+            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
+              Note : <b style={{ color: "#76ffb1" }}>{playerInfo.rating || "-"}</b>
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
+              Valeur : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.value)}</span>
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 6, color: "#eee" }}>
+              Salaire : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.wages)}</span>
+            </div>
+            <div style={{ fontSize: 15, color: "#ffd700", fontWeight: 500, margin: "18px 0 6px 0" }}>
+              Détails :
+            </div>
+            <table style={{ fontSize: 15, color: "#dde6f7", borderCollapse: "collapse" }}>
+              <tbody>
+                <tr>
+                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Pays</td>
+                  <td>{playerInfo.country || playerInfo.country_id || "-"}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Player ID</td>
+                  <td>{playerInfo.player_id}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Blessé ?</td>
+                  <td>{playerInfo.injured ? "Oui" : "Non"}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Moral</td>
+                  <td>{playerInfo.morale ?? "-"}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Contrat</td>
+                  <td>{playerInfo.contract ?? "-"}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 600, paddingRight: 6 }}>Dernier prix</td>
+                  <td>{formatSVC(playerInfo.last_price)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
           {/* Colonne droite : stats */}
           <div style={{
-            minWidth: 210, flex: 1, background: "#21232e", borderRadius: 12, padding: "14px 22px 10px 18px", boxShadow: "0 1px 8px #0002", marginBottom: 6
+            minWidth: 210,
+            flex: 1,
+            background: "#21232e",
+            borderRadius: 16,
+            padding: "22px 28px 12px 22px",
+            boxShadow: "0 2px 16px #0002",
+            marginBottom: 6,
+            marginTop: 8,
+            alignSelf: "center"
           }}>
-            <table style={{ width: "100%", color: "#dde6f7", fontSize: 15, borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", color: "#dde6f7", fontSize: 16, borderCollapse: "collapse" }}>
               <tbody>
                 <tr><td>{getEmoji("Rating GK")} <b>GK</b></td><td style={{ textAlign: "right", fontWeight: 700 }}>{playerInfo.rating_gk || "-"}</td></tr>
                 <tr><td>{getEmoji("Tackling")} <b>Tackling</b></td><td style={{ textAlign: "right", fontWeight: 700 }}>{playerInfo.rating_tackling || "-"}</td></tr>
@@ -120,35 +174,9 @@ export default function PlayerTab() {
             </table>
           </div>
         </div>
-        {/* Détails avancés */}
-        <button
-          onClick={() => setShowDetails(!showDetails)}
-          style={{
-            background: showDetails ? "#222" : "linear-gradient(90deg, #0d8bff, #4f47ff)",
-            color: "#ffd700", fontWeight: 700, fontSize: 16, border: "none", borderRadius: 8, margin: "18px 0 0 0",
-            padding: "8px 22px", cursor: "pointer", boxShadow: "0 1px 6px #0004"
-          }}
-        >{showDetails ? "Masquer les détails" : "Afficher les détails"}</button>
-        {showDetails && (
-          <div style={{
-            marginTop: 15, width: "100%", background: "#22252d", borderRadius: 12, boxShadow: "0 1px 8px #0003",
-            padding: "16px 18px", border: "1.5px solid #2c3244"
-          }}>
-            <table style={{ width: "100%", color: "#d2d7e6", fontSize: 15, borderCollapse: "collapse" }}>
-              <tbody>
-                <tr><td style={{ fontWeight: 600, padding: "6px 8px" }}>Player ID</td><td style={{ padding: "6px 8px" }}>{playerInfo.player_id}</td></tr>
-                <tr><td style={{ fontWeight: 600, padding: "6px 8px" }}>Pays</td><td style={{ padding: "6px 8px" }}>{playerInfo.country || playerInfo.country_id || "-"}</td></tr>
-                <tr><td style={{ fontWeight: 600, padding: "6px 8px" }}>Blessé ?</td><td style={{ padding: "6px 8px" }}>{playerInfo.injured ? "Oui" : "Non"}</td></tr>
-                <tr><td style={{ fontWeight: 600, padding: "6px 8px" }}>Moral</td><td style={{ padding: "6px 8px" }}>{playerInfo.morale ?? "-"}</td></tr>
-                <tr><td style={{ fontWeight: 600, padding: "6px 8px" }}>Contrat</td><td style={{ padding: "6px 8px" }}>{playerInfo.contract ?? "-"}</td></tr>
-                <tr><td style={{ fontWeight: 600, padding: "6px 8px" }}>Dernier prix</td><td style={{ padding: "6px 8px" }}>{formatSVC(playerInfo.last_price)}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        )}
         {/* Liens rapides */}
         <div style={{
-          display: "flex", gap: 16, justifyContent: "center", alignItems: "center", margin: "26px 0 0 0", width: "100%", flexWrap: "wrap"
+          display: "flex", gap: 0, justifyContent: "center", alignItems: "center", margin: "32px 0 0 0", width: "100%", flexWrap: "wrap"
         }}>
           <a
             href={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
@@ -156,8 +184,14 @@ export default function PlayerTab() {
             style={{
               display: "inline-block",
               background: "linear-gradient(90deg, #2050b0, #40bff7)",
-              color: "#fff", borderRadius: 8, padding: "10px 28px",
-              fontWeight: 700, fontSize: 16, textDecoration: "none", boxShadow: "0 2px 6px #0af2"
+              color: "#fff",
+              borderRadius: 8,
+              padding: "14px 34px",
+              fontWeight: 700,
+              fontSize: 17,
+              textDecoration: "none",
+              boxShadow: "0 2px 8px #0af2",
+              margin: "0 auto"
             }}>
             Voir sur Transfermarkt
           </a>

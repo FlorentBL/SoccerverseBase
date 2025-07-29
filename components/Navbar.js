@@ -6,7 +6,7 @@ import Image from "next/image";
 import { FiMenu, FiX } from "react-icons/fi";
 
 const menuItems = [
-  { href: "/recompenses", label: "Calculateur de Récompenses" },
+  // { href: "/recompenses", label: "Calculateur de Récompenses" },
   { href: "/revenus", label: "Gains Joueurs" },
   { href: "/scouting", label: "Scouting" }, // Page unique avec les onglets
 ];
