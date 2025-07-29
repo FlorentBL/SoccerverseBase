@@ -1,16 +1,20 @@
-// app/layout.js
+// app/layout.js ou app/layout.jsx
 import "./globals.css";
+import Navbar from "../components/Navbar"; // adapte le chemin si besoin
 
 export const metadata = {
   title: "SoccerverseBase",
-  description: "Outils et statistiques pour dominer le Soccerverse",
+  description: "L'outil ultime pour Soccerverse",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-white text-gray-900 antialiased">
-        {children}
+      <body>
+        <Navbar />
+        <div style={{ paddingTop: 60 }}> {/* pour compenser la navbar fixed */}
+          {children}
+        </div>
       </body>
     </html>
   );
