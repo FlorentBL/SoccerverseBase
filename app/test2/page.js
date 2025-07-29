@@ -82,15 +82,15 @@ export default function ClubFinancesPage() {
     setBalance(null);
 
     try {
-      // Récupération de la balance club
-      const clubsRes = await fetch(`/api/clubs?club_id=${clubId}`);
+      // Récupération de la balance club (API publique, version la plus fiable)
+      const clubsRes = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`);
       if (!clubsRes.ok) throw new Error("Erreur API clubs: " + clubsRes.status);
       const clubsJson = await clubsRes.json();
       const foundClub = Array.isArray(clubsJson.items) ? clubsJson.items[0] : (clubsJson.items ?? [])[0];
-      setBalance(foundClub ? foundClub.balance : null);
+      setBalance(foundClub && typeof foundClub.balance === "number" ? foundClub.balance : null);
 
       // Récupération bilan détaillé
-      const url = `/api/club_balance_sheet/weeks?club_id=${clubId}&season_id=${seasonId}`;
+      const url = `https://services.soccerverse.com/api/club_balance_sheet/weeks?club_id=${clubId}&season_id=${seasonId}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Erreur API bilan: " + res.status);
       const weeks = await res.json();
