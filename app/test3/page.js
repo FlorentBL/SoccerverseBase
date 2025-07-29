@@ -98,7 +98,7 @@ export default function ClubProjectionPage() {
 
       // Projection S2
       const weeksPlayed = s2.length;
-      const weeksTotal = weeksPlayed * 2; // à ajuster si tu veux forcer un nombre précis
+      const weeksTotal = s1.length; // on projette S2 sur la même durée que S1
       const moyS2 = {};
       FIELD_ORDER.forEach(k => {
         moyS2[k] = weeksPlayed > 0 ? (bilanS2[k] ?? 0) / weeksPlayed : 0;
