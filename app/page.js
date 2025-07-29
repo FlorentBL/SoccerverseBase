@@ -153,7 +153,7 @@ const sections = [
         <li><b>Remplacements</b> : Max 2 anticipés, garde 1 pour blessure.</li>
         <li><b>Jamais de blessés/suspendus sur le banc</b> (risque compo aléatoire !)</li>
         <li><b>Ratings MAJ tous les 6 mois</b> (utilise Transfermarkt & soccerratings).</li>
-        <li><b>Salaire = OVR</b> (<a href="https://elrincondeldt.com/soccerverse-agente-de-jugador.html" target="_blank" rel="noopener" className="underline text-yellow-300">voir le tableau</a>), pas l’âge !</li>
+        <li><b>Salaire = OVR</b> (<a href="https://svbase.vercel.app/revenus" target="_blank" rel="noopener" className="underline text-yellow-300">voir le tableau</a>), pas l’âge !</li>
         <li><b>Transferts</b> : 7 départs/arrivées max/saison/club, 2 prêts.</li>
         <li><b>Enchères</b> : 1ère mise = lancement (5 jours), patience.</li>
         <li><b>Influence</b> : Récompenses chaque semaine + en fin de saison.</li>
@@ -271,7 +271,7 @@ export default function DebuterPage() {
             </div>
             <div className="bg-white/5 rounded-xl p-5 border border-white/10">
               <b>Les salaires dépendent de l’âge ?</b>
-              <div className="text-sm text-gray-300 mt-1">Non, uniquement du rating OVR (<a href="https://elrincondeldt.com/soccerverse-agente-de-jugador.html" target="_blank" rel="noopener" className="underline">voir tableau</a>).</div>
+              <div className="text-sm text-gray-300 mt-1">Non, uniquement du rating OVR (<a href="https://svbase.vercel.app/revenus" target="_blank" rel="noopener" className="underline">voir tableau</a>).</div>
             </div>
             <div className="bg-white/5 rounded-xl p-5 border border-white/10">
               <b>Où suivre les updates ?</b>
