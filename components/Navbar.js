@@ -8,7 +8,7 @@ import { FiMenu, FiX } from "react-icons/fi";
 const menuItems = [
   // { href: "/recompenses", label: "Calculateur de Récompenses" },
   { href: "/revenus", label: "Gains Joueurs" },
-  { href: "/scouting", label: "Scouting" }, // Page unique avec les onglets
+  { href: "/scouting", label: "Scouting" },
 ];
 
 export default function Navbar() {
@@ -16,39 +16,47 @@ export default function Navbar() {
 
   return (
     <header className="bg-gray-800 text-white shadow-md fixed top-0 left-0 w-full z-50">
-      <nav className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-        <Link href="/" className="flex items-center gap-2" aria-label="Accueil SoccerverseBase">
-          <Image
-            src="/logo.png"
-            alt="SoccerverseBase logo"
-            width={38}
-            height={38}
-            priority
-            className="rounded-md"
-          />
-        </Link>
-
-        {/* Desktop menu */}
-        <div className="hidden md:flex gap-6 text-sm font-bold items-center">
-          {menuItems.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="hover:text-green-400"
-            >
-              {label}
-            </Link>
-          ))}
+      <nav className="max-w-6xl mx-auto px-4 py-3 flex items-center relative" style={{ minHeight: 62 }}>
+        {/* Flex : 3 colonnes */}
+        <div className="flex-1 flex items-center">
+          <Link href="/" className="flex items-center gap-2" aria-label="Accueil SoccerverseBase">
+            <Image
+              src="/logo.png"
+              alt="SoccerverseBase logo"
+              width={38}
+              height={38}
+              priority
+              className="rounded-md"
+            />
+          </Link>
         </div>
 
-        {/* Mobile burger */}
-        <button
-          className="md:hidden text-2xl focus:outline-none"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? <FiX /> : <FiMenu />}
-        </button>
+        {/* Menu CENTRÉ */}
+        <div className="flex-1 flex justify-center">
+          <div className="hidden md:flex gap-7 text-base font-bold items-center">
+            {menuItems.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className="hover:text-green-400 transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Slot à droite (pour actions/user plus tard) */}
+        <div className="flex-1 flex items-center justify-end">
+          {/* Burger menu pour mobile */}
+          <button
+            className="md:hidden text-2xl focus:outline-none"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <FiX /> : <FiMenu />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile menu */}
