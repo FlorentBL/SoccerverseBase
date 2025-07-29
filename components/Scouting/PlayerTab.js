@@ -47,6 +47,7 @@ export default function PlayerTab() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      {/* Saisie ID joueur */}
       <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
         <label style={{ fontWeight: 600, fontSize: 17 }}>ID Joueur :</label>
         <input type="number" value={playerId} onChange={e => setPlayerId(e.target.value)}
@@ -65,12 +66,21 @@ export default function PlayerTab() {
         >{loading ? "Recherche..." : "Afficher infos"}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
+
+      {/* Infos joueur + Iframes */}
       {playerInfo && (
-        <div style={{ width: "100%", display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 32, marginBottom: 32 }}>
-          {/* Colonne gauche : Infos joueur */}
+        <div style={{ width: "100%", maxWidth: 1200 }}>
+          {/* Infos générales (toujours au-dessus) */}
           <div style={{
-            flex: "1 1 0", minWidth: 330, maxWidth: 450, background: "#181d23",
-            borderRadius: 14, padding: 28, boxShadow: "0 2px 8px #0003"
+            width: "100%",
+            background: "#181d23",
+            borderRadius: 14,
+            padding: "28px 32px",
+            boxShadow: "0 2px 8px #0003",
+            marginBottom: 24,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start"
           }}>
             <div style={{ fontSize: 14, color: "#ffd700", fontWeight: 500, marginBottom: 10 }}>Toutes les valeurs sont en SVC</div>
             <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 18 }}>
@@ -116,39 +126,101 @@ export default function PlayerTab() {
               </table>
             )}
           </div>
-          {/* Colonne droite : Iframe */}
+
+          {/* Bloc des iframes : flex row sur desktop, column sur mobile */}
           <div style={{
-            flex: "2 1 0", minWidth: 350, background: "#181d23", borderRadius: 14, padding: 0,
-            boxShadow: "0 2px 8px #0003", marginLeft: 0, display: "flex", flexDirection: "column"
+            display: "flex",
+            flexDirection: "row",
+            gap: 24,
+            margin: "0 auto",
+            marginTop: 0,
+            width: "100%",
+            flexWrap: "wrap"
           }}>
+            {/* SoccerRatings.org */}
             <div style={{
-              fontSize: 16, fontWeight: 700, color: "#4f47ff",
-              background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
+              flex: "1 1 440px",
+              minWidth: 360,
+              background: "#181d23",
+              borderRadius: 14,
+              padding: 0,
+              boxShadow: "0 2px 8px #0003",
+              display: "flex",
+              flexDirection: "column",
+              marginBottom: 18
             }}>
-              Analyse SoccerRatings.org
-            </div>
-            <iframe
-              src={`https://soccerratings.org/player/${playerId}`}
-              style={{
-                width: "100%",
-                minHeight: 650,
-                border: "none",
-                borderRadius: "0 0 14px 14px",
-                background: "#191d22"
-              }}
-              title="Soccer Ratings"
-              sandbox="allow-same-origin allow-scripts allow-popups"
-            />
-            <div style={{ marginTop: 0, textAlign: "center", padding: 12 }}>
-              <a href={`https://soccerratings.org/player/${playerId}`}
-                target="_blank" rel="noopener noreferrer"
+              <div style={{
+                fontSize: 16, fontWeight: 700, color: "#4f47ff",
+                background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
+              }}>
+                Analyse SoccerRatings.org
+              </div>
+              <iframe
+                src={`https://soccerratings.org/player/${playerId}`}
                 style={{
-                  display: "inline-block", background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
-                  color: "#fff", borderRadius: 8, padding: "8px 24px",
-                  fontWeight: 700, fontSize: 16, textDecoration: "none"
-                }}>
-                Ouvrir sur SoccerRatings.org
-              </a>
+                  width: "100%",
+                  minHeight: 450,
+                  border: "none",
+                  borderRadius: "0 0 0 0",
+                  background: "#191d22"
+                }}
+                title="Soccer Ratings"
+                sandbox="allow-same-origin allow-scripts allow-popups"
+              />
+              <div style={{ textAlign: "center", padding: 12 }}>
+                <a href={`https://soccerratings.org/player/${playerId}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block", background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
+                    color: "#fff", borderRadius: 8, padding: "8px 24px",
+                    fontWeight: 700, fontSize: 16, textDecoration: "none"
+                  }}>
+                  Ouvrir sur SoccerRatings.org
+                </a>
+              </div>
+            </div>
+
+            {/* Transfermarkt */}
+            <div style={{
+              flex: "1 1 440px",
+              minWidth: 360,
+              background: "#181d23",
+              borderRadius: 14,
+              padding: 0,
+              boxShadow: "0 2px 8px #0003",
+              display: "flex",
+              flexDirection: "column",
+              marginBottom: 18
+            }}>
+              <div style={{
+                fontSize: 16, fontWeight: 700, color: "#23c281",
+                background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
+              }}>
+                Recherche Transfermarkt
+              </div>
+              <iframe
+                src={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
+                style={{
+                  width: "100%",
+                  minHeight: 450,
+                  border: "none",
+                  borderRadius: "0 0 0 0",
+                  background: "#191d22"
+                }}
+                title="Transfermarkt"
+                sandbox="allow-same-origin allow-scripts allow-popups"
+              />
+              <div style={{ textAlign: "center", padding: 12 }}>
+                <a href={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block", background: "linear-gradient(90deg, #23c281, #29aafc)",
+                    color: "#fff", borderRadius: 8, padding: "8px 24px",
+                    fontWeight: 700, fontSize: 16, textDecoration: "none"
+                  }}>
+                  Voir sur Transfermarkt
+                </a>
+              </div>
             </div>
           </div>
         </div>
