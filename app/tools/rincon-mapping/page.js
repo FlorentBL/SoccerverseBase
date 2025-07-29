@@ -2,15 +2,8 @@
 
 import React, { useState } from "react";
 
-// Définir ici les champs qu'on garde pour chaque joueur
 const FIELDS = [
-  "id",  // string ou int, id unique joueur
-  "n",   // nom affiché ou nom complet (ajuste selon le JSON source)
-  "o",   // overall/ovr
-  "p",   // poste
-  "c",   // club id ou nom
-  "nat"  // nation (ajuste selon le JSON source)
-  // ajoute ici les clés que tu veux garder côté frontend
+  "id", "f", "s"
 ];
 
 export default function RinconMappingGenerator() {
@@ -22,7 +15,8 @@ export default function RinconMappingGenerator() {
     setCount(0);
     try {
       const resp = await fetch("https://elrincondeldt.com/sv/rincon_v1.json");
-      const arr = await resp.json();
+      const raw = await resp.json();
+      const arr = raw.PackData.PlayerData.P; // *** Adapté ***
       setStatus(`Parsing : ${arr.length} joueurs reçus...`);
 
       const mapping = {};
@@ -30,11 +24,15 @@ export default function RinconMappingGenerator() {
 
       for (const p of arr) {
         if (!p || p.id == null) { skipped++; continue; }
-        // Création de l'objet optimisé, en ne gardant que les champs utiles
+        // Création de l'objet optimisé
         const optimized = {};
         for (const k of FIELDS) {
-          if (p[k] !== undefined && p[k] !== null) optimized[k] = p[k];
+          if (Object.prototype.hasOwnProperty.call(p, k)) {
+            optimized[k] = p[k];
+          }
         }
+        // Ajoute un champ nom complet lisible
+        optimized.name = `${p.f ?? ""} ${p.s ?? ""}`.trim();
         mapping[String(p.id)] = optimized;
       }
 
