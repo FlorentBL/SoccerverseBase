@@ -3,11 +3,12 @@
 import React, { useState, useMemo } from "react";
 import { Info } from "lucide-react";
 
-// Helper pour affichage SVC joli
 function formatSVC(val) {
-  if (val >= 1_000_000) return (val / 1_000_000).toFixed(2).replace('.', ',') + ' M SVC';
-  if (val >= 1_000) return (val / 1_000).toFixed(2).replace('.', ',') + ' k SVC';
-  return (val % 1 ? val.toFixed(2).replace('.', ',') : val.toLocaleString("fr-FR")) + ' SVC';
+  const isInt = Number.isInteger(val);
+  const formatted = isInt
+    ? val.toLocaleString("fr-FR")
+    : val.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${formatted} SVC`;
 }
 
 const columns = [
@@ -25,7 +26,6 @@ export default function SVCRewardsTable({ data }) {
   const [minRating, setMinRating] = useState(50);
   const [maxRating, setMaxRating] = useState(99);
 
-  // Optimisation : filtre mémoire
   const filtered = useMemo(
     () => data.filter(row => row.rating >= minRating && row.rating <= maxRating),
     [data, minRating, maxRating]
