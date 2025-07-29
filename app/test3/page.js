@@ -32,6 +32,11 @@ const COST_FIELDS = [
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
 
+// Champs à NE PAS projeter (one shot)
+const NON_PROJECTED_FIELDS = [
+  "cash_injection", "transfers_in", "transfers_out"
+];
+
 function formatSVC(val, field) {
   if (typeof val !== "number") return "-";
   const absVal = Math.abs(val / 10000);
@@ -42,12 +47,10 @@ function formatSVC(val, field) {
     minimumFractionDigits: 0,
   }) + " $SVC";
 }
-
-// VERSION FORTE = pas de millions ni milliers abrégés
 function formatBigSVC(val) {
   if (typeof val !== "number") return "-";
-  const corrected = Math.round(val / 10000);
-  return corrected.toLocaleString("fr-FR") + " $SVC";
+  // Affiche TOUJOURS la valeur entière (pas de M/k)
+  return Math.round(val / 10000).toLocaleString("fr-FR") + " $SVC";
 }
 function formatDate(timestamp) {
   if (!timestamp) return "-";
@@ -175,21 +178,23 @@ export default function ClubProjectionPage() {
       FIELD_ORDER.forEach(k => {
         moyS2[k] = weeksPlayed > 0 ? (bilanS2[k] ?? 0) / weeksPlayed : 0;
       });
-      // Projection S2 (alignée sur nb semaines S1)
+
+      // Projection S2 : les champs NON_PROJECTED_FIELDS restent à leur valeur S2 réelle (pas projetée)
       const projS2 = {};
       FIELD_ORDER.forEach(k => {
-      if (["transfers_in", "transfers_out", "cash_injection"].includes(k)) {
-        // Pour cash_injection et les transferts, pas de projection, on garde la valeur observée.
-        projS2[k] = bilanS2[k] ?? 0;
-      } else {
-        projS2[k] = moyS2[k] * weeksTotal;
-      }
-    });
+        if (NON_PROJECTED_FIELDS.includes(k)) {
+          projS2[k] = bilanS2[k] ?? 0;
+        } else {
+          projS2[k] = moyS2[k] * weeksTotal;
+        }
+      });
 
+      // Calcul du solde projeté en fin de S2
       const soldeFinS2 = solde + Object.entries(projS2).reduce((acc, [k, v]) => {
         return COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v;
       }, 0);
 
+      // Capacité d'invest immédiate = solde actuel + flux restant à jouer sur la saison (hors transferts/injection)
       const fluxS2Restant = Object.entries(projS2).reduce((acc, [k, v]) => {
         return COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v;
       }, 0) - Object.entries(bilanS2).reduce((acc, [k, v]) => {
@@ -197,6 +202,8 @@ export default function ClubProjectionPage() {
       }, 0);
 
       const capaciteInvest = solde + fluxS2Restant;
+
+      // Somme des charges fixes hors transferts
       const chargesHorsTransferts = [
         "player_wages", "agent_wages", "managers_wage",
         "ground_maintenance", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
@@ -224,12 +231,12 @@ export default function ClubProjectionPage() {
     return sum;
   }
 
-  // Calcul simulation
-  let simSoldeFin = null, simCapacite = null, simChargeFixe = null, simChargeSalaire = null, nWeeksRestantes = null;
+  // Simulation
+  let simSoldeFin = null, simCapacite = null, simChargeFixe = null, simChargeSalaire = null;
   if (results && transfertSim && salaireSim) {
-    const nWeeksRestantes = (results.weeksTotal || 0) - (results.weeksPlayed || 0);
-    const transfert = parseFloat(transfertSim.replace(",", "."));
-    const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
+    const nWeeksRestantes = results.weeksRestantes || 0;
+    const transfert = Number(transfertSim) || 0;
+    const salaireHebdo = Number(salaireSim) || 0;
     simChargeSalaire = salaireHebdo * nWeeksRestantes;
 
     simChargeFixe = results.chargeFixeProj + simChargeSalaire;
