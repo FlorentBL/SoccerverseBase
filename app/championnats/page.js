@@ -5,22 +5,19 @@ function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " SVC";
 }
-function formatDate(ts) {
-  if (!ts || isNaN(ts)) return "-";
-  const d = new Date(ts * 1000);
-  return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
-}
 
 export default function LeagueTablePage() {
   const [leagueId, setLeagueId] = useState("");
   const [standings, setStandings] = useState([]);
+  const [clubsDetails, setClubsDetails] = useState({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [details, setDetails] = useState({}); // {club_id: {clubInfo, loading}}
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const fetchTable = async () => {
     setErr("");
     setStandings([]);
+    setClubsDetails({});
     setLoading(true);
     try {
       const api = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${leagueId}`);
@@ -30,7 +27,8 @@ export default function LeagueTablePage() {
         setLoading(false);
         return;
       }
-      setStandings(j.sort((a, b) => b.pts - a.pts)); // tri sur points
+      setStandings(j.sort((a, b) => b.pts - a.pts));
+      setTimeout(fetchAllClubsDetails, 100, j.map(c => c.club_id)); // charge tous les clubs après (pour éviter double-lag UI)
     } catch (e) {
       setErr("Erreur réseau ou parsing données.");
     } finally {
@@ -38,20 +36,19 @@ export default function LeagueTablePage() {
     }
   };
 
-  // Fetch stats avancées club à la demande
-  const fetchClubDetails = async (club_id) => {
-    setDetails(d => ({ ...d, [club_id]: { loading: true, clubInfo: null } }));
-    try {
-      const api = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${club_id}`);
-      const j = await api.json();
-      if (j.items && j.items[0]) {
-        setDetails(d => ({ ...d, [club_id]: { loading: false, clubInfo: j.items[0] } }));
-      } else {
-        setDetails(d => ({ ...d, [club_id]: { loading: false, clubInfo: null } }));
-      }
-    } catch (e) {
-      setDetails(d => ({ ...d, [club_id]: { loading: false, clubInfo: null } }));
+  // Charge stats avancées pour tous les clubs en batch (attention quota)
+  const fetchAllClubsDetails = async (clubIds) => {
+    setDetailsLoading(true);
+    const details = {};
+    for (const club_id of clubIds) {
+      try {
+        const api = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${club_id}`);
+        const j = await api.json();
+        if (j.items && j.items[0]) details[club_id] = j.items[0];
+      } catch { /* ignore */ }
     }
+    setClubsDetails(details);
+    setDetailsLoading(false);
   };
 
   return (
@@ -62,8 +59,7 @@ export default function LeagueTablePage() {
       <h2 style={{ fontWeight: 800, fontSize: 32, marginBottom: 32, letterSpacing: 1, textAlign: "center" }}>
         Tableau Championnat Soccerverse
       </h2>
-      <div style={{ margin: "0 auto", maxWidth: 1100, display: "flex", flexDirection: "column", alignItems: "center" }}>
-        {/* Recherche */}
+      <div style={{ margin: "0 auto", maxWidth: 1200, display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{
           background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008",
           width: "100%", maxWidth: 520, marginBottom: 34
@@ -90,21 +86,21 @@ export default function LeagueTablePage() {
               boxShadow: "0 1px 5px #0004"
             }}
           >
-            {loading ? "Recherche..." : "Afficher classement"}
+            {loading ? "Recherche..." : detailsLoading ? "Chargement stats clubs..." : "Afficher classement"}
           </button>
           {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
         </div>
 
         {standings.length > 0 && (
           <div style={{
-            width: "100%", maxWidth: 1100, background: "#181d23",
+            width: "100%", maxWidth: 1200, background: "#181d23",
             borderRadius: 16, padding: 18, marginBottom: 30, boxShadow: "0 2px 8px #0003"
           }}>
             <div style={{ fontSize: 17, color: "#ffd700", fontWeight: 500, marginBottom: 12 }}>
               Classement {standings[0].division ? `(Division ${standings[0].division})` : ""}
             </div>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 16 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 15, textAlign: "center" }}>
                 <thead>
                   <tr style={{ background: "#22252a" }}>
                     <th>#</th>
@@ -119,19 +115,28 @@ export default function LeagueTablePage() {
                     <th>BC</th>
                     <th>Fanbase</th>
                     <th>Rating</th>
-                    <th>Détails</th>
+                    <th>💸Avg</th>
+                    <th>💸Total</th>
+                    <th>🏦Value</th>
+                    <th>Top21</th>
+                    <th>🏹</th>
+                    <th>🎯</th>
+                    <th>🛡️</th>
+                    <th>🧤</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {standings.map((club, idx) => (
-                    <React.Fragment key={club.club_id}>
-                      <tr style={{ background: idx % 2 === 0 ? "#22252a" : "#181d23" }}>
-                        <td style={{ textAlign: "center" }}>{idx + 1}</td>
-                        <td style={{ fontWeight: 600 }}>
-                          <img src={club.manager_profile_pic || "/default_profile.jpg"} alt={club.manager_name} style={{
-                            width: 24, height: 24, borderRadius: "50%", verticalAlign: "middle", marginRight: 8, border: "1px solid #444"
-                          }} />
-                          {club.club_id}
+                  {standings.map((club, idx) => {
+                    const d = clubsDetails[club.club_id] || {};
+                    return (
+                      <tr key={club.club_id} style={{ background: idx % 2 === 0 ? "#22252a" : "#181d23" }}>
+                        <td>{idx + 1}</td>
+                        <td>
+                          <img src={club.manager_profile_pic || "/default_profile.jpg"} alt={club.manager_name}
+                            style={{
+                              width: 24, height: 24, borderRadius: "50%", verticalAlign: "middle", marginRight: 4, border: "1px solid #444"
+                            }} />
+                          <span style={{ fontWeight: 700 }}>{club.club_id}</span>
                         </td>
                         <td>{club.manager_name || "-"}</td>
                         <td style={{ fontWeight: 700 }}>{club.pts}</td>
@@ -142,68 +147,23 @@ export default function LeagueTablePage() {
                         <td>{club.goals_for}</td>
                         <td>{club.goals_against}</td>
                         <td>{club.fanbase || "-"}</td>
-                        <td>{club.avg_player_rating || "-"}</td>
-                        <td>
-                          <button
-                            style={{
-                              background: "#222", color: "#ffd700", border: "none", borderRadius: 6,
-                              padding: "4px 12px", fontWeight: 600, cursor: "pointer", fontSize: 15
-                            }}
-                            onClick={() => fetchClubDetails(club.club_id)}
-                            disabled={details[club.club_id]?.loading}
-                          >
-                            {details[club.club_id]?.loading ? "..." : "Stats"}
-                          </button>
-                        </td>
+                        <td style={{ fontWeight: 700 }}>{club.avg_player_rating || "-"}</td>
+                        <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.avg_wages)}</td>
+                        <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.total_wages)}</td>
+                        <td style={{ color: "#6fffe6", fontWeight: 700 }}>{formatSVC(d.total_player_value)}</td>
+                        <td style={{ color: "#ffd700", fontWeight: 700 }}>{d.avg_player_rating_top21 ?? "-"}</td>
+                        <td style={{ color: "#ff8c47", fontWeight: 700 }}>{d.avg_shooting ?? "-"}</td>
+                        <td style={{ color: "#7fbfff", fontWeight: 700 }}>{d.avg_passing ?? "-"}</td>
+                        <td style={{ color: "#66e", fontWeight: 700 }}>{d.avg_tackling ?? "-"}</td>
+                        <td style={{ color: "#d49fff", fontWeight: 700 }}>{d.gk_rating ?? "-"}</td>
                       </tr>
-                      {/* Détails stats avancées */}
-                      {details[club.club_id]?.clubInfo && (
-                        <tr style={{ background: "#23252e" }}>
-                          <td colSpan={13}>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "26px 40px", padding: "16px 4px" }}>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>💸 Avg Wages</span><br />
-                                <b>{formatSVC(details[club.club_id].clubInfo.avg_wages)}</b>
-                              </div>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>💸 Total Wages</span><br />
-                                <b>{formatSVC(details[club.club_id].clubInfo.total_wages)}</b>
-                              </div>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>🏦 Total Value</span><br />
-                                <b>{formatSVC(details[club.club_id].clubInfo.total_player_value)}</b>
-                              </div>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>⭑ Rating Top 21</span><br />
-                                <b>{details[club.club_id].clubInfo.avg_player_rating_top21 ?? "-"}</b>
-                              </div>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>🏹 Shooting</span><br />
-                                <b>{details[club.club_id].clubInfo.avg_shooting ?? "-"}</b>
-                              </div>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>🎯 Passing</span><br />
-                                <b>{details[club.club_id].clubInfo.avg_passing ?? "-"}</b>
-                              </div>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>🛡️ Tackling</span><br />
-                                <b>{details[club.club_id].clubInfo.avg_tackling ?? "-"}</b>
-                              </div>
-                              <div>
-                                <span style={{ color: "#ffd700" }}>🧤 GK</span><br />
-                                <b>{details[club.club_id].clubInfo.gk_rating ?? "-"}</b>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
             <div style={{ fontSize: 13, color: "#aaa", marginTop: 14 }}>
-              Pour voir les stats avancées d'un club, clique sur <span style={{ color: "#ffd700" }}>Stats</span>.
+              Toutes les stats sont directement affichées (API “details” massivement utilisée).
             </div>
           </div>
         )}
