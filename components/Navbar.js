@@ -8,6 +8,7 @@ import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scoutingOpen, setScoutingOpen] = useState(false);
+  const [scoutingTimeout, setScoutingTimeout] = useState(null);
 
   const scoutingItems = [
     { href: "/joueurs", label: "Joueurs" },
@@ -15,7 +16,7 @@ export default function Navbar() {
     { href: "/championnats", label: "Championnat" },
   ];
 
-  // Retiré Convertisseur SVC et Calculateur Fitness
+  // Menus principaux sans Convertisseur SVC ni Fitness
   const menuItems = [
     { href: "/recompenses", label: "Calculateur de Récompenses" },
     { href: "/revenus", label: "Gains Joueurs" },
@@ -43,11 +44,17 @@ export default function Navbar() {
             </Link>
           ))}
 
-          {/* Menu déroulant SCOUTING */}
+          {/* Menu déroulant SCOUTING avec délai */}
           <div
             className="relative group"
-            onMouseEnter={() => setScoutingOpen(true)}
-            onMouseLeave={() => setScoutingOpen(false)}
+            onMouseEnter={() => {
+              if (scoutingTimeout) clearTimeout(scoutingTimeout);
+              setScoutingOpen(true);
+            }}
+            onMouseLeave={() => {
+              const timeout = setTimeout(() => setScoutingOpen(false), 120);
+              setScoutingTimeout(timeout);
+            }}
           >
             <button
               className="flex items-center gap-1 hover:text-green-400 font-semibold px-2"
