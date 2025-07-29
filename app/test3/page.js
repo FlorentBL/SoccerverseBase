@@ -227,17 +227,17 @@ export default function ClubProjectionPage() {
   }
 
   // Calcul simulation
-  let simSoldeFin = null, simCapacite = null, simChargeFixe = null;
-  if (results && transfertSim !== "" && salaireSim !== "") {
-    const weeksRestantes = results.weeksRestantes || 0;
-    const transfert = parseFloat(transfertSim.replace(",", ".")) || 0;
-    const salaireHebdo = parseFloat(salaireSim.replace(",", ".")) || 0;
-    const chargeSalaireTotale = salaireHebdo * weeksRestantes;
+let simSoldeFin = null, simCapacite = null, simChargeFixe = null, simChargeSalaire = null, nWeeksRestantes = null;
+if (results && transfertSim && salaireSim) {
+  const nWeeksRestantes = (results.weeksTotal || 0) - (results.weeksPlayed || 0);
+  const transfert = parseFloat(transfertSim.replace(",", "."));
+  const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
+  simChargeSalaire = salaireHebdo * nWeeksRestantes;
 
-    simChargeFixe = results.chargeFixeProj + chargeSalaireTotale;
-    simSoldeFin = results.soldeFinS2 - transfert - chargeSalaireTotale;
-    simCapacite = results.capaciteInvest - transfert - chargeSalaireTotale;
-  }
+  simChargeFixe = results.chargeFixeProj + simChargeSalaire;
+  simSoldeFin = results.soldeFinS2 - transfert - simChargeSalaire;
+  simCapacite = results.capaciteInvest - transfert - simChargeSalaire;
+}
 
   return (
     <div className="min-h-screen bg-[#181B23] py-8 px-4 flex flex-col items-center">
