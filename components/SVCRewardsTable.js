@@ -30,9 +30,9 @@ export default function SVCRewardsTable({ data }) {
   );
 
   return (
-    <div className="bg-[#181c23] rounded-2xl shadow-2xl overflow-x-auto py-10 px-4 sm:px-14 max-w-full">
+    <div className="bg-[#181c23] rounded-2xl shadow-2xl overflow-x-auto py-7 px-2 sm:px-14 max-w-full">
       {/* Filtres */}
-      <div className="flex flex-wrap gap-7 mb-5 justify-center items-end">
+      <div className="flex flex-wrap gap-5 mb-5 justify-center items-end">
         <label className="flex flex-col items-center text-base text-gray-200 font-semibold">
           Note min.
           <input
@@ -62,22 +62,27 @@ export default function SVCRewardsTable({ data }) {
         Toutes les valeurs du tableau sont exprimées en SVC (Soccerverse Coin)
       </div>
 
+      {/* Indice scroll mobile */}
+      <div className="sm:hidden text-center text-gray-400 text-xs pb-2">
+        ↔️ Faites défiler le tableau horizontalement
+      </div>
+
       {/* Tableau */}
-      <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-        <table className="w-full min-w-[1100px] text-center text-[17px] font-medium">
+      <div className="overflow-x-auto -mx-2 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
+        <table className="w-full min-w-[650px] sm:min-w-[1100px] text-center text-[14px] sm:text-[17px] font-medium">
           <thead>
             <tr className="bg-[#23282f] text-white">
               {columns.map(col => (
                 <th
                   key={col.key}
-                  className="px-4 py-3 font-bold whitespace-nowrap text-[15px] border-b-2 border-[#262b32]"
+                  className="px-2 sm:px-4 py-2 sm:py-3 font-bold whitespace-nowrap text-[13px] sm:text-[15px] border-b-2 border-[#262b32]"
                   style={{ position: "relative" }}
                 >
                   <div className="flex items-center justify-center gap-1">
                     {col.label}
                     {col.tip && (
                       <span className="group relative cursor-pointer">
-                        <Info size={15} className="text-green-400" />
+                        <Info size={14} className="text-green-400" />
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 pointer-events-none bg-black bg-opacity-90 text-gray-200 text-xs rounded shadow-md px-2 py-1 z-10 whitespace-nowrap transition-opacity">
                           {col.tip}
                         </span>
@@ -97,7 +102,7 @@ export default function SVCRewardsTable({ data }) {
                 {columns.map(col => (
                   <td
                     key={col.key}
-                    className={`px-4 py-2 whitespace-nowrap ${col.key === "rating" ? "font-bold text-green-300" : ""}`}
+                    className={`px-2 sm:px-4 py-2 whitespace-nowrap ${col.key === "rating" ? "font-bold text-green-300" : ""}`}
                   >
                     {col.key === "rating"
                       ? row[col.key]
