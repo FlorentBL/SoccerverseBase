@@ -28,7 +28,6 @@ const FIELD_ORDER = [
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
 
-// Format montant en SVC, divisé par 10 000
 function formatSVC(val) {
   if (typeof val !== "number") return "-";
   const corrected = val / 10000;
@@ -38,14 +37,12 @@ function formatSVC(val) {
   }) + " $SVC";
 }
 
-// Format date UNIX -> JJ/MM/AAAA
 function formatDate(timestamp) {
   if (!timestamp) return "-";
   const d = new Date(timestamp * 1000);
   return d.toLocaleDateString("fr-FR");
 }
 
-// Format nombre compact pour la balance globale
 function formatBigSVC(val) {
   if (typeof val !== "number") return "-";
   const corrected = val / 10000;
@@ -75,12 +72,12 @@ export default function ClubFinancesPage() {
     setBalance(null);
 
     try {
-      // Récupération de la balance club
-      const clubsRes = await fetch(`/api/clubs?club_id=${clubId}`);
+      // Récupération de la balance club (via /clubs/detailed)
+      const clubsRes = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`);
       if (!clubsRes.ok) throw new Error("Erreur API clubs: " + clubsRes.status);
       const clubsJson = await clubsRes.json();
       const foundClub = Array.isArray(clubsJson.items) ? clubsJson.items[0] : (clubsJson.items ?? [])[0];
-      setBalance(foundClub ? foundClub.balance : null);
+      setBalance(foundClub && typeof foundClub.balance === "number" ? foundClub.balance : null);
 
       // Récupération bilan détaillé
       const url = `/api/club_balance_sheet/weeks?club_id=${clubId}&season_id=${seasonId}`;
