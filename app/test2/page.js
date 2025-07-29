@@ -3,8 +3,17 @@ import React, { useState } from "react";
 
 // Helper pour formater les montants
 function formatMoney(val) {
-  return val?.toLocaleString("fr-FR", { style: "currency", currency: "USD", maximumFractionDigits: 0 }) ?? "-";
+  if (typeof val !== "number") return "-";
+  // Correction de l'unité : divise par 10 000 pour correspondre à l'UI officielle
+  const corrected = val / 10000;
+  return corrected.toLocaleString("fr-FR", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: corrected < 1000 ? 2 : 0, // Arrondi sympa
+    minimumFractionDigits: 0,
+  });
 }
+
 
 const FIELD_LABELS = {
   agent_wages: "Salaires agents",
