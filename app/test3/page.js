@@ -57,42 +57,48 @@ function formatBigSVC(val) {
     return (corrected / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " k $SVC";
   return corrected.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " $SVC";
 }
+function formatDate(timestamp) {
+  if (!timestamp) return "-";
+  const d = new Date(timestamp * 1000);
+  return d.toLocaleDateString("fr-FR");
+}
 
 export default function ClubProjectionPage() {
   const [clubId, setClubId] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  // Ajout pour le détail par semaine
+  const [showS1Detail, setShowS1Detail] = useState(false);
+  const [showS2Detail, setShowS2Detail] = useState(false);
 
-  // Appel API et analyse
   const handleSubmit = async (e) => {
     e.preventDefault();
     setResults(null);
     setErr("");
     setLoading(true);
+    setShowS1Detail(false);
+    setShowS2Detail(false);
     try {
-      // Fetch solde actuel
+      // Solde actuel
       const clubRes = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`);
       if (!clubRes.ok) throw new Error("Erreur solde club");
       const clubData = await clubRes.json();
       const solde = clubData.items?.[0]?.balance ?? 0;
 
-      // Fetch bilans S1 & S2
+      // Bilan S1 & S2
       const [s1, s2] = await Promise.all([1, 2].map(async season => {
         const res = await fetch(`https://services.soccerverse.com/api/club_balance_sheet/weeks?club_id=${clubId}&season_id=${season}`);
         if (!res.ok) throw new Error(`Erreur bilan S${season}`);
         return await res.json();
       }));
 
-      // Analyse S1
       const bilanS1 = aggregateBilan(s1);
-      // Analyse S2
       const bilanS2 = aggregateBilan(s2);
 
-      // Projection S2 : moyenne * semaines prévues (on suppose même nombre de journées que déjà jouées, à ajuster si besoin)
+      // Projection S2
       const weeksPlayed = s2.length;
-      const weeksTotal = weeksPlayed * 2; // À AJUSTER si tu veux mettre un nombre précis de semaines S2
-
+      const weeksTotal = weeksPlayed * 2; // à ajuster si tu veux forcer un nombre précis
       const moyS2 = {};
       FIELD_ORDER.forEach(k => {
         moyS2[k] = weeksPlayed > 0 ? (bilanS2[k] ?? 0) / weeksPlayed : 0;
@@ -102,13 +108,10 @@ export default function ClubProjectionPage() {
         projS2[k] = moyS2[k] * weeksTotal;
       });
 
-      // Solde projeté fin S2
       const soldeFinS2 = solde + Object.entries(projS2).reduce((acc, [k, v]) => {
-        // Revenu = +, coût = -
         return COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v;
       }, 0);
 
-      // Capacité investissement : solde projeté + flux net S2 restants
       const fluxS2Restant = Object.entries(projS2).reduce((acc, [k, v]) => {
         return COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v;
       }, 0) - Object.entries(bilanS2).reduce((acc, [k, v]) => {
@@ -116,13 +119,15 @@ export default function ClubProjectionPage() {
       }, 0);
 
       const capaciteInvest = solde + fluxS2Restant;
-
-      // Capacité salariale : estimation en fonction du solde projeté restant après dépenses fixes hors transferts
-      const chargesHorsTransferts = ["player_wages", "agent_wages", "managers_wage", "ground_maintenance", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"];
+      const chargesHorsTransferts = [
+        "player_wages", "agent_wages", "managers_wage",
+        "ground_maintenance", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
+      ];
       const chargeFixeProj = chargesHorsTransferts.reduce((acc, k) => acc + Math.abs(projS2[k] ?? 0), 0);
 
       setResults({
-        solde, bilanS1, bilanS2, moyS2, projS2, soldeFinS2, capaciteInvest, chargeFixeProj, weeksPlayed, weeksTotal
+        solde, bilanS1, bilanS2, moyS2, projS2, soldeFinS2, capaciteInvest, chargeFixeProj,
+        weeksPlayed, weeksTotal, s1, s2
       });
     } catch (e) {
       setErr(e.message);
@@ -131,7 +136,6 @@ export default function ClubProjectionPage() {
     }
   };
 
-  // Agrège les semaines en saison
   function aggregateBilan(weeks) {
     const sum = {};
     weeks.forEach(week => {
@@ -175,10 +179,37 @@ export default function ClubProjectionPage() {
                 </div>
               </div>
             </div>
+            {/* Saison 1 */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">Bilan Saison 1</h2>
-            <FinanceTable bilan={results.bilanS1} />
+            <FinanceTable bilan={results.bilanS1} weeks={results.s1.length} />
+            <div className="mt-2 mb-4 flex justify-end">
+              <button
+                className="text-sm underline text-gray-300 hover:text-green-300"
+                onClick={() => setShowS1Detail(s => !s)}
+              >
+                {showS1Detail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
+              </button>
+            </div>
+            {showS1Detail && (
+              <DetailWeeksTable weeks={results.s1} />
+            )}
+
+            {/* Saison 2 */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">Bilan Saison 2 (en cours)</h2>
             <FinanceTable bilan={results.bilanS2} weeks={results.weeksPlayed} />
+            <div className="mt-2 mb-4 flex justify-end">
+              <button
+                className="text-sm underline text-gray-300 hover:text-green-300"
+                onClick={() => setShowS2Detail(s => !s)}
+              >
+                {showS2Detail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
+              </button>
+            </div>
+            {showS2Detail && (
+              <DetailWeeksTable weeks={results.s2} />
+            )}
+
+            {/* Projection */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-yellow-300 text-center">Projection Fin Saison 2</h2>
             <FinanceTable bilan={results.projS2} weeks={results.weeksTotal} isProj />
             <div className="my-10 bg-[#23263a] rounded-xl shadow-lg p-7 border border-gray-800">
@@ -205,10 +236,10 @@ export default function ClubProjectionPage() {
   );
 }
 
-// Composant tableau synthèse finances
+// Synthèse finance par saison/projection
 function FinanceTable({ bilan, weeks, isProj }) {
   return (
-    <div className="bg-[#23263a] text-white rounded-xl shadow-lg p-5 mb-8 border border-gray-800">
+    <div className="bg-[#23263a] text-white rounded-xl shadow-lg p-5 mb-2 border border-gray-800">
       <table className="w-full text-base">
         <thead>
           <tr>
@@ -234,6 +265,47 @@ function FinanceTable({ bilan, weeks, isProj }) {
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Détail par semaine (tableau)
+function DetailWeeksTable({ weeks }) {
+  return (
+    <div className="bg-[#23263a] rounded-xl shadow p-5 text-xs border border-gray-800 mb-6">
+      <h3 className="font-bold mb-3 text-gray-200">Détail par semaine</h3>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border border-[#363a57] text-xs text-gray-100">
+          <thead className="bg-[#202330]">
+            <tr>
+              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Week</th>
+              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Date</th>
+              {FIELD_ORDER.map(k => (
+                <th key={k} className="px-2 py-1 border-b border-[#363a57] font-semibold text-gray-300">{FIELD_LABELS[k] || k}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {weeks.map((w, i) => (
+              <tr key={i} className={i % 2 ? "bg-[#222436]" : "bg-[#1b1e29]"}>
+                <td className="px-2 py-1 border-b border-[#363a57]">{w.game_week}</td>
+                <td className="px-2 py-1 border-b border-[#363a57]">{formatDate(w.date)}</td>
+                {FIELD_ORDER.map(k => (
+                  <td
+                    key={k}
+                    className={
+                      "px-2 py-1 border-b border-[#363a57] text-right font-mono " +
+                      (COST_FIELDS.includes(k) && w[k] !== 0 ? "text-red-400" : "")
+                    }
+                  >
+                    {formatSVC(w[k] ?? 0, k)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
