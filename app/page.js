@@ -195,7 +195,7 @@ export default function DebuterPage() {
             <FaUserPlus className="text-2xl" /> Inscription Soccerverse
           </a>
           <a
-            href="https://play.soccerverse.com/?pack=https://elrincondeldt.com/sv/rincon_v1.json"
+            href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
             className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl px-6 py-4 text-lg font-bold shadow transition w-full"
           >
