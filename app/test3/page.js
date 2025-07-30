@@ -88,18 +88,20 @@ export default function ClubProjectionPage() {
         if (COST_FIELDS.includes(k)) totalCharges += Math.abs(projS2[k] ?? 0);
         else totalRecettes += projS2[k] ?? 0;
       });
-      const soldeFinS2 = solde + Object.entries(projS2).reduce((acc, [k, v]) => (
-        COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v
-      ), 0);
+      const soldeFinS2 = Number.isFinite(solde)
+  ? solde + Object.entries(projS2).reduce((acc, [k, v]) => (
+      COST_FIELDS.includes(k) ? acc - Math.abs(v || 0) : acc + (v || 0)
+    ), 0)
+  : 0;
       const masseSalariale = Math.abs(projS2.player_wages ?? 0);
 
       setResults({
         solde,
         bilanS1,
-        matchWeeksS1,
+        matchWeeksS1,     // <== AJOUTE
         nbJoursTotal,
         bilanS2,
-        matchWeeksS2,
+        matchWeeksS2,     // <== AJOUTE
         nbJoursS2,
         nbJoursRestantes,
         projS2,
@@ -108,7 +110,9 @@ export default function ClubProjectionPage() {
         masseSalariale,
         totalRecettes,
         totalCharges,
-      });
+        s1: matchWeeksS1, // <== AJOUTE
+        s2: matchWeeksS2, // <== AJOUTE
+});
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -121,8 +125,8 @@ export default function ClubProjectionPage() {
     if (!results) return;
     // Copie profonde du tableau de projection
     const simDetail = JSON.parse(JSON.stringify(results.projDetail));
-    const transfert = parseFloat(transfertSim.replace(",", ".")) || 0;
-    const salaireHebdo = parseFloat(salaireSim.replace(",", ".")) || 0;
+    const transfert = (parseFloat(transfertSim.replace(",", ".")) || 0) * 10000;
+  const salaireHebdo = (parseFloat(salaireSim.replace(",", ".")) || 0) * 10000;
     let simRecettes = 0, simCharges = 0;
 
     // Applique simulation
@@ -197,9 +201,9 @@ export default function ClubProjectionPage() {
         {results && (
           <>
             {/* Saison 1 */}
-            <Saison1 bilan={results.bilanS1} weeks={results.nbJoursTotal} details={results.matchWeeksS1} />
+            <Saison1 bilan={results.bilanS1} weeks={results.nbJoursTotal} details={results.s1} />
             {/* Saison 2 */}
-            <Saison2 bilan={results.bilanS2} weeks={results.nbJoursS2} details={results.matchWeeksS2} />
+            <Saison2 bilan={results.bilanS2} weeks={results.nbJoursS2} details={results.s2} />
             {/* Projection Fin S2 */}
             <ProjectionFinS2
               bilan={results.projS2}
