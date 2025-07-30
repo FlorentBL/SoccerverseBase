@@ -3,8 +3,7 @@ import { FIELD_ORDER, FIELD_LABELS, COST_FIELDS, formatSVC, formatDate } from ".
 
 export default function DetailWeeksTable({ weeks, title }) {
   return (
-    <div className="bg-[#1e2130] rounded-xl shadow-sm p-4 text-xs border border-[#2c2f45] mb-6">
-
+    <div className="bg-[#0e111b] rounded-xl shadow-sm p-4 text-xs border border-[#3a3e5c] mb-6">
       {title && <h3 className="font-bold mb-3 text-gray-200">{title}</h3>}
       <div className="overflow-x-auto">
         <table className="min-w-full border border-[#363a57] text-xs text-gray-100">
