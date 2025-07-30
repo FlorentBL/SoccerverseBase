@@ -7,7 +7,7 @@ const TYPE_LABELS = {
   match_exterieur: "🚌 Matchs à l’extérieur",
   transfert: "💰 Transferts",
   injection: "🏦 Injections de trésorerie",
-  dividende: "📤 Versements aux actionnaires",
+  competition: "🏆 Compétitions",
   autre: "❓ Autres événements",
 };
 
