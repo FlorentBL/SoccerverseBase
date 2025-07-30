@@ -121,12 +121,17 @@ export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
 // Simulation : applique la simulation sur les projections
 export function generateSimulatedDetail(projDetail, transfert, salaireHebdo) {
   const detail = JSON.parse(JSON.stringify(projDetail));
+  const salaire = parseFloat(salaireHebdo) || 0;
+  const transfertCost = parseFloat(transfert) || 0;
+
   for (let i = 0; i < detail.length; ++i) {
-    detail[i].player_wages = (detail[i].player_wages ?? 0) - salaireHebdo;
-    if (i === 0 && transfert > 0) detail[i].transfers_out = (detail[i].transfers_out ?? 0) + transfert;
+    detail[i].player_wages = (detail[i].player_wages ?? 0) - salaire;
+    if (i === 0 && transfertCost > 0)
+      detail[i].transfers_out = (detail[i].transfers_out ?? 0) + transfertCost;
   }
   return detail;
 }
+
 
 export function getWeekType(week) {
   if ((week.prize_money || 0) > 0) return "competition";
