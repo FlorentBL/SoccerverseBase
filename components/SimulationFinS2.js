@@ -10,9 +10,7 @@ export default function SimulationFinS2({
 }) {
   const [showDetail, setShowDetail] = useState(false);
 
-  // Pour la vue avant simulation
   const baseWeeks = results?.projDetail || [];
-  // Pour la vue après simulation
   const simWeeks = simData?.detail || [];
 
   return (
