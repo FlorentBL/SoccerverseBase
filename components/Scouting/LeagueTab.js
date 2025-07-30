@@ -217,9 +217,6 @@ export default function LeagueTab() {
 </tbody>
             </table>
           </div>
-          <div style={{ fontSize: 13, color: "#aaa", marginTop: 14 }}>
-            Toutes les stats sont directement affichées (API “details” massivement utilisée).
-          </div>
         </div>
       )}
     </div>
