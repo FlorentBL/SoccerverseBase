@@ -17,16 +17,19 @@ export const FIELD_LABELS = {
   shareholder_prize_money: "Gains actionnaires",
   other_outgoings: "Autres dépenses"
 };
+
 export const FIELD_ORDER = [
   "cash_injection", "gate_receipts", "tv_revenue", "sponsor", "merchandise",
   "prize_money", "transfers_in", "other_income",
   "player_wages", "agent_wages", "managers_wage", "ground_maintenance",
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
+
 export const COST_FIELDS = [
   "player_wages", "agent_wages", "managers_wage", "ground_maintenance",
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
+
 export const NON_PROJECTED_FIELDS = [
   "cash_injection", "transfers_in", "transfers_out"
 ];
@@ -45,10 +48,12 @@ export function formatSVC(val, field) {
     minimumFractionDigits: 0,
   }) + " $SVC";
 }
+
 export function formatBigSVC(val) {
   if (typeof val !== "number") return "-";
   return Math.round(val / 10000).toLocaleString("fr-FR") + " $SVC";
 }
+
 export function formatDate(timestamp) {
   if (!timestamp) return "-";
   const d = new Date(timestamp * 1000);
@@ -66,35 +71,49 @@ export function aggregateBilan(weeks) {
   return sum;
 }
 
-// Projection : génère les “matchs projetés” (format identique à matchWeek)
-export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
-  // On projette chaque journée avec la moyenne S2 de chaque champ
+// Projection : utilise moyennes séparées pour domicile et global
+export function generateProjectionDetail(matchWeeksS2, _, nbJoursTotal) {
   const nDom = Math.ceil(nbJoursTotal / 2);
-  const nExt = nbJoursTotal - nDom;
-  let idxDom = 0, idxExt = 0;
+
+  const played = matchWeeksS2.filter(isMatchWeek);
+  const homeWeeks = played.filter(w => (w.gate_receipts ?? 0) > 0);
+  const homeOnlyFields = ["gate_receipts", "sponsor", "merchandise"];
+
+  const avgHome = {};
+  homeOnlyFields.forEach(k => {
+    avgHome[k] =
+      homeWeeks.reduce((sum, w) => sum + (w[k] ?? 0), 0) / (homeWeeks.length || 1);
+  });
+
+  const avgGlobal = {};
+  FIELD_ORDER.forEach(k => {
+    if (![...homeOnlyFields, ...NON_PROJECTED_FIELDS].includes(k)) {
+      avgGlobal[k] =
+        played.reduce((sum, w) => sum + (w[k] ?? 0), 0) / (played.length || 1);
+    }
+  });
+
   const proj = [];
   for (let i = 0; i < nbJoursTotal; ++i) {
-    const isHome = i % 2 === 0; // alternance domicile/extérieur
+    const isHome = i % 2 === 0;
     const week = {};
     FIELD_ORDER.forEach(k => {
       if (NON_PROJECTED_FIELDS.includes(k)) {
-        week[k] = 0; // rien à projeter en one-shot
-      } else if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
-        // que les matchs à domicile
-        week[k] = isHome ? (moyS2[k] ?? 0) : 0;
+        week[k] = 0;
+      } else if (homeOnlyFields.includes(k)) {
+        week[k] = isHome ? avgHome[k] ?? 0 : 0;
       } else {
-        // tous les matchs
-        week[k] = moyS2[k] ?? 0;
+        week[k] = avgGlobal[k] ?? 0;
       }
     });
     proj.push(week);
   }
+
   return proj;
 }
 
-// Simulation : applique la simulation sur le détail de projection
+// Simulation : applique la simulation sur les projections
 export function generateSimulatedDetail(projDetail, transfert, salaireHebdo) {
-  // Deep copy pour ne pas modifier l’original
   const detail = JSON.parse(JSON.stringify(projDetail));
   for (let i = 0; i < detail.length; ++i) {
     detail[i].player_wages = (detail[i].player_wages ?? 0) - salaireHebdo;
