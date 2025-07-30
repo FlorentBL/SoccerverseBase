@@ -65,14 +65,14 @@ export default function ClubProjectionPage() {
 
       // Moyenne par champ sur les manches jouées S2
       const sumMatchWeeksS2 = {};
-      matchWeeksS2.forEach(week => {
-        Object.entries(week).forEach(([k, v]) => {
-          if (typeof v === "number") sumMatchWeeksS2[k] = (sumMatchWeeksS2[k] ?? 0) + v;
-        });
-      });
+s2.forEach(week => {
+  Object.entries(week).forEach(([k, v]) => {
+    if (typeof v === "number") sumMatchWeeksS2[k] = (sumMatchWeeksS2[k] ?? 0) + v;
+  });
+});
       const moyS2 = {};
       FIELD_ORDER.forEach(k => {
-        moyS2[k] = nbJoursS2 > 0 ? (sumMatchWeeksS2[k] ?? 0) / nbJoursS2 : 0;
+        moyS2[k] = s2.length > 0 ? (sumMatchWeeksS2[k] ?? 0) / s2.length : 0;
       });
 
       // PROJECTION PAR MANCHE
