@@ -235,30 +235,26 @@ export default function ClubProjectionPage() {
       });
 
       // 5. Projection S2 par match projeté (tableau complet J par J)
-      const projectedWeeks = [];
-      for (let i = 0; i < nbMatchsTotal; i++) {
-        const projLine = {};
-        FIELD_ORDER.forEach(k => {
-          if (NON_PROJECTED_FIELDS.includes(k)) {
-            // Ces champs ne sont pas projetés (valeur nulle)
-            projLine[k] = 0;
-          } else {
-            // Projection : valeur moyenne par journée
-            // Champs “par match domicile” (1 sur 2)
-            if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
-              projLine[k] = i % 2 === 0 ? moyS2[k] : 0;
-            }
-            // Autres, chaque match
-            else {
-              projLine[k] = moyS2[k];
-            }
-          }
-        });
-        // Pas de date/game_week estimée (sauf si tu veux : ajoute game_week: i+1)
-        projLine.game_week = i + 1;
-        projLine.date = null;
-        projectedWeeks.push(projLine);
+const projectedWeeks = [];
+for (let i = 0; i < nbMatchsTotal; i++) {
+  const projLine = {};
+  FIELD_ORDER.forEach(k => {
+    if (NON_PROJECTED_FIELDS.includes(k)) {
+      projLine[k] = 0;
+    } else {
+      // Projection : valeur moyenne par journée
+      if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
+        projLine[k] = i % 2 === 0 ? moyS2[k] : 0;
+      } else {
+        projLine[k] = moyS2[k];
       }
+    }
+  });
+  // Patch robustesse : toujours les méta-données de semaine
+  projLine.game_week = i + 1;
+  projLine.date = null;
+  projectedWeeks.push(projLine);
+}
 
       // 6. Synthèse projetée (sur nbMatchsTotal)
       const projS2 = {};
