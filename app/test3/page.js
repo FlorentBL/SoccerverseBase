@@ -96,22 +96,22 @@ export default function ClubProjectionPage() {
       const masseSalariale = Math.abs(projS2.player_wages ?? 0);
 
       setResults({
-        solde,
-        bilanS1,
-        matchWeeksS1,     // <== AJOUTE
-        nbJoursTotal,
-        bilanS2,
-        matchWeeksS2,     // <== AJOUTE
-        nbJoursS2,
-        nbJoursRestantes,
-        projS2,
-        projDetail,
-        soldeFinS2,
-        masseSalariale,
-        totalRecettes,
-        totalCharges,
-        s1: matchWeeksS1, // <== AJOUTE
-        s2: matchWeeksS2, // <== AJOUTE
+  solde,
+  bilanS1,
+  matchWeeksS1,   // = s1.filter(isMatchWeek)
+  nbJoursTotal,
+  bilanS2,
+  matchWeeksS2,
+  nbJoursS2,
+  nbJoursRestantes,
+  projS2,
+  projDetail,
+  soldeFinS2,
+  masseSalariale,
+  totalRecettes,
+  totalCharges,
+  s1,   // <-- liste complète TOUTES les gameweeks S1 (pas matchWeeksS1)
+  s2,   // <-- idem pour S2
 });
     } catch (e) {
       setErr(e.message);
