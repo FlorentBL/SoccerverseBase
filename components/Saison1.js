@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import FinanceTable from "./FinanceTable";
 import DetailWeeksTable from "./DetailWeeksTable";
+import GroupedWeeksTable from "./GroupedWeeksTable";
 
 export default function Saison1({ bilan, weeks, details }) {
   const [showDetail, setShowDetail] = useState(false);
@@ -16,7 +17,7 @@ export default function Saison1({ bilan, weeks, details }) {
           {showDetail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
         </button>
       </div>
-      {showDetail && <DetailWeeksTable weeks={details} title="Détail par manche S1" />}
+      {showDetail && <GroupedWeeksTable weeks={details} />}
     </>
   );
 }

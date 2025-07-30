@@ -102,3 +102,13 @@ export function generateSimulatedDetail(projDetail, transfert, salaireHebdo) {
   }
   return detail;
 }
+
+export function getWeekType(week) {
+  if ((week.transfers_in || 0) > 0 || (week.transfers_out || 0) > 0) return "transfert";
+  if ((week.cash_injection || 0) > 0) return "injection";
+  if ((week.shareholder_payouts || 0) > 0 || (week.shareholder_prize_money || 0) > 0) return "dividende";
+  if ((week.player_wages || 0) > 0) {
+    return (week.gate_receipts || 0) > 0 ? "match_domicile" : "match_exterieur";
+  }
+  return "autre";
+}

@@ -3,6 +3,7 @@ import FinanceTable from "./FinanceTable";
 import DetailWeeksTable from "./DetailWeeksTable";
 import RecapSynthese from "./RecapSynthese";
 import { generateSimulatedDetail } from "./utils";
+import GroupedWeeksTable from "./GroupedWeeksTable";
 
 export default function SimulationFinS2({
   results, simData, transfertSim, salaireSim, setTransfertSim, setSalaireSim
@@ -58,7 +59,7 @@ export default function SimulationFinS2({
               {showDetail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
             </button>
           </div>
-          {showDetail && <DetailWeeksTable weeks={simWeeks} title="Détail par manche (simulation)" />}
+          {showDetail && <GroupedWeeksTable weeks={simWeeks} />}
         </>
       )}
     </div>
