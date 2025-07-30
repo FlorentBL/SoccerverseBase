@@ -8,6 +8,7 @@ import { FiMenu, FiX } from "react-icons/fi";
 const menuItems = [
   { href: "/revenus", label: "Gains Joueurs" },
   { href: "/scouting", label: "Scouting" },
+  { href: "/finance", label: "Analyse financière" },
 ];
 
 export default function Navbar() {
