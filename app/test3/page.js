@@ -121,42 +121,45 @@ s2.forEach(week => {
   };
 
   // === SIMULATION LOGIC ===
-  function runSimulation() {
-    if (!results) return;
-    // Copie profonde du tableau de projection
-    const simDetail = JSON.parse(JSON.stringify(results.projDetail));
-    const transfert = (parseFloat(transfertSim.replace(",", ".")) || 0) * 10000;
+function runSimulation() {
+  if (!results) return;
+  const simDetail = JSON.parse(JSON.stringify(results.projDetail));
+  const transfert = (parseFloat(transfertSim.replace(",", ".")) || 0) * 10000;
   const salaireHebdo = (parseFloat(salaireSim.replace(",", ".")) || 0) * 10000;
-    let simRecettes = 0, simCharges = 0;
+  let simRecettes = 0, simCharges = 0;
 
-    // Applique simulation
-    for (let i = 0; i < simDetail.length; ++i) {
-      // Ajout du salaire supplémentaire
-      simDetail[i].player_wages = (simDetail[i].player_wages ?? 0) - salaireHebdo;
-      // Premier match simulé : applique le transfert en sortie
-      if (i === 0 && transfert > 0) simDetail[i].transfers_out = (simDetail[i].transfers_out ?? 0) + transfert;
-    }
-    // Récap total simulé
-    const simBilan = aggregate(simDetail);
-    const simSoldeFin = results.solde + Object.entries(simBilan).reduce((acc, [k, v]) => (
-      COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v
-    ), 0);
-    const simMasseSalariale = Math.abs(simBilan.player_wages ?? 0);
-    FIELD_ORDER.forEach(k => {
-      if (NON_PROJECTED_FIELDS.includes(k)) return;
-      if (COST_FIELDS.includes(k)) simCharges += Math.abs(simBilan[k] ?? 0);
-      else simRecettes += simBilan[k] ?? 0;
-    });
-
-    setSimData({
-      bilan: simBilan,
-      soldeFinS2: simSoldeFin,
-      masseSalariale: simMasseSalariale,
-      totalRecettes: simRecettes,
-      totalCharges: simCharges,
-      detail: simDetail,
-    });
+  // Ajoute le salaire simulé sur les journées restantes
+  for (let i = results.nbJoursS2; i < simDetail.length; ++i) {
+    simDetail[i].player_wages = (simDetail[i].player_wages ?? 0) + salaireHebdo;
   }
+
+  // Ajoute le transfert sur la première journée restante
+  if (transfert > 0 && results.nbJoursS2 < simDetail.length) {
+    simDetail[results.nbJoursS2].transfers_out = (simDetail[results.nbJoursS2].transfers_out ?? 0) + transfert;
+  }
+
+  // Récap total simulé
+  const simBilan = aggregate(simDetail);
+  const simSoldeFin = results.solde + Object.entries(simBilan).reduce((acc, [k, v]) => (
+    COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v
+  ), 0);
+  const simMasseSalariale = Math.abs(simBilan.player_wages ?? 0);
+  FIELD_ORDER.forEach(k => {
+    if (NON_PROJECTED_FIELDS.includes(k)) return;
+    if (COST_FIELDS.includes(k)) simCharges += Math.abs(simBilan[k] ?? 0);
+    else simRecettes += simBilan[k] ?? 0;
+  });
+
+  setSimData({
+    bilan: simBilan,
+    soldeFinS2: simSoldeFin,
+    masseSalariale: simMasseSalariale,
+    totalRecettes: simRecettes,
+    totalCharges: simCharges,
+    detail: simDetail,
+  });
+}
+
 
   // Appelle la simulation en live
   React.useEffect(() => {
