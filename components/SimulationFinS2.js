@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import FinanceTable from "./FinanceTable";
-import DetailWeeksTable from "./DetailWeeksTable";
 import RecapSynthese from "./RecapSynthese";
 import { generateSimulatedDetail } from "./utils";
 import GroupedWeeksTable from "./GroupedWeeksTable";
@@ -10,7 +9,9 @@ export default function SimulationFinS2({
 }) {
   const [showDetail, setShowDetail] = useState(false);
 
+  // Vue avant simulation
   const baseWeeks = results?.projDetail || [];
+  // Vue après simulation
   const simWeeks = simData?.detail || [];
 
   return (

@@ -34,6 +34,7 @@ export const NON_PROJECTED_FIELDS = [
   "cash_injection", "transfers_in", "transfers_out"
 ];
 
+// === UTILS ===
 export function isMatchWeek(week) {
   return typeof week.player_wages === "number" && Math.abs(week.player_wages) > 0;
 }
@@ -42,7 +43,7 @@ export function formatSVC(val, field) {
   if (typeof val !== "number") return "-";
   const absVal = Math.abs(val / 10000);
   const isCost = field && COST_FIELDS.includes(field);
-  const sign = isCost && absVal > 0 ? "-" : "";
+  const sign = isCost && val < 0 ? "-" : "";
   return sign + absVal.toLocaleString("fr-FR", {
     maximumFractionDigits: absVal < 1000 ? 2 : 0,
     minimumFractionDigits: 0,
@@ -71,15 +72,14 @@ export function aggregateBilan(weeks) {
   return sum;
 }
 
-// Projection : utilise moyennes séparées pour domicile et global
+// === LOGIQUE PROJECTION ===
+// Projection : moyenne domicile pour guichets/sponsors/merch, globale pour TV et charges
 export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
   const nDom = Math.ceil(nbJoursTotal / 2);
   const nExt = nbJoursTotal - nDom;
 
-  // 1. Extraire les matchs à domicile
+  // 1. Matchs domicile
   const matchDom = matchWeeksS2.filter(w => (w.gate_receipts ?? 0) > 0);
-
-  // 2. Calculer les moyennes à domicile
   const moyDom = {};
   ["gate_receipts", "sponsor", "merchandise"].forEach(k => {
     moyDom[k] = matchDom.length > 0
@@ -87,50 +87,36 @@ export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
       : 0;
   });
 
-  // 3. Calculer la moyenne tous matchs confondus (y compris droits TV)
-  const moyAll = {};
-  FIELD_ORDER.forEach(k => {
-    const relevantWeeks = matchWeeksS2.filter(w => typeof w[k] === "number");
-    moyAll[k] = relevantWeeks.length > 0
-      ? relevantWeeks.reduce((acc, w) => acc + w[k], 0) / relevantWeeks.length
-      : 0;
-  });
-
-  // 4. Générer les projections alternant domicile / extérieur
+  // 2. Projection
   const proj = [];
   for (let i = 0; i < nbJoursTotal; ++i) {
     const isHome = i % 2 === 0;
     const week = {};
-
     FIELD_ORDER.forEach(k => {
       if (NON_PROJECTED_FIELDS.includes(k)) {
         week[k] = 0;
       } else if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
         week[k] = isHome ? moyDom[k] : 0;
       } else {
-        week[k] = moyAll[k];
+        week[k] = moyS2[k] ?? 0;
       }
     });
-
     proj.push(week);
   }
-
   return proj;
 }
 
-
-// Simulation : applique la simulation sur les projections
+// Simulation : ajoute salaire joueur et transfert au total projeté
 export function generateSimulatedDetail(projDetail, transfert, salaireHebdo) {
-  const salaire = Number(salaireHebdo) || 0;
-  const montantTransfert = Number(transfert) || 0;
   const detail = JSON.parse(JSON.stringify(projDetail));
   for (let i = 0; i < detail.length; ++i) {
-    detail[i].player_wages = (detail[i].player_wages ?? 0) + salaire;
-    if (i === 0 && montantTransfert > 0) detail[i].transfers_out = (detail[i].transfers_out ?? 0) + montantTransfert;
+    // Ajout du nouveau salaire simulé
+    detail[i].player_wages = (detail[i].player_wages ?? 0) + Number(salaireHebdo);
+    // Transfert : une seule fois sur la première semaine
+    if (i === 0 && transfert > 0) detail[i].transfers_out = (detail[i].transfers_out ?? 0) + Number(transfert);
   }
   return detail;
 }
-
 
 export function getWeekType(week) {
   if ((week.prize_money || 0) > 0) return "competition";
