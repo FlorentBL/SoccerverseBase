@@ -1,11 +1,26 @@
-import React, { useState } from "react";
-import FinanceTable from "./FinanceTable";
-import DetailWeeksTable from "./DetailWeeksTable";
-import RecapSynthese from "./RecapSynthese";
-import GroupedWeeksTable from "./GroupedWeeksTable";
-
 export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap }) {
   const [showDetail, setShowDetail] = useState(false);
+
+  if (showDetail) {
+    console.log("🔎 [ProjectionFinS2] detailProj passed to GroupedWeeksTable:", detailProj);
+    if (!Array.isArray(detailProj)) {
+      console.error("❌ detailProj N'EST PAS un array !", detailProj);
+    } else {
+      detailProj.forEach((w, i) => {
+        if (!w || typeof w !== "object") {
+          console.error(`❌ Semaine invalide à l'index ${i}:`, w);
+        } else {
+          // Ajoute ici FIELD_ORDER si tu veux un contrôle strict de toutes les clés métiers
+          // FIELD_ORDER.forEach(k => {
+          //   if (!(k in w)) {
+          //     console.warn(`⚠️  Clé absente "${k}" à l'index ${i}:`, w);
+          //   }
+          // });
+        }
+      });
+    }
+  }
+
   return (
     <>
       <h2 className="text-lg font-bold mt-8 mb-3 text-yellow-300 text-center">
