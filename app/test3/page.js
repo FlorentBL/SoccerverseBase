@@ -3,11 +3,11 @@ import React, { useState } from "react";
 import {
   FIELD_ORDER, COST_FIELDS, NON_PROJECTED_FIELDS,
   isMatchWeek, formatBigSVC, aggregateBilan, generateProjectionDetail, generateSimulatedDetail
-} from "./utils";
-import Saison1 from "./Saison1";
-import Saison2 from "./Saison2";
-import ProjectionFinS2 from "./ProjectionFinS2";
-import SimulationFinS2 from "./SimulationFinS2";
+} from "../../components/utils";
+import Saison1 from "../../components/Saison1";
+import Saison2 from "../../components/Saison2";
+import ProjectionFinS2 from "../../components/ProjectionFinS2";
+import SimulationFinS2 from "../../components/SimulationFinS2";
 
 // Agrégation d'une liste de semaines en un bilan
 function aggregate(weeks) {
