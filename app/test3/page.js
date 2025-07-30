@@ -60,8 +60,8 @@ export default function ClubProjectionPage() {
       const nbJoursRestantes = nbJoursTotal - nbJoursS2;
 
       // Bilans par saison
-      const bilanS1 = aggregate(matchWeeksS1);
-      const bilanS2 = aggregate(matchWeeksS2);
+      const bilanS1 = aggregate(s1);
+      const bilanS2 = aggregate(s2);
 
       // Moyenne par champ sur les manches jouées S2
       const sumMatchWeeksS2 = {};
