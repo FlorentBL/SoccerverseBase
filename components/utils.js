@@ -118,13 +118,15 @@ export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
   return proj;
 }
 
+
 // Simulation : applique la simulation sur les projections
 export function generateSimulatedDetail(projDetail, transfert, salaireHebdo) {
-  const salaire = Number(salaireHebdo); // ← CORRECTION ICI
+  const salaire = Number(salaireHebdo) || 0;
+  const montantTransfert = Number(transfert) || 0;
   const detail = JSON.parse(JSON.stringify(projDetail));
   for (let i = 0; i < detail.length; ++i) {
-    detail[i].player_wages = (detail[i].player_wages ?? 0) - salaire;
-    if (i === 0 && transfert > 0) detail[i].transfers_out = (detail[i].transfers_out ?? 0) + Number(transfert);
+    detail[i].player_wages = (detail[i].player_wages ?? 0) + salaire;
+    if (i === 0 && montantTransfert > 0) detail[i].transfers_out = (detail[i].transfers_out ?? 0) + montantTransfert;
   }
   return detail;
 }
