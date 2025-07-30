@@ -210,8 +210,8 @@ function runSimulation() {
             {/* Projection Fin S2 */}
             <ProjectionFinS2
   bilan={results.projS2}
-  nbJoursTotal={results.nbMatchsTotal}
-  detailProj={results.projectedWeeks}
+  nbJoursTotal={results.nbJoursTotal}
+  detailProj={results.projDetail} // <-- GOOD : existe bien dans setResults
   recap={{
     soldeFin: results.soldeFinS2,
     masseSalariale: results.masseSalariale,
