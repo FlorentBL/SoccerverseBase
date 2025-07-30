@@ -239,18 +239,14 @@ const projectedWeeks = [];
 for (let i = 0; i < nbMatchsTotal; i++) {
   const projLine = {};
   FIELD_ORDER.forEach(k => {
-    if (NON_PROJECTED_FIELDS.includes(k)) {
-      projLine[k] = 0;
-    } else {
-      // Projection : valeur moyenne par journée
-      if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
-        projLine[k] = i % 2 === 0 ? moyS2[k] : 0;
-      } else {
-        projLine[k] = moyS2[k];
-      }
+    // Sécurise chaque champ
+    projLine[k] = moyS2[k] ?? 0;
+    if (NON_PROJECTED_FIELDS.includes(k)) projLine[k] = 0;
+    // Spécifique pour les 1/2 à domicile
+    if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
+      projLine[k] = i % 2 === 0 ? (moyS2[k] ?? 0) : 0;
     }
   });
-  // Patch robustesse : toujours les méta-données de semaine
   projLine.game_week = i + 1;
   projLine.date = null;
   projectedWeeks.push(projLine);
