@@ -1,3 +1,9 @@
+import React, { useState } from "react";
+import FinanceTable from "./FinanceTable";
+import DetailWeeksTable from "./DetailWeeksTable";
+import RecapSynthese from "./RecapSynthese";
+import GroupedWeeksTable from "./GroupedWeeksTable";
+
 export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap }) {
   const [showDetail, setShowDetail] = useState(false);
 
