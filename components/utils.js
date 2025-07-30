@@ -87,21 +87,28 @@ export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
       : 0;
   });
 
-  // 3. Générer les projections alternant domicile / extérieur
+  // 3. Calculer la moyenne tous matchs confondus (y compris droits TV)
+  const moyAll = {};
+  FIELD_ORDER.forEach(k => {
+    const relevantWeeks = matchWeeksS2.filter(w => typeof w[k] === "number");
+    moyAll[k] = relevantWeeks.length > 0
+      ? relevantWeeks.reduce((acc, w) => acc + w[k], 0) / relevantWeeks.length
+      : 0;
+  });
+
+  // 4. Générer les projections alternant domicile / extérieur
   const proj = [];
   for (let i = 0; i < nbJoursTotal; ++i) {
-    const isHome = i % 2 === 0; // alternance domicile/extérieur
+    const isHome = i % 2 === 0;
     const week = {};
 
     FIELD_ORDER.forEach(k => {
       if (NON_PROJECTED_FIELDS.includes(k)) {
         week[k] = 0;
       } else if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
-        // uniquement domicile
         week[k] = isHome ? moyDom[k] : 0;
       } else {
-        // moyenne tous matchs confondus
-        week[k] = moyS2[k] ?? 0;
+        week[k] = moyAll[k];
       }
     });
 
@@ -111,21 +118,13 @@ export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
   return proj;
 }
 
-
 // Simulation : applique la simulation sur les projections
 export function generateSimulatedDetail(projDetail, transfert, salaireHebdo) {
   const detail = JSON.parse(JSON.stringify(projDetail));
-
   for (let i = 0; i < detail.length; ++i) {
-    // On augmente les charges salariales (player_wages est déjà un coût => valeur négative)
-    detail[i].player_wages = (detail[i].player_wages ?? 0) + (-salaireHebdo);
-
-    // Le transfert sort au premier match
-    if (i === 0 && transfert > 0) {
-      detail[i].transfers_out = (detail[i].transfers_out ?? 0) + transfert;
-    }
+    detail[i].player_wages = (detail[i].player_wages ?? 0) - salaireHebdo;
+    if (i === 0 && transfert > 0) detail[i].transfers_out = (detail[i].transfers_out ?? 0) + transfert;
   }
-
   return detail;
 }
 
