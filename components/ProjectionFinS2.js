@@ -8,8 +8,11 @@ export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap
   const [showDetail, setShowDetail] = useState(false);
   return (
     <>
-      <h2 className="text-lg font-bold mt-8 mb-3 text-yellow-300 text-center">Projection Fin Saison 2</h2>
+      <h2 className="text-lg font-bold mt-8 mb-3 text-yellow-300 text-center">
+        Projection Fin Saison 2
+      </h2>
       <FinanceTable bilan={bilan} weeks={nbJoursTotal} isProj />
+      {/* Affiche le recap synthèse en utilisant les props */}
       <RecapSynthese {...recap} />
       <div className="mt-2 mb-4 flex justify-end">
         <button

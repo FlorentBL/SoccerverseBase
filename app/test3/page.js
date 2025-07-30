@@ -206,16 +206,17 @@ s2.forEach(week => {
             <Saison2 bilan={results.bilanS2} weeks={results.nbJoursS2} details={results.s2} />
             {/* Projection Fin S2 */}
             <ProjectionFinS2
-              bilan={results.projS2}
-              nbJoursTotal={results.nbJoursTotal}
-              detailProj={results.projDetail}
-              recap={{
-                soldeFinS2: results.soldeFinS2,
-                masseSalariale: results.masseSalariale,
-                totalRecettes: results.totalRecettes,
-                totalCharges: results.totalCharges,
-              }}
-            />
+  bilan={results.projS2}
+  nbJoursTotal={results.nbMatchsTotal}
+  detailProj={results.projectedWeeks}
+  recap={{
+    soldeFin: results.soldeFinS2,
+    masseSalariale: results.masseSalariale,
+    totalRecettes: results.totalRecettes,
+    totalCharges: results.totalCharges
+  }}
+/>
+
             {/* Simulation */}
             <SimulationFinS2
               results={results}
