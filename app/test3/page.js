@@ -32,10 +32,19 @@ const COST_FIELDS = [
   "transfers_out", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
 ];
 
-// Champs à NE PAS projeter (one shot)
+// Champs à NE PAS projeter (one shot ou non récurrent)
 const NON_PROJECTED_FIELDS = [
   "cash_injection", "transfers_in", "transfers_out"
 ];
+
+// Est-ce une "vraie" journée de match (paie salaire joueur)
+function isMatchWeek(week) {
+  return typeof week.player_wages === "number" && Math.abs(week.player_wages) > 0;
+}
+
+function countMatchWeeks(weeks) {
+  return weeks.filter(isMatchWeek).length;
+}
 
 function formatSVC(val, field) {
   if (typeof val !== "number") return "-";
@@ -49,7 +58,6 @@ function formatSVC(val, field) {
 }
 function formatBigSVC(val) {
   if (typeof val !== "number") return "-";
-  // Affiche TOUJOURS la valeur entière (pas de M/k)
   return Math.round(val / 10000).toLocaleString("fr-FR") + " $SVC";
 }
 function formatDate(timestamp) {
@@ -66,7 +74,7 @@ function FinanceTable({ bilan, weeks, isProj }) {
           <tr>
             <th className="py-1 pr-4 text-left text-gray-400 font-semibold">Flux</th>
             <th className="py-1 text-right text-gray-400 font-semibold">
-              Montant {weeks && ("(" + (isProj ? "projection " : "total ") + weeks + " sem.)")}
+              Montant {weeks && ("(" + (isProj ? "projection " : "total ") + weeks + " journées)")}
             </th>
           </tr>
         </thead>
@@ -168,28 +176,36 @@ export default function ClubProjectionPage() {
       const bilanS1 = aggregateBilan(s1);
       const bilanS2 = aggregateBilan(s2);
 
-      // Nombre de semaines basé sur S1
-      const weeksTotal = s1.length;
-      const weeksPlayed = s2.length;
-      const weeksRestantes = weeksTotal - weeksPlayed;
+      // Calcul nombre de journées de match effectives
+      const nbMatchsS1 = countMatchWeeks(s1);
+      const nbMatchsS2 = countMatchWeeks(s2);
+      const matchsRestants = nbMatchsS1 - nbMatchsS2;
 
-      // Moyenne hebdo S2
+      // Moyenne par journée de match S2
+      const sumMatchWeeksS2 = {};
+      s2.forEach(week => {
+        if (isMatchWeek(week)) {
+          Object.entries(week).forEach(([k, v]) => {
+            if (typeof v === "number") sumMatchWeeksS2[k] = (sumMatchWeeksS2[k] ?? 0) + v;
+          });
+        }
+      });
       const moyS2 = {};
       FIELD_ORDER.forEach(k => {
-        moyS2[k] = weeksPlayed > 0 ? (bilanS2[k] ?? 0) / weeksPlayed : 0;
+        moyS2[k] = nbMatchsS2 > 0 ? (sumMatchWeeksS2[k] ?? 0) / nbMatchsS2 : 0;
       });
 
-      // Projection S2 : les champs NON_PROJECTED_FIELDS restent à leur valeur S2 réelle (pas projetée)
+      // Projection S2
       const projS2 = {};
       FIELD_ORDER.forEach(k => {
         if (NON_PROJECTED_FIELDS.includes(k)) {
           projS2[k] = bilanS2[k] ?? 0;
         } else {
-          projS2[k] = moyS2[k] * weeksTotal;
+          projS2[k] = moyS2[k] * nbMatchsS1;
         }
       });
 
-      // Calcul du solde projeté en fin de S2
+      // Solde projeté fin S2
       const soldeFinS2 = solde + Object.entries(projS2).reduce((acc, [k, v]) => {
         return COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v;
       }, 0);
@@ -203,7 +219,7 @@ export default function ClubProjectionPage() {
 
       const capaciteInvest = solde + fluxS2Restant;
 
-      // Somme des charges fixes hors transferts
+      // Charges fixes sur S2 (hors transferts)
       const chargesHorsTransferts = [
         "player_wages", "agent_wages", "managers_wage",
         "ground_maintenance", "shareholder_payouts", "shareholder_prize_money", "other_outgoings"
@@ -212,7 +228,7 @@ export default function ClubProjectionPage() {
 
       setResults({
         solde, bilanS1, bilanS2, moyS2, projS2, soldeFinS2, capaciteInvest, chargeFixeProj,
-        weeksPlayed, weeksTotal, weeksRestantes, s1, s2
+        nbMatchsS1, nbMatchsS2, matchsRestants, s1, s2
       });
     } catch (e) {
       setErr(e.message);
@@ -232,18 +248,15 @@ export default function ClubProjectionPage() {
   }
 
   // Simulation
- let simSoldeFin = null, simCapacite = null, simChargeFixe = null, nWeeksRestantes = null;
-if (results && transfertSim && salaireSim) {
-  nWeeksRestantes = results.weeksRestantes;
-  const transfert = parseFloat(transfertSim.replace(",", "."));
-  const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
-  const chargeSalaireSupp = salaireHebdo * nWeeksRestantes;
-
-  // Correction : on multiplie BIEN le salaire par le nb de semaines restantes !
-  simChargeFixe = results.chargeFixeProj + chargeSalaireSupp;
-  simSoldeFin = results.soldeFinS2 - transfert - chargeSalaireSupp;
-  simCapacite = results.capaciteInvest - transfert - chargeSalaireSupp;
-}
+  let simSoldeFin = null, simCapacite = null, simChargeFixe = null;
+  if (results && transfertSim && salaireSim) {
+    const transfert = parseFloat(transfertSim.replace(",", "."));
+    const salaireHebdo = parseFloat(salaireSim.replace(",", "."));
+    const chargeSalaireSupp = salaireHebdo * results.matchsRestants;
+    simChargeFixe = results.chargeFixeProj + chargeSalaireSupp;
+    simSoldeFin = results.soldeFinS2 - transfert - chargeSalaireSupp;
+    simCapacite = results.capaciteInvest - transfert - chargeSalaireSupp;
+  }
 
   return (
     <div className="min-h-screen bg-[#181B23] py-8 px-4 flex flex-col items-center">
@@ -280,7 +293,7 @@ if (results && transfertSim && salaireSim) {
             </div>
             {/* Saison 1 */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">Bilan Saison 1</h2>
-            <FinanceTable bilan={results.bilanS1} weeks={results.weeksTotal} />
+            <FinanceTable bilan={results.bilanS1} weeks={results.nbMatchsS1} />
             <div className="mt-2 mb-4 flex justify-end">
               <button
                 className="text-sm underline text-gray-300 hover:text-green-300"
@@ -292,7 +305,7 @@ if (results && transfertSim && salaireSim) {
             {showS1Detail && <DetailWeeksTable weeks={results.s1} />}
             {/* Saison 2 */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">Bilan Saison 2 (en cours)</h2>
-            <FinanceTable bilan={results.bilanS2} weeks={results.weeksPlayed} />
+            <FinanceTable bilan={results.bilanS2} weeks={results.nbMatchsS2} />
             <div className="mt-2 mb-4 flex justify-end">
               <button
                 className="text-sm underline text-gray-300 hover:text-green-300"
@@ -304,7 +317,7 @@ if (results && transfertSim && salaireSim) {
             {showS2Detail && <DetailWeeksTable weeks={results.s2} />}
             {/* Projection */}
             <h2 className="text-lg font-bold mt-8 mb-3 text-yellow-300 text-center">Projection Fin Saison 2</h2>
-            <FinanceTable bilan={results.projS2} weeks={results.weeksTotal} isProj />
+            <FinanceTable bilan={results.projS2} weeks={results.nbMatchsS1} isProj />
             <div className="my-10 bg-[#23263a] rounded-xl shadow-lg p-7 border border-gray-800">
               <h2 className="text-xl font-bold mb-3 text-center text-green-300">Capacité d'investissement & Charges</h2>
               <div className="flex flex-col gap-2 items-center text-lg">
@@ -349,22 +362,22 @@ if (results && transfertSim && salaireSim) {
                   />
                 </div>
               </div>
-              {(simSoldeFin !== null && simCapacite !== null && simChargeFixe !== null) && (
+              {simSoldeFin !== null && (
                 <div className="flex flex-col gap-2 items-center text-lg">
                   <div>
-                    <span className="text-gray-200">Solde projeté fin S2 : </span>
+                    <span className="text-gray-200">Solde projeté fin S2 : </span>
                     <span className="font-bold text-green-300">{formatBigSVC(simSoldeFin)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-200">Capacité d'investissement restante : </span>
+                    <span className="text-gray-200">Capacité d'investissement restante : </span>
                     <span className="font-bold text-yellow-300">{formatBigSVC(simCapacite)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-200">Nouvelles charges fixes projetées sur S2 : </span>
-                    <span className="font-bold text-red-300">{formatBigSVC(simChargeFixe)}</span>
+                    <span className="text-gray-200">Nouvelles charges fixes projetées sur S2 : </span>
+                    <span className="font-bold text-red-400">{formatBigSVC(simChargeFixe)}</span>
                   </div>
                   <div className="text-xs text-gray-400 mt-2">
-                    (La charge salariale supplémentaire est calculée sur {results.weeksRestantes} semaine(s) restante(s))
+                    (La charge salariale supplémentaire est calculée sur {results.matchsRestants} journée(s) de match restante(s))
                   </div>
                 </div>
               )}
