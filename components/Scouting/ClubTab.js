@@ -49,6 +49,23 @@ function sortSquad(arr, key, asc = false) {
     return asc ? ("" + av).localeCompare("" + bv) : ("" + bv).localeCompare("" + av);
   });
 }
+function renderMorale(morale) {
+  let color = "#b0b8cc";
+  if (morale === 1) color = "#19e36d";
+  else if (morale === 0) color = "#ffd700";
+  else if (morale === -1) color = "#ff4e5e";
+  return (
+    <span style={{
+      display: "inline-block",
+      width: 16, height: 16,
+      borderRadius: "50%",
+      background: color,
+      border: "2px solid #23242e",
+      verticalAlign: "middle"
+    }} title={morale === 1 ? "Bonne morale" : morale === 0 ? "Morale neutre" : "Mauvaise morale"}></span>
+  );
+}
+
 
 export default function ClubTab() {
   const [clubId, setClubId] = useState("");
@@ -407,6 +424,13 @@ export default function ClubTab() {
                             {!isGK ? (p[col.key] ?? "-") : "-"}
                           </td>
                         );
+                      if (col.key === "morale") {
+                        return (
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>
+                            {renderMorale(p.morale)}
+                          </td>
+                        );
+                      }
                       if (col.key === "rating") {
                         return (
                           <td key={col.key} style={{
