@@ -17,41 +17,22 @@ function formatDate(ts) {
   const d = new Date(ts * 1000);
   return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
 }
-const POSITIONS = {
-  1: "GK", 2: "RB", 4: "LB", 8: "CM", 16: "CF", 32: "RW", 64: "LW", 128: "CB",
-  256: "CDM", 512: "CAM", 1024: "RM", 2048: "LM", 4096: "RWB", 8192: "LWB", 16384: "ST", 32768: "SUB"
-};
-const POSITION_ORDER = ["GK","RB","CB","LB","RWB","LWB","CDM","CM","CAM","LM","RM","LW","RW","CF","ST","SUB"];
 const POSITION_COLORS = {
   GK: "#b891ff", CB: "#8ac8e9", LB: "#e3d267", RB: "#e3d267", CDM: "#ffd700",
   CM: "#82e0aa", CAM: "#82e0aa", RM: "#ffd17e", LM: "#ffd17e",
   RW: "#ffb347", LW: "#ffb347", CF: "#f08", ST: "#f08", SUB: "#aaa"
 };
-function getPositionLabel(posNum) {
-  if (!posNum) return "-";
-  let keys = [];
-  for (const [k, v] of Object.entries(POSITIONS)) {
-    if ((posNum & k) !== 0) keys.push(v);
-  }
-  return keys.length ? keys.join(", ") : "-";
-}
+
 function getPositionColor(label) {
   if (!label) return "#fff";
   const base = label.split(",")[0].trim();
   return POSITION_COLORS[base] || "#fff";
 }
-function getPositionOrder(label) {
-  if (!label) return 999;
-  const main = label.split(",")[0].trim();
-  const idx = POSITION_ORDER.indexOf(main);
-  return idx === -1 ? 999 : idx;
-}
 function sortSquad(arr, key, asc = false) {
+  // "position" = ordre alphanum, sinon normal
   return arr.slice().sort((a, b) => {
     if (key === "position") {
-      const av = getPositionOrder(a.position);
-      const bv = getPositionOrder(b.position);
-      return asc ? av - bv : bv - av;
+      return asc ? (a.position || "").localeCompare(b.position || "") : (b.position || "").localeCompare(a.position || "");
     }
     const av = a[key], bv = b[key];
     if (av === undefined || av === null) return 1;
@@ -73,7 +54,6 @@ export default function ClubTab() {
   const [squadErr, setSquadErr] = useState("");
   const [sortKey, setSortKey] = useState("rating");
   const [sortAsc, setSortAsc] = useState(false);
-  const [sumValue, setSumValue] = useState(0);
   const loadedPlayerMap = useRef(false);
 
   useEffect(() => { fetchPlayerMap(); fetchLeagueMap(); }, []);
@@ -108,182 +88,157 @@ export default function ClubTab() {
   };
 
   const fetchSquad = async (clubId) => {
-  setSquad([]); setSquadErr(""); setSquadLoading(true);
-  try {
-    const body = JSON.stringify({
-      jsonrpc: "2.0",
-      method: "get_squad",
-      params: { club_id: Number(clubId) },
-      id: 1
-    });
-    const resp = await fetch(SQUAD_RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body
-    });
-    const data = await resp.json();
-    if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
-      setSquad(data.result.data);
-
-      // 👇 Ajoute ce bloc pour calculer la somme
-      let total = 0;
-      for (const p of data.result.data) {
-        if (p.value && !isNaN(p.value)) total += p.value;
+    setSquad([]); setSquadErr(""); setSquadLoading(true);
+    try {
+      const body = JSON.stringify({
+        jsonrpc: "2.0",
+        method: "get_squad",
+        params: { club_id: Number(clubId) },
+        id: 1
+      });
+      const resp = await fetch(SQUAD_RPC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body
+      });
+      const data = await resp.json();
+      if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
+        setSquad(data.result.data);
+      } else {
+        setSquadErr("Aucun joueur trouvé dans l'effectif.");
       }
-      setSumValue(total);
-    } else {
-      setSquadErr("Aucun joueur trouvé dans l'effectif.");
-      setSumValue(0); // <== reset à zéro si pas d'effectif
-    }
-  } catch (e) {
-    setSquadErr("Erreur réseau ou parsing effectif.");
-    setSumValue(0);
-  } finally { setSquadLoading(false); }
-};
-
+    } catch (e) {
+      setSquadErr("Erreur réseau ou parsing effectif.");
+    } finally { setSquadLoading(false); }
+  };
 
   function getLeagueLabel(id) {
     return leagueMap?.[id]?.name || id || "-";
   }
 
-  // ---------- CLUB CARD 1 ligne, compact et pro ----------
-function renderClubCard() {
-  if (!clubInfo) return null;
-  return (
-    <div style={{
-      background: "linear-gradient(110deg, #23272e 75%, #181a20 100%)",
-      borderRadius: 20,
-      boxShadow: "0 8px 32px #000a",
-      padding: "28px 38px 12px 38px",
-      marginBottom: 28,
-      width: "100%",
-      maxWidth: 1200,
-      border: "2px solid #222430",
-      display: "flex",
-      flexDirection: "column",
-      gap: 5
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        <img src={clubInfo.profile_pic || "/default_profile.jpg"}
-          alt="Club"
-          style={{ width: 65, height: 65, borderRadius: 18, border: "2px solid #ffd700", background: "#191d22" }}
-        />
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontWeight: 900, fontSize: 28, color: "#ffd700", lineHeight: 1.05 }}>
-            <a href={`https://play.soccerverse.com/club/${clubInfo.club_id}`} target="_blank" rel="noopener noreferrer" style={{ color: "#ffd700", textDecoration: "underline" }}>
-              {clubInfo.name}
-            </a>
-          </div>
-          <div style={{ fontWeight: 600, fontSize: 17, color: "#4f47ff", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
-            Manager : <span style={{ color: "#fff", fontWeight: 700 }}>{clubInfo.manager_name}</span>
-            <span style={{ color: "#ffd700", marginLeft: 11, fontWeight: 700 }}>{clubInfo.country_id}</span>
-            {/* ID du club avec lien */}
-            <span style={{ color: "#b0b8cc", marginLeft: 11 }}>| ID: 
-              <a
-                href={`https://play.soccerverse.com/club/${clubInfo.club_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#4f47ff", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }}
-                title="Voir la page du club"
-              >
-                {clubInfo.club_id}
-              </a>
-            </span>
-            {/* Division avec lien */}
-            <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• Division: 
-              <a
-                href={`https://play.soccerverse.com/league/${clubInfo.league_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#ffd700", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }}
-                title="Voir la page de la division"
-              >
-                {getLeagueLabel(clubInfo.league_id)}
-              </a>
-            </span>
-            <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• Fans: <span style={{ color: "#ffd700" }}>{clubInfo.fans_current}</span></span>
-          </div>
-        </div>
-        <div style={{ minWidth: 150, textAlign: "right", alignSelf: "flex-start" }}>
-          <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 21 }}>Balance</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd700" }}>{formatSVC(clubInfo.balance)}</div>
-          <div style={{ color: "#ddd", fontWeight: 600, fontSize: 14, marginTop: 5 }}>Stade</div>
-          <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18 }}>{clubInfo.stadium_size_current}</div>
-        </div>
-      </div>
-      {/* Stats sur 1 seule ligne */}
+  // ----------- Carte club pro, liens, etc -----------
+  function renderClubCard() {
+    if (!clubInfo) return null;
+    return (
       <div style={{
-        display: "flex", gap: 20, marginTop: 9, alignItems: "center", flexWrap: "wrap"
+        background: "linear-gradient(110deg, #23272e 75%, #181a20 100%)",
+        borderRadius: 20,
+        boxShadow: "0 8px 32px #000a",
+        padding: "28px 38px 12px 38px",
+        marginBottom: 28,
+        width: "100%",
+        maxWidth: 1200,
+        border: "2px solid #222430",
+        display: "flex",
+        flexDirection: "column",
+        gap: 5
       }}>
-        <div>
-          <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>Valeur</div>
-  <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 18 }}>{formatSVC(sumValue)}</div>
-        </div>
-        <div>
-          <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>Salaire moyen</div>
-          <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 17 }}>{formatSVC(clubInfo.avg_wages)}</div>
-        </div>
-        <div>
-          <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>League</div>
-          <div style={{ fontWeight: 800, color: "#ffd700", fontSize: 17 }}>{getLeagueLabel(clubInfo.league_id)}</div>
-        </div>
-        <div style={{
-          display: "flex", gap: 11, alignItems: "center", flexWrap: "nowrap", marginLeft: 28
-        }}>
-          {[
-            ["⭑ Rating équipe", clubInfo.avg_player_rating],
-            ["⭑ Top 21", clubInfo.avg_player_rating_top21],
-            ["🏹 Shooting", clubInfo.avg_shooting],
-            ["🎯 Passing", clubInfo.avg_passing],
-            ["🛡️ Tackling", clubInfo.avg_tackling],
-            ["🧤 GK", clubInfo.gk_rating],
-          ].map(([label, val], i) => (
-            <div key={i} style={{
-              background: "#232644", color: "#ffd700", fontWeight: 700, borderRadius: 9,
-              fontSize: 15, padding: "6px 12px", minWidth: 62, textAlign: "center", display: "inline-block"
-            }}>
-              <span style={{ marginRight: 3 }}>{label}</span>
-              <span style={{ color: "#fff", fontSize: 17, fontWeight: 900, marginLeft: 3 }}>{val ?? "-"}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          <img src={clubInfo.profile_pic || "/default_profile.jpg"}
+            alt="Club"
+            style={{ width: 65, height: 65, borderRadius: 18, border: "2px solid #ffd700", background: "#191d22" }}
+          />
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 900, fontSize: 28, color: "#ffd700", lineHeight: 1.05 }}>
+              <a href={`https://play.soccerverse.com/club/${clubInfo.club_id}`} target="_blank" rel="noopener noreferrer" style={{ color: "#ffd700", textDecoration: "underline" }}>
+                {clubInfo.name}
+              </a>
             </div>
-          ))}
+            <div style={{ fontWeight: 600, fontSize: 17, color: "#4f47ff", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+              Manager : <span style={{ color: "#fff", fontWeight: 700 }}>{clubInfo.manager_name}</span>
+              <span style={{ color: "#ffd700", marginLeft: 11, fontWeight: 700 }}>{clubInfo.country_id}</span>
+              {/* ID club avec lien */}
+              <span style={{ color: "#b0b8cc", marginLeft: 11 }}>| ID:
+                <a href={`https://play.soccerverse.com/club/${clubInfo.club_id}`} target="_blank" rel="noopener noreferrer"
+                  style={{ color: "#4f47ff", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }} title="Voir la page du club">{clubInfo.club_id}</a>
+              </span>
+              {/* Division avec lien */}
+              <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• Division:
+                <a href={`https://play.soccerverse.com/league/${clubInfo.league_id}`} target="_blank" rel="noopener noreferrer"
+                  style={{ color: "#ffd700", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }} title="Voir la page de la division">{getLeagueLabel(clubInfo.league_id)}</a>
+              </span>
+              <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• Fans: <span style={{ color: "#ffd700" }}>{clubInfo.fans_current}</span></span>
+            </div>
+          </div>
+          <div style={{ minWidth: 150, textAlign: "right", alignSelf: "flex-start" }}>
+            <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 21 }}>Balance</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd700" }}>{formatSVC(clubInfo.balance)}</div>
+            <div style={{ color: "#ddd", fontWeight: 600, fontSize: 14, marginTop: 5 }}>Stade</div>
+            <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18 }}>{clubInfo.stadium_size_current}</div>
+          </div>
         </div>
-      </div>
-      {/* Influenceurs 1 ligne, scroll horizontal */}
-      {clubInfo.top_influencers && clubInfo.top_influencers.length > 0 && (
-        <div style={{ marginTop: 10, width: "100%" }}>
-          <div style={{ fontWeight: 800, fontSize: 16, color: "#4f47ff", marginBottom: 6 }}>Top Influenceurs</div>
+        {/* Stats sur 1 seule ligne */}
+        <div style={{
+          display: "flex", gap: 20, marginTop: 9, alignItems: "center", flexWrap: "wrap"
+        }}>
+          <div>
+            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>Valeur</div>
+            <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 18 }}>{formatSVC(clubInfo.value)}</div>
+          </div>
+          <div>
+            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>Salaire moyen</div>
+            <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 17 }}>{formatSVC(clubInfo.avg_wages)}</div>
+          </div>
+          <div>
+            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>League</div>
+            <div style={{ fontWeight: 800, color: "#ffd700", fontSize: 17 }}>{getLeagueLabel(clubInfo.league_id)}</div>
+          </div>
           <div style={{
-            display: "flex", flexDirection: "row", gap: "17px", overflowX: "auto", whiteSpace: "nowrap", paddingBottom: 3
+            display: "flex", gap: 11, alignItems: "center", flexWrap: "nowrap", marginLeft: 28
           }}>
-            {clubInfo.top_influencers.map((inf, i) => (
+            {[
+              ["⭑ Rating équipe", clubInfo.avg_player_rating],
+              ["⭑ Top 21", clubInfo.avg_player_rating_top21],
+              ["🏹 Shooting", clubInfo.avg_shooting],
+              ["🎯 Passing", clubInfo.avg_passing],
+              ["🛡️ Tackling", clubInfo.avg_tackling],
+              ["🧤 GK", clubInfo.gk_rating],
+            ].map(([label, val], i) => (
               <div key={i} style={{
-                background: "#1b1d25",
-                borderRadius: 10,
-                padding: "8px 18px",
-                minWidth: 120,
-                textAlign: "center",
-                boxShadow: "0 2px 8px #0002",
-                display: "inline-block"
+                background: "#232644", color: "#ffd700", fontWeight: 700, borderRadius: 9,
+                fontSize: 15, padding: "6px 12px", minWidth: 62, textAlign: "center", display: "inline-block"
               }}>
-                <img src={inf.profile_pic || "/default_profile.jpg"} alt={inf.name} style={{
-                  width: 35, height: 35, borderRadius: "50%", objectFit: "cover", marginBottom: 5, border: "2px solid #222"
-                }} />
-                <div style={{ fontWeight: 800, fontSize: 14, color: "#fff" }}>{inf.name}</div>
-                <div style={{ color: "#ffd700", fontWeight: 800, fontSize: 14 }}>{inf.num}</div>
-                <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
-                  {inf.last_active_unix ? formatDate(inf.last_active_unix) : ""}
-                </div>
+                <span style={{ marginRight: 3 }}>{label}</span>
+                <span style={{ color: "#fff", fontSize: 17, fontWeight: 900, marginLeft: 3 }}>{val ?? "-"}</span>
               </div>
             ))}
           </div>
         </div>
-      )}
-    </div>
-  );
-}
+        {/* Influenceurs 1 ligne, scroll horizontal */}
+        {clubInfo.top_influencers && clubInfo.top_influencers.length > 0 && (
+          <div style={{ marginTop: 10, width: "100%" }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: "#4f47ff", marginBottom: 6 }}>Top Influenceurs</div>
+            <div style={{
+              display: "flex", flexDirection: "row", gap: "17px", overflowX: "auto", whiteSpace: "nowrap", paddingBottom: 3
+            }}>
+              {clubInfo.top_influencers.map((inf, i) => (
+                <div key={i} style={{
+                  background: "#1b1d25",
+                  borderRadius: 10,
+                  padding: "8px 18px",
+                  minWidth: 120,
+                  textAlign: "center",
+                  boxShadow: "0 2px 8px #0002",
+                  display: "inline-block"
+                }}>
+                  <img src={inf.profile_pic || "/default_profile.jpg"} alt={inf.name} style={{
+                    width: 35, height: 35, borderRadius: "50%", objectFit: "cover", marginBottom: 5, border: "2px solid #222"
+                  }} />
+                  <div style={{ fontWeight: 800, fontSize: 14, color: "#fff" }}>{inf.name}</div>
+                  <div style={{ color: "#ffd700", fontWeight: 800, fontSize: 14 }}>{inf.num}</div>
+                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
+                    {inf.last_active_unix ? formatDate(inf.last_active_unix) : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
-
-  // ----------- EFFECTIF : TABLEAU PRO, ultra compact, sortable ----------
+  // ----------- Effectif : pro, compact, tri, principal + secondaires, stats contextuelles -----------
   function renderSquadTable() {
     if (squadLoading) return <div style={{ color: "#ffd700", fontWeight: 500, margin: 12 }}>Chargement effectif...</div>;
     if (squadErr) return <div style={{ color: "#ff4e5e", margin: 12 }}>{squadErr}</div>;
@@ -291,7 +246,7 @@ function renderClubCard() {
 
     const COLUMNS = [
       { key: "name", label: "Nom" },
-      { key: "position", label: "Pos." },
+      { key: "positions", label: "Pos." },
       { key: "rating", label: "Note" },
       { key: "rating_gk", label: "GK" },
       { key: "rating_tackling", label: "Tac." },
@@ -309,14 +264,19 @@ function renderClubCard() {
       { key: "country_id", label: "Pays" },
     ];
 
+    // mapping complet, prioritaire : player.positions (API détaillée)
     let squadToShow = squad.map(p => {
       const pm = playerMap?.[p.player_id];
+      const positions = p.positions || []; // principal + secondaires
+      const principal = positions[0] || "-";
+      const secondaires = positions.slice(1);
       const name = pm?.name || (pm?.f || "") + " " + (pm?.s || "");
-      const posLabel = getPositionLabel(p.position);
+      const isGK = principal === "GK";
       return {
         ...p,
         name: name?.trim() || p.player_id,
-        position: posLabel,
+        principal,
+        secondaires,
         age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
         wages: p.wages,
         cartons: (p.yellow_cards || 0) + (p.red_cards ? " | " + p.red_cards : "")
@@ -376,65 +336,93 @@ function renderClubCard() {
               </tr>
             </thead>
             <tbody>
-              {squadToShow.map((p, idx) => (
-                <tr key={p.player_id}
-                  style={{
-                    background: idx % 2 === 0 ? "#1a1c22" : "#181b22",
-                    borderBottom: "1px solid #23242e",
-                    transition: "background 0.13s",
-                    cursor: "pointer"
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#23233a"}
-                  onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? "#1a1c22" : "#181b22"}
-                >
-                  {COLUMNS.map(col => {
-                    if (col.key === "name") {
+              {squadToShow.map((p, idx) => {
+                const isGK = p.principal === "GK";
+                return (
+                  <tr key={p.player_id}
+                    style={{
+                      background: idx % 2 === 0 ? "#1a1c22" : "#181b22",
+                      borderBottom: "1px solid #23242e",
+                      transition: "background 0.13s",
+                      cursor: "pointer"
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#23233a"}
+                    onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? "#1a1c22" : "#181b22"}
+                  >
+                    {COLUMNS.map(col => {
+                      // Nom lien
+                      if (col.key === "name") {
+                        return (
+                          <td key={col.key} style={{ padding: "7px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            <a
+                              href={`https://play.soccerverse.com/player/${p.player_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: "#4f47ff", fontWeight: 700, textDecoration: "underline", whiteSpace: "nowrap"
+                              }}>
+                              {p.name}
+                            </a>
+                          </td>
+                        );
+                      }
+                      // Positions
+                      if (col.key === "positions") {
+                        return (
+                          <td key={col.key} style={{
+                            padding: "7px",
+                            fontWeight: 900,
+                            color: getPositionColor(p.principal),
+                            textShadow: "0 1px 1px #0004",
+                            whiteSpace: "nowrap"
+                          }}>
+                            {p.principal}
+                            {p.secondaires && p.secondaires.length > 0 && (
+                              <span style={{ color: "#aaa", marginLeft: 5, fontWeight: 700, fontSize: "90%" }}>
+                                ({p.secondaires.join(", ")})
+                              </span>
+                            )}
+                          </td>
+                        );
+                      }
+                      // Note GK
+                      if (col.key === "rating_gk")
+                        return (
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900, color: isGK ? "#b891ff" : "#888" }}>
+                            {isGK ? (p.rating_gk ?? "-") : "-"}
+                          </td>
+                        );
+                      // Les autres notes de champ : on masque si GK
+                      if (["rating_tackling", "rating_passing", "rating_shooting"].includes(col.key))
+                        return (
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900 }}>
+                            {!isGK ? (p[col.key] ?? "-") : "-"}
+                          </td>
+                        );
+                      // Note générale
+                      if (col.key === "rating") {
+                        return (
+                          <td key={col.key} style={{
+                            padding: "7px",
+                            fontWeight: 900,
+                            color: (p.rating >= 75 ? "#64ffae" : (p.rating < 65 ? "#ff7575" : "#fff")),
+                            whiteSpace: "nowrap"
+                          }}>{p.rating ?? "-"}</td>
+                        );
+                      }
+                      // Valeur & salaire
+                      if (col.key === "value" || col.key === "wages") {
+                        return (
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{formatSVC(p[col.key])}</td>
+                        );
+                      }
                       return (
-                        <td key={col.key} style={{ padding: "7px", fontWeight: 700, whiteSpace: "nowrap" }}>
-                          <a
-                            href={`https://play.soccerverse.com/player/${p.player_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              color: "#4f47ff", fontWeight: 700, textDecoration: "underline", whiteSpace: "nowrap"
-                            }}>
-                            {p.name}
-                          </a>
-                        </td>
+                        <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{p[col.key] ?? "-"}</td>
                       );
-                    }
-                    if (col.key === "position") {
-                      return (
-                        <td key={col.key} style={{
-                          padding: "7px",
-                          fontWeight: 900,
-                          color: getPositionColor(p.position),
-                          textShadow: "0 1px 1px #0004",
-                          whiteSpace: "nowrap"
-                        }}>{p.position}</td>
-                      );
-                    }
-                    if (col.key === "rating") {
-                      return (
-                        <td key={col.key} style={{
-                          padding: "7px",
-                          fontWeight: 900,
-                          color: (p.rating >= 75 ? "#64ffae" : (p.rating < 65 ? "#ff7575" : "#fff")),
-                          whiteSpace: "nowrap"
-                        }}>{p.rating ?? "-"}</td>
-                      );
-                    }
-                    if (col.key === "value" || col.key === "wages") {
-                      return (
-                        <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{formatSVC(p[col.key])}</td>
-                      );
-                    }
-                    return (
-                      <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{p[col.key] ?? "-"}</td>
-                    );
-                  })}
-                </tr>
-              ))}
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
