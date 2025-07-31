@@ -13,24 +13,6 @@ const SOCCERVERSE_POSITIONS_ORDER = [
   "FL", "FC", "FR"
 ];
 
-const POSITION_COLORS = {
-  GK: "#b891ff", LB: "#e3d267", CB: "#8ac8e9", RB: "#e3d267",
-  DML: "#ffd700", DMR: "#ffd700", DMC: "#ffd700",
-  LM: "#82e0aa", CM: "#82e0aa", RM: "#ffd17e",
-  AML: "#ffb347", AMR: "#ffb347", AM: "#82e0aa",
-  FL: "#f08", FC: "#f08", FR: "#f08",
-};
-
-function getPositionOrder(pos) {
-  const idx = SOCCERVERSE_POSITIONS_ORDER.indexOf(pos);
-  return idx === -1 ? 99 : idx;
-}
-function getPositionColor(label) {
-  if (!label) return "#fff";
-  const main = label.split(",")[0].trim();
-  return POSITION_COLORS[main] || "#fff";
-}
-
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (
@@ -44,18 +26,32 @@ function formatDate(ts) {
   const d = new Date(ts * 1000);
   return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
 }
+const POSITION_COLORS = {
+  GK: "#b891ff", CB: "#8ac8e9", LB: "#e3d267", RB: "#e3d267", DMC: "#ffd700", DML: "#ffd700", DMR: "#ffd700",
+  CM: "#82e0aa", LM: "#ffd17e", RM: "#ffd17e",
+  AM: "#b2bcf5", AML: "#b2bcf5", AMR: "#b2bcf5",
+  FC: "#ffb347", FL: "#ffb347", FR: "#ffb347"
+};
+
+function getPositionColor(label) {
+  if (!label) return "#fff";
+  return POSITION_COLORS[label] || "#fff";
+}
+
+// Pour trier selon l'ordre Soccerverse même si affiché en string
+function getSoccerverseOrder(pos) {
+  const main = Array.isArray(pos) ? pos[0] : ("" + pos).split(",")[0].trim();
+  const idx = SOCCERVERSE_POSITIONS_ORDER.indexOf(main);
+  return idx === -1 ? 999 : idx;
+}
 
 function sortSquad(arr, key, asc = false) {
-  // Tri sur "principal" (poste Soccerverse) selon l'ordre foot
-  if (key === "positions" || key === "principal") {
-    return arr.slice().sort((a, b) => {
-      const av = getPositionOrder(a.principal);
-      const bv = getPositionOrder(b.principal);
-      return asc ? av - bv : bv - av;
-    });
-  }
-  // Sinon, tri classique
   return arr.slice().sort((a, b) => {
+    if (key === "positions") {
+      const av = getSoccerverseOrder(a.positionsArr);
+      const bv = getSoccerverseOrder(b.positionsArr);
+      return asc ? av - bv : bv - av;
+    }
     const av = a[key], bv = b[key];
     if (av === undefined || av === null) return 1;
     if (bv === undefined || bv === null) return -1;
@@ -74,7 +70,7 @@ export default function ClubTab() {
   const [squad, setSquad] = useState([]);
   const [squadLoading, setSquadLoading] = useState(false);
   const [squadErr, setSquadErr] = useState("");
-  const [sortKey, setSortKey] = useState("principal");
+  const [sortKey, setSortKey] = useState("rating");
   const [sortAsc, setSortAsc] = useState(false);
   const loadedPlayerMap = useRef(false);
 
@@ -138,8 +134,8 @@ export default function ClubTab() {
     return leagueMap?.[id]?.name || id || "-";
   }
 
-  // ----------- Carte club (identique à ta dernière version) -----------
-  function renderClubCard() {
+  // ----------- Carte club pro, liens, etc -----------
+ function renderClubCard() {
     if (!clubInfo) return null;
     return (
       <div style={{
@@ -258,7 +254,7 @@ export default function ClubTab() {
     );
   }
 
-  // ----------- Effectif -----------
+  // ----------- Effectif, positions Soccerverse -----------
   function renderSquadTable() {
     if (squadLoading) return <div style={{ color: "#ffd700", fontWeight: 500, margin: 12 }}>Chargement effectif...</div>;
     if (squadErr) return <div style={{ color: "#ff4e5e", margin: 12 }}>{squadErr}</div>;
@@ -284,27 +280,23 @@ export default function ClubTab() {
       { key: "country_id", label: "Pays" },
     ];
 
+    // Mapping complet
     let squadToShow = squad.map(p => {
       const pm = playerMap?.[p.player_id];
       const name = pm?.name || (pm?.f || "") + " " + (pm?.s || "");
-      // Gestion poste principal + secondaires (ordre Soccerverse natif)
-      let principal = "-";
-      let secondaires = [];
-      if (p.positions && Array.isArray(p.positions) && p.positions.length > 0) {
-        principal = p.positions[0];
-        secondaires = p.positions.slice(1);
-      } else if (p.position) {
-        // fallback si p.positions absent, on tente "p.position" (rare)
-        principal = typeof p.position === "string" ? p.position : "-";
-      } else if (pm?.positions && pm.positions.length > 0) {
-        principal = pm.positions[0];
-        secondaires = pm.positions.slice(1);
-      }
+      // Prends les positions Soccerverse si présentes
+      let positionsArr = (p.positions && Array.isArray(p.positions) && p.positions.length)
+        ? p.positions
+        : (pm?.positions && pm.positions.length ? pm.positions : []);
+      let principal = positionsArr.length ? positionsArr[0] : "-";
+      let secondaires = positionsArr.slice(1);
+
       const isGK = principal === "GK";
       return {
         ...p,
         name: name?.trim() || p.player_id,
-        positions: [principal, ...secondaires].filter(Boolean).join(", "),
+        positions: positionsArr.length ? positionsArr.join(", ") : "-",
+        positionsArr,
         principal,
         secondaires,
         age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
@@ -380,7 +372,6 @@ export default function ClubTab() {
                     onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? "#1a1c22" : "#181b22"}
                   >
                     {COLUMNS.map(col => {
-                      // Nom lien
                       if (col.key === "name") {
                         return (
                           <td key={col.key} style={{ padding: "7px", fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -396,7 +387,6 @@ export default function ClubTab() {
                           </td>
                         );
                       }
-                      // Positions
                       if (col.key === "positions") {
                         return (
                           <td key={col.key} style={{
@@ -415,21 +405,18 @@ export default function ClubTab() {
                           </td>
                         );
                       }
-                      // Note GK
                       if (col.key === "rating_gk")
                         return (
                           <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900, color: isGK ? "#b891ff" : "#888" }}>
                             {isGK ? (p.rating_gk ?? "-") : "-"}
                           </td>
                         );
-                      // Les autres notes de champ : on masque si GK
                       if (["rating_tackling", "rating_passing", "rating_shooting"].includes(col.key))
                         return (
                           <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900 }}>
                             {!isGK ? (p[col.key] ?? "-") : "-"}
                           </td>
                         );
-                      // Note générale
                       if (col.key === "rating") {
                         return (
                           <td key={col.key} style={{
@@ -440,7 +427,6 @@ export default function ClubTab() {
                           }}>{p.rating ?? "-"}</td>
                         );
                       }
-                      // Valeur & salaire
                       if (col.key === "value" || col.key === "wages") {
                         return (
                           <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{formatSVC(p[col.key])}</td>
