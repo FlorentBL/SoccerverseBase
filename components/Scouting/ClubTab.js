@@ -5,14 +5,23 @@ const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
 const SOCCERVERSE_POSITIONS_ORDER = [
-  "GK",
-  "LB", "CB", "RB",
+  "GK", "LB", "CB", "RB",
   "DML", "DMR", "DMC",
   "LM", "CM", "RM",
   "AML", "AMR", "AM",
   "FL", "FC", "FR"
 ];
-
+const POSITION_COLORS = {
+  GK: "#b891ff", CB: "#8ac8e9", LB: "#e3d267", RB: "#e3d267",
+  DML: "#ffd700", DMR: "#ffd700", DMC: "#ffd700",
+  CM: "#82e0aa", LM: "#ffd17e", RM: "#ffd17e",
+  AM: "#b2bcf5", AML: "#b2bcf5", AMR: "#b2bcf5",
+  FC: "#ffb347", FL: "#ffb347", FR: "#ffb347"
+};
+function getPositionColor(label) {
+  if (!label) return "#fff";
+  return POSITION_COLORS[label] || "#fff";
+}
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (
@@ -26,32 +35,13 @@ function formatDate(ts) {
   const d = new Date(ts * 1000);
   return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
 }
-const POSITION_COLORS = {
-  GK: "#b891ff", CB: "#8ac8e9", LB: "#e3d267", RB: "#e3d267", DMC: "#ffd700", DML: "#ffd700", DMR: "#ffd700",
-  CM: "#82e0aa", LM: "#ffd17e", RM: "#ffd17e",
-  AM: "#b2bcf5", AML: "#b2bcf5", AMR: "#b2bcf5",
-  FC: "#ffb347", FL: "#ffb347", FR: "#ffb347"
-};
-
-function getPositionColor(label) {
-  if (!label) return "#fff";
-  return POSITION_COLORS[label] || "#fff";
-}
-
-// Pour trier selon l'ordre Soccerverse même si affiché en string
-function getSoccerverseOrder(pos) {
-  const main = Array.isArray(pos) ? pos[0] : ("" + pos).split(",")[0].trim();
-  const idx = SOCCERVERSE_POSITIONS_ORDER.indexOf(main);
-  return idx === -1 ? 999 : idx;
-}
-
 function sortSquad(arr, key, asc = false) {
   return arr.slice().sort((a, b) => {
     if (key === "positions") {
-  const av = SOCCERVERSE_POSITIONS_ORDER.indexOf((a.positionsArr && a.positionsArr[0]) || "");
-  const bv = SOCCERVERSE_POSITIONS_ORDER.indexOf((b.positionsArr && b.positionsArr[0]) || "");
-  return asc ? av - bv : bv - av;
-}
+      const av = SOCCERVERSE_POSITIONS_ORDER.indexOf((a.positionsArr && a.positionsArr[0]) || "");
+      const bv = SOCCERVERSE_POSITIONS_ORDER.indexOf((b.positionsArr && b.positionsArr[0]) || "");
+      return asc ? av - bv : bv - av;
+    }
     const av = a[key], bv = b[key];
     if (av === undefined || av === null) return 1;
     if (bv === undefined || bv === null) return -1;
@@ -89,6 +79,7 @@ export default function ClubTab() {
     setLeagueMap(data);
   };
 
+  // FETCH PRINCIPAL CLUB + EFFECTIF + POSITIONS
   const fetchClub = async () => {
     setErr(""); setClubInfo(null); setLoading(true); setSquad([]); setSquadErr("");
     try {
@@ -99,7 +90,7 @@ export default function ClubTab() {
       }
       const clubApi = j.items[0];
       setClubInfo(clubApi);
-      fetchSquad(clubId);
+      await fetchSquad(clubId);
     } catch (e) {
       setErr("Erreur réseau ou parsing données.");
     } finally { setLoading(false); }
@@ -121,7 +112,20 @@ export default function ClubTab() {
       });
       const data = await resp.json();
       if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
-        setSquad(data.result.data);
+        // Fetch positions détaillées
+        const detailedSquad = await Promise.all(
+          data.result.data.map(async p => {
+            try {
+              const resp = await fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${p.player_id}`);
+              const detail = await resp.json();
+              const positionsArr = (detail.items && detail.items[0]?.positions) || [];
+              return { ...p, positionsArr };
+            } catch (e) {
+              return { ...p, positionsArr: [] };
+            }
+          })
+        );
+        setSquad(detailedSquad);
       } else {
         setSquadErr("Aucun joueur trouvé dans l'effectif.");
       }
@@ -134,8 +138,7 @@ export default function ClubTab() {
     return leagueMap?.[id]?.name || id || "-";
   }
 
-  // ----------- Carte club pro, liens, etc -----------
- function renderClubCard() {
+  function renderClubCard() {
     if (!clubInfo) return null;
     return (
       <div style={{
@@ -183,7 +186,6 @@ export default function ClubTab() {
             <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18 }}>{clubInfo.stadium_size_current}</div>
           </div>
         </div>
-        {/* Stats ligne */}
         <div style={{
           display: "flex", gap: 20, marginTop: 9, alignItems: "center", flexWrap: "wrap"
         }}>
@@ -220,7 +222,6 @@ export default function ClubTab() {
             ))}
           </div>
         </div>
-        {/* Influenceurs */}
         {clubInfo.top_influencers && clubInfo.top_influencers.length > 0 && (
           <div style={{ marginTop: 10, width: "100%" }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: "#4f47ff", marginBottom: 6 }}>Top Influenceurs</div>
@@ -254,7 +255,6 @@ export default function ClubTab() {
     );
   }
 
-  // ----------- Effectif, positions Soccerverse -----------
   function renderSquadTable() {
     if (squadLoading) return <div style={{ color: "#ffd700", fontWeight: 500, margin: 12 }}>Chargement effectif...</div>;
     if (squadErr) return <div style={{ color: "#ff4e5e", margin: 12 }}>{squadErr}</div>;
@@ -280,25 +280,20 @@ export default function ClubTab() {
       { key: "country_id", label: "Pays" },
     ];
 
-    // Mapping complet
-let squadToShow = squad.map(p => {
-  console.log("positions pour", p.player_id, ":", p.positions);
-  let positionsArr = (Array.isArray(p.positions) && p.positions.length) ? p.positions : [];
-  let principal = positionsArr.length ? positionsArr[0] : "-";
-  let secondaires = positionsArr.slice(1);
-  const isGK = principal === "GK";
-  return {
-    ...p,
-    name: playerMap?.[p.player_id]?.name || p.player_id,
-    principal,
-    secondaires,
-    positionsArr,
-    positions: positionsArr.length ? positionsArr.join(", ") : "-",
-    age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
-    wages: p.wages,
-    cartons: (p.yellow_cards || 0) + (p.red_cards ? " | " + p.red_cards : "")
-  };
-});
+    let squadToShow = squad.map(p => {
+      let principal = p.positionsArr && p.positionsArr[0] || "-";
+      let secondaires = (p.positionsArr || []).slice(1);
+      const isGK = principal === "GK";
+      return {
+        ...p,
+        name: playerMap?.[p.player_id]?.name || p.player_id,
+        principal,
+        secondaires,
+        positions: p.positionsArr ? p.positionsArr.join(", ") : "-",
+        age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
+        cartons: (p.yellow_cards || 0) + (p.red_cards ? " | " + p.red_cards : "")
+      };
+    });
     squadToShow = sortSquad(squadToShow, sortKey, sortAsc);
 
     return (
@@ -441,7 +436,6 @@ let squadToShow = squad.map(p => {
     );
   }
 
-  // ----------- Rendu principal -----------
   return (
     <div style={{
       maxWidth: 1500,
@@ -477,9 +471,7 @@ let squadToShow = squad.map(p => {
         >{loading ? "Recherche..." : "Afficher infos"}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 13, fontWeight: 600 }}>{err}</div>}
       </div>
-      {/* Carte club */}
       {clubInfo && renderClubCard()}
-      {/* Effectif + tri */}
       {clubInfo && renderSquadTable()}
     </div>
   );
