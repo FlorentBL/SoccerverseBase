@@ -45,7 +45,6 @@ export default function LeagueTab() {
   const [err, setErr] = useState("");
   const [detailsLoading, setDetailsLoading] = useState(false);
 
-  // Nouvel état pour le tri
   const [sortCol, setSortCol] = useState("pts");
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -121,7 +120,6 @@ export default function LeagueTab() {
   const selectedCountry = countryMap.find(c => c.code === country);
   const selectedDivision = selectedCountry?.divisions.find(d => d.leagueId === Number(division));
 
-  // Génère une fonction de comparaison adaptée selon la colonne (et si elle vient de details)
   function getSortFn(colKey, asc) {
     return (a, b) => {
       let valA, valB;
@@ -152,10 +150,8 @@ export default function LeagueTab() {
     };
   }
 
-  // Standings trié selon sortCol/sortAsc
   const standingsSorted = [...standings].sort(getSortFn(sortCol, sortAsc));
 
-  // Affichage flèche
   const sortArrow = col => {
     if (col.key !== sortCol) return "";
     return sortAsc ? " ▲" : " ▼";
@@ -212,13 +208,20 @@ export default function LeagueTab() {
               : "Classement"}
           </div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 15, textAlign: "center" }}>
+            <table style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              color: "#eee",
+              fontSize: 15,
+              textAlign: "center",
+              whiteSpace: "nowrap"  // <-- Force tout sur une ligne
+            }}>
               <thead>
                 <tr style={{ background: "#22252a" }}>
                   {COLUMNS.map(col => (
                     <th
                       key={col.key}
-                      style={{ cursor: col.sortable ? "pointer" : undefined, minWidth: 56, fontWeight: 700 }}
+                      style={{ cursor: col.sortable ? "pointer" : undefined, minWidth: 56, fontWeight: 700, whiteSpace: "nowrap" }}
                       onClick={() => col.sortable && (
                         col.key === sortCol
                           ? setSortAsc(!sortAsc)
