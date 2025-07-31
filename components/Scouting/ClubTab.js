@@ -282,6 +282,7 @@ export default function ClubTab() {
 
     // Mapping complet
 let squadToShow = squad.map(p => {
+  console.log("positions pour", p.player_id, ":", p.positions);
   let positionsArr = (Array.isArray(p.positions) && p.positions.length) ? p.positions : [];
   let principal = positionsArr.length ? positionsArr[0] : "-";
   let secondaires = positionsArr.slice(1);
