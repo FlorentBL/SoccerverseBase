@@ -289,7 +289,6 @@ export default function ClubTab() {
       { key: "form", label: "Forme" },
       { key: "value", label: "Valeur" },
       { key: "wages", label: "Salaire" },
-      { key: "fitness", label: "Fitness" },
       { key: "morale", label: "Morale" },
       { key: "agent_name", label: "Agent" },
       { key: "contract", label: "Contrat" },
