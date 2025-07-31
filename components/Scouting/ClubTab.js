@@ -4,6 +4,20 @@ const PLAYER_MAPPING_URL = "/player_mapping.json";
 const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
+const POSITIONS = {
+  1: "GK", 2: "RB", 4: "LB", 8: "CM", 16: "CF", 32: "RW", 64: "LW", 128: "CB",
+  256: "CDM", 512: "CAM", 1024: "RM", 2048: "LM", 4096: "RWB", 8192: "LWB", 16384: "ST", 32768: "SUB"
+};
+
+function getPositionLabel(posNum) {
+  if (!posNum) return "-";
+  let keys = [];
+  for (const [k, v] of Object.entries(POSITIONS)) {
+    if ((posNum & k) !== 0) keys.push(v);
+  }
+  return keys.length ? keys.join(", ") : "-";
+}
+
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (
