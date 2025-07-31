@@ -48,10 +48,10 @@ function getSoccerverseOrder(pos) {
 function sortSquad(arr, key, asc = false) {
   return arr.slice().sort((a, b) => {
     if (key === "positions") {
-      const av = getSoccerverseOrder(a.positionsArr);
-      const bv = getSoccerverseOrder(b.positionsArr);
-      return asc ? av - bv : bv - av;
-    }
+  const av = SOCCERVERSE_POSITIONS_ORDER.indexOf((a.positionsArr && a.positionsArr[0]) || "");
+  const bv = SOCCERVERSE_POSITIONS_ORDER.indexOf((b.positionsArr && b.positionsArr[0]) || "");
+  return asc ? av - bv : bv - av;
+}
     const av = a[key], bv = b[key];
     if (av === undefined || av === null) return 1;
     if (bv === undefined || bv === null) return -1;
@@ -281,29 +281,23 @@ export default function ClubTab() {
     ];
 
     // Mapping complet
-    let squadToShow = squad.map(p => {
-      const pm = playerMap?.[p.player_id];
-      const name = pm?.name || (pm?.f || "") + " " + (pm?.s || "");
-      // Prends les positions Soccerverse si présentes
-      let positionsArr = (p.positions && Array.isArray(p.positions) && p.positions.length)
-        ? p.positions
-        : (pm?.positions && pm.positions.length ? pm.positions : []);
-      let principal = positionsArr.length ? positionsArr[0] : "-";
-      let secondaires = positionsArr.slice(1);
-
-      const isGK = principal === "GK";
-      return {
-        ...p,
-        name: name?.trim() || p.player_id,
-        positions: positionsArr.length ? positionsArr.join(", ") : "-",
-        positionsArr,
-        principal,
-        secondaires,
-        age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
-        wages: p.wages,
-        cartons: (p.yellow_cards || 0) + (p.red_cards ? " | " + p.red_cards : "")
-      };
-    });
+let squadToShow = squad.map(p => {
+  let positionsArr = (Array.isArray(p.positions) && p.positions.length) ? p.positions : [];
+  let principal = positionsArr.length ? positionsArr[0] : "-";
+  let secondaires = positionsArr.slice(1);
+  const isGK = principal === "GK";
+  return {
+    ...p,
+    name: playerMap?.[p.player_id]?.name || p.player_id,
+    principal,
+    secondaires,
+    positionsArr,
+    positions: positionsArr.length ? positionsArr.join(", ") : "-",
+    age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
+    wages: p.wages,
+    cartons: (p.yellow_cards || 0) + (p.red_cards ? " | " + p.red_cards : "")
+  };
+});
     squadToShow = sortSquad(squadToShow, sortKey, sortAsc);
 
     return (
