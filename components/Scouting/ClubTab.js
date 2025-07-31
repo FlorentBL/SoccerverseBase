@@ -4,44 +4,33 @@ const PLAYER_MAPPING_URL = "/player_mapping.json";
 const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
-// Normalisation Soccerverse <-> foot classique
-const POSITION_NORMALIZE = {
-  DMC: "CDM",
-  AMC: "CAM",
-  LWB: "LWB",
-  RWB: "RWB",
-  RCB: "CB",
-  LCB: "CB",
-  RCM: "CM",
-  LCM: "CM",
-  RST: "ST",
-  LST: "ST",
-};
-
-const POSITION_ORDER = [
-  "GK", "RB", "CB", "LB", "RWB", "LWB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "CF", "ST", "SUB"
+const SOCCERVERSE_POSITIONS_ORDER = [
+  "GK",
+  "LB", "CB", "RB",
+  "DML", "DMR", "DMC",
+  "LM", "CM", "RM",
+  "AML", "AMR", "AM",
+  "FL", "FC", "FR"
 ];
 
 const POSITION_COLORS = {
-  GK: "#b891ff", CB: "#8ac8e9", LB: "#e3d267", RB: "#e3d267", CDM: "#ffd700",
-  CM: "#82e0aa", CAM: "#82e0aa", RM: "#ffd17e", LM: "#ffd17e",
-  RW: "#ffb347", LW: "#ffb347", CF: "#f08", ST: "#f08", SUB: "#aaa"
+  GK: "#b891ff", LB: "#e3d267", CB: "#8ac8e9", RB: "#e3d267",
+  DML: "#ffd700", DMR: "#ffd700", DMC: "#ffd700",
+  LM: "#82e0aa", CM: "#82e0aa", RM: "#ffd17e",
+  AML: "#ffb347", AMR: "#ffb347", AM: "#82e0aa",
+  FL: "#f08", FC: "#f08", FR: "#f08",
 };
 
-function normalizePos(pos) {
-  return POSITION_NORMALIZE[pos] || pos;
-}
-function getPositionOrder(label) {
-  if (!label) return 999;
-  const main = normalizePos(label.split(",")[0].trim());
-  const idx = POSITION_ORDER.indexOf(main);
-  return idx === -1 ? 999 : idx;
+function getPositionOrder(pos) {
+  const idx = SOCCERVERSE_POSITIONS_ORDER.indexOf(pos);
+  return idx === -1 ? 99 : idx;
 }
 function getPositionColor(label) {
   if (!label) return "#fff";
-  const main = normalizePos(label.split(",")[0].trim());
+  const main = label.split(",")[0].trim();
   return POSITION_COLORS[main] || "#fff";
 }
+
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (
@@ -55,33 +44,23 @@ function formatDate(ts) {
   const d = new Date(ts * 1000);
   return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
 }
-const POSITIONS_BITMASK = {
-  1: "GK", 2: "RB", 4: "LB", 8: "CM", 16: "CF", 32: "RW", 64: "LW", 128: "CB",
-  256: "CDM", 512: "CAM", 1024: "RM", 2048: "LM", 4096: "RWB", 8192: "LWB", 16384: "ST", 32768: "SUB"
-};
-function getPositionLabel(posNum) {
-  if (!posNum) return "-";
-  let keys = [];
-  for (const [k, v] of Object.entries(POSITIONS_BITMASK)) {
-    if ((posNum & k) !== 0) keys.push(v);
-  }
-  return keys.length ? keys.join(", ") : "-";
-}
 
 function sortSquad(arr, key, asc = false) {
-  if (key === "positions") {
+  // Tri sur "principal" (poste Soccerverse) selon l'ordre foot
+  if (key === "positions" || key === "principal") {
     return arr.slice().sort((a, b) => {
       const av = getPositionOrder(a.principal);
       const bv = getPositionOrder(b.principal);
       return asc ? av - bv : bv - av;
     });
   }
-  const av = a => a[key], bv = b => b[key];
+  // Sinon, tri classique
   return arr.slice().sort((a, b) => {
-    if (av(a) === undefined || av(a) === null) return 1;
-    if (bv(b) === undefined || bv(b) === null) return -1;
-    if (typeof av(a) === "number" && typeof bv(b) === "number") return asc ? av(a) - bv(b) : bv(b) - av(a);
-    return asc ? ("" + av(a)).localeCompare("" + bv(b)) : ("" + bv(b)).localeCompare("" + av(a));
+    const av = a[key], bv = b[key];
+    if (av === undefined || av === null) return 1;
+    if (bv === undefined || bv === null) return -1;
+    if (typeof av === "number" && typeof bv === "number") return asc ? av - bv : bv - av;
+    return asc ? ("" + av).localeCompare("" + bv) : ("" + bv).localeCompare("" + av);
   });
 }
 
@@ -95,7 +74,7 @@ export default function ClubTab() {
   const [squad, setSquad] = useState([]);
   const [squadLoading, setSquadLoading] = useState(false);
   const [squadErr, setSquadErr] = useState("");
-  const [sortKey, setSortKey] = useState("rating");
+  const [sortKey, setSortKey] = useState("principal");
   const [sortAsc, setSortAsc] = useState(false);
   const loadedPlayerMap = useRef(false);
 
@@ -159,8 +138,7 @@ export default function ClubTab() {
     return leagueMap?.[id]?.name || id || "-";
   }
 
-  // ----------- Carte club pro, liens, etc -----------
-   // ----------- Carte club pro, liens, etc -----------
+  // ----------- Carte club (identique à ta dernière version) -----------
   function renderClubCard() {
     if (!clubInfo) return null;
     return (
@@ -191,12 +169,10 @@ export default function ClubTab() {
             <div style={{ fontWeight: 600, fontSize: 17, color: "#4f47ff", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
               Manager : <span style={{ color: "#fff", fontWeight: 700 }}>{clubInfo.manager_name}</span>
               <span style={{ color: "#ffd700", marginLeft: 11, fontWeight: 700 }}>{clubInfo.country_id}</span>
-              {/* ID club avec lien */}
               <span style={{ color: "#b0b8cc", marginLeft: 11 }}>| ID:
                 <a href={`https://play.soccerverse.com/club/${clubInfo.club_id}`} target="_blank" rel="noopener noreferrer"
                   style={{ color: "#4f47ff", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }} title="Voir la page du club">{clubInfo.club_id}</a>
               </span>
-              {/* Division avec lien */}
               <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• Division:
                 <a href={`https://play.soccerverse.com/league/${clubInfo.league_id}`} target="_blank" rel="noopener noreferrer"
                   style={{ color: "#ffd700", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }} title="Voir la page de la division">{getLeagueLabel(clubInfo.league_id)}</a>
@@ -211,7 +187,7 @@ export default function ClubTab() {
             <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18 }}>{clubInfo.stadium_size_current}</div>
           </div>
         </div>
-        {/* Stats sur 1 seule ligne */}
+        {/* Stats ligne */}
         <div style={{
           display: "flex", gap: 20, marginTop: 9, alignItems: "center", flexWrap: "wrap"
         }}>
@@ -248,7 +224,7 @@ export default function ClubTab() {
             ))}
           </div>
         </div>
-        {/* Influenceurs 1 ligne, scroll horizontal */}
+        {/* Influenceurs */}
         {clubInfo.top_influencers && clubInfo.top_influencers.length > 0 && (
           <div style={{ marginTop: 10, width: "100%" }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: "#4f47ff", marginBottom: 6 }}>Top Influenceurs</div>
@@ -282,7 +258,7 @@ export default function ClubTab() {
     );
   }
 
-  // ----------- Effectif : pro, compact, tri, principal + secondaires, stats contextuelles -----------
+  // ----------- Effectif -----------
   function renderSquadTable() {
     if (squadLoading) return <div style={{ color: "#ffd700", fontWeight: 500, margin: 12 }}>Chargement effectif...</div>;
     if (squadErr) return <div style={{ color: "#ff4e5e", margin: 12 }}>{squadErr}</div>;
@@ -311,17 +287,18 @@ export default function ClubTab() {
     let squadToShow = squad.map(p => {
       const pm = playerMap?.[p.player_id];
       const name = pm?.name || (pm?.f || "") + " " + (pm?.s || "");
-      // Prend positions de l'API détaillée d'abord, puis du mapping, puis fallback bitmask
+      // Gestion poste principal + secondaires (ordre Soccerverse natif)
       let principal = "-";
       let secondaires = [];
       if (p.positions && Array.isArray(p.positions) && p.positions.length > 0) {
-        principal = normalizePos(p.positions[0]);
-        secondaires = p.positions.slice(1).map(normalizePos);
-      } else if (pm?.positions && pm.positions.length > 0) {
-        principal = normalizePos(pm.positions[0]);
-        secondaires = pm.positions.slice(1).map(normalizePos);
+        principal = p.positions[0];
+        secondaires = p.positions.slice(1);
       } else if (p.position) {
-        principal = getPositionLabel(p.position);
+        // fallback si p.positions absent, on tente "p.position" (rare)
+        principal = typeof p.position === "string" ? p.position : "-";
+      } else if (pm?.positions && pm.positions.length > 0) {
+        principal = pm.positions[0];
+        secondaires = pm.positions.slice(1);
       }
       const isGK = principal === "GK";
       return {
