@@ -1,368 +1,299 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 
-const CLUB_MAPPING_URL = "/club_mapping.json";
 const PLAYER_MAPPING_URL = "/player_mapping.json";
-const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
+
+function getEmoji(label) {
+  switch (label) {
+    case "Rating GK": return <span style={{ color: "#b891ff" }}>🧤</span>;
+    case "Tackling": return <span style={{ color: "#77e5ff" }}>🛡️</span>;
+    case "Passing": return <span style={{ color: "#ff8cfa" }}>🎯</span>;
+    case "Shooting": return <span style={{ color: "#ffb347" }}>🏹</span>;
+    case "Stamina": return <span style={{ color: "#ffe074" }}>💪</span>;
+    case "Aggression": return <span style={{ color: "#ff5959" }}>🔥</span>;
+    case "Fitness": return <span style={{ color: "#ffd000" }}>⚡</span>;
+    default: return "";
+  }
+}
 
 function formatSVC(val) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " SVC";
 }
-function formatDate(ts) {
-  if (!ts || isNaN(ts)) return "-";
-  const d = new Date(ts * 1000);
-  return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
+
+// Détection mobile (peut être déplacé dans un hook si tu veux)
+function isMobile() {
+  if (typeof window === "undefined") return false;
+  return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 }
 
-const POSITIONS = {
-  1: "GK", 2: "RB", 4: "LB", 8: "CM", 16: "CF", 32: "RW", 64: "LW", 128: "CB",
-  256: "CDM", 512: "CAM", 1024: "RM", 2048: "LM", 4096: "RWB", 8192: "LWB", 16384: "ST", 32768: "SUB"
-};
-const POSITION_COLORS = {
-  GK: "#b891ff",
-  CB: "#8ac8e9", LB: "#e3d267", RB: "#e3d267",
-  CDM: "#ffd700", CM: "#82e0aa", CAM: "#82e0aa",
-  RM: "#ffd17e", LM: "#ffd17e",
-  RW: "#ffb347", LW: "#ffb347",
-  CF: "#f08", ST: "#f08", SUB: "#aaa"
-};
-
-function getPositionLabel(posNum) {
-  if (!posNum) return "-";
-  let keys = [];
-  for (const [k, v] of Object.entries(POSITIONS)) {
-    if ((posNum & k) !== 0) keys.push(v);
-  }
-  return keys.length ? keys.join(", ") : "-";
-}
-function getPositionColor(label) {
-  return POSITION_COLORS[label] || "#fff";
-}
-
-export default function ClubTab() {
-  const [clubId, setClubId] = useState("");
-  const [clubInfo, setClubInfo] = useState(null);
+export default function PlayerTab() {
+  const [playerId, setPlayerId] = useState("");
+  const [playerInfo, setPlayerInfo] = useState(null);
   const [playerMap, setPlayerMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
-  const [squad, setSquad] = useState([]);
-  const [squadLoading, setSquadLoading] = useState(false);
-  const [squadErr, setSquadErr] = useState("");
-  const loadedPlayerMap = useRef(false);
-
-  useEffect(() => {
-    fetchPlayerMap();
-  }, []);
+  const loadedMap = useRef(false);
 
   const fetchPlayerMap = async () => {
-    if (loadedPlayerMap.current) return playerMap;
+    if (loadedMap.current) return playerMap;
     const resp = await fetch(PLAYER_MAPPING_URL);
     const data = await resp.json();
     setPlayerMap(data);
-    loadedPlayerMap.current = true;
+    loadedMap.current = true;
     return data;
   };
 
-  // Fetch club info
-  const fetchClub = async () => {
-    setErr(""); setClubInfo(null); setLoading(true); setSquad([]); setSquadErr(""); setShowDetails(false);
+  const fetchPlayer = async () => {
+    setErr(""); setPlayerInfo(null); setLoading(true);
     try {
-      const api = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`);
+      const playerMapData = await fetchPlayerMap();
+      const api = await fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${playerId}`);
       const j = await api.json();
       if (!j.items || j.items.length === 0) {
-        setErr("Aucun club trouvé pour cet ID."); setLoading(false); return;
+        setErr("Aucun joueur trouvé pour cet ID."); setLoading(false); return;
       }
-      const clubApi = j.items[0];
-      setClubInfo(clubApi);
-      fetchSquad(clubId);
+      const playerApi = j.items[0];
+      const playerRincon = playerMapData[playerId] ?? {};
+      let nom = playerRincon.name || "";
+      if (!nom && (playerRincon.f || playerRincon.s))
+        nom = `${playerRincon.f ?? ""} ${playerRincon.s ?? ""}`.trim();
+      setPlayerInfo({ ...playerApi, nom });
     } catch (e) {
       setErr("Erreur réseau ou parsing données.");
     } finally { setLoading(false); }
   };
 
-  // Fetch squad
-  const fetchSquad = async (clubId) => {
-    setSquad([]); setSquadErr(""); setSquadLoading(true);
-    try {
-      const body = JSON.stringify({
-        jsonrpc: "2.0",
-        method: "get_squad",
-        params: { club_id: Number(clubId) },
-        id: 1
-      });
-      const resp = await fetch(SQUAD_RPC_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body
-      });
-      const data = await resp.json();
-      if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
-        setSquad(data.result.data);
-      } else {
-        setSquadErr("Aucun joueur trouvé dans l'effectif.");
-      }
-    } catch (e) {
-      setSquadErr("Erreur réseau ou parsing effectif.");
-    } finally { setSquadLoading(false); }
-  };
-
-  // Carte club "Hero"
-  function renderClubCard() {
-    if (!clubInfo) return null;
+  function PlayerDetailsCard() {
+    if (!playerInfo) return null;
     return (
-      <div style={{
-        background: "linear-gradient(115deg, #23272e 70%, #1a1c23 100%)",
-        borderRadius: 20,
-        boxShadow: "0 6px 32px #000a",
-        padding: "36px 36px 20px 36px",
-        marginBottom: 28,
-        width: "100%",
-        maxWidth: 900,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        border: "2px solid #282d38"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 26, marginBottom: 12 }}>
-          <img src={clubInfo.profile_pic || "/default_profile.jpg"}
-            alt="Club"
-            style={{ width: 72, height: 72, borderRadius: 18, border: "2px solid #ffd700", background: "#191d22" }}
-          />
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 33, color: "#ffd700", letterSpacing: ".03em" }}>
-              {clubInfo.name}
-            </div>
-            <div style={{ fontWeight: 500, fontSize: 20, color: "#4f47ff", marginTop: 2 }}>
-              Manager : <b style={{ color: "#fff" }}>{clubInfo.manager_name}</b>
-              {clubInfo.country_id && (
-                <span style={{ color: "#ffd700", marginLeft: 18 }}>
-                  | <span style={{ fontWeight: 700 }}>{clubInfo.country_id}</span>
-                </span>
+      <div
+        style={{
+          margin: "0 auto",
+          width: "100%",
+          maxWidth: 650,
+          background: "linear-gradient(115deg, #23272e 80%, #1a1c23 100%)",
+          borderRadius: 18,
+          boxShadow: "0 4px 20px #000b",
+          padding: "36px 36px 28px 36px",
+          marginBottom: 34,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          border: "2px solid #282d38",
+        }}
+      >
+        <div style={{ fontSize: 15, color: "#ffd700", fontWeight: 600, marginBottom: 14, letterSpacing: ".04em", alignSelf: "flex-start" }}>
+          Toutes les valeurs sont en SVC
+        </div>
+        <div style={{
+          display: "flex", width: "100%", justifyContent: "center", gap: 34, flexWrap: "wrap", alignItems: "flex-start"
+        }}>
+          {/* Colonne gauche : identité joueur */}
+          <div style={{ minWidth: 220, maxWidth: 350, flex: 1 }}>
+            <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", marginBottom: 6, lineHeight: 1.1 }}>
+              {playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}
+              {playerInfo.player_id && (
+                <>{" "}
+                  <a
+                    href={`https://play.soccerverse.com/player/${playerInfo.player_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "#76b4ff",
+                      fontWeight: 700,
+                      fontSize: 18,
+                      textDecoration: "underline",
+                      marginLeft: 4,
+                    }}
+                    title="Voir le joueur sur Soccerverse"
+                  >
+                    ({playerInfo.player_id})
+                  </a>
+                </>
               )}
             </div>
-            <div style={{ fontSize: 15, color: "#c0c7d7", marginTop: 1 }}>
-              ID : {clubInfo.club_id} &nbsp; • &nbsp; Division {clubInfo.division} &nbsp; • &nbsp; Fans : <b>{clubInfo.fans_current}</b>
+            <div style={{ fontSize: 16, color: "#ffd700", fontWeight: 700, marginBottom: 5 }}>
+              {playerInfo.positions && (Array.isArray(playerInfo.positions) ? playerInfo.positions.join(", ") : playerInfo.positions)}
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
+              Âge : <span style={{ fontWeight: 700 }}>{playerInfo.age || "-"}</span>
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
+              Club :{" "}
+              {playerInfo.club_id ? (
+                <a
+                  href={`https://play.soccerverse.com/club/${playerInfo.club_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#4f47ff", fontWeight: 700, textDecoration: "underline", fontSize: 16 }}
+                  title="Voir le club"
+                >
+                  {playerInfo.club_id}
+                </a>
+              ) : (
+                playerInfo.club || "-"
+              )}
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
+              Note : <b style={{ color: "#76ffb1" }}>{playerInfo.rating || "-"}</b>
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
+              Valeur : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.value)}</span>
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 6, color: "#eee" }}>
+              Salaire : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.wages)}</span>
             </div>
           </div>
-        </div>
-        <div style={{ display: "flex", gap: 50, flexWrap: "wrap", marginTop: 20, marginBottom: 8 }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#fff" }}>Valeur</div>
-            <div style={{ fontWeight: 700, color: "#ffd700", fontSize: 22 }}>{formatSVC(clubInfo.value)}</div>
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#fff" }}>Balance</div>
-            <div style={{ fontWeight: 700, color: "#ffd700", fontSize: 22 }}>{formatSVC(clubInfo.balance)}</div>
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#fff" }}>Stade</div>
-            <div style={{ fontWeight: 700, color: "#ffd700", fontSize: 22 }}>{clubInfo.stadium_size_current}</div>
-          </div>
-        </div>
-        {/* Ratings */}
-        <div style={{ display: "flex", gap: 36, flexWrap: "wrap", marginTop: 18, marginBottom: 18 }}>
-          <div style={{ color: "#4f47ff", fontWeight: 700, fontSize: 19, minWidth: 140 }}>Moyennes & Ratings</div>
-          {[
-            ["⭑ Rating équipe", clubInfo.avg_player_rating],
-            ["⭑ Top 21", clubInfo.avg_player_rating_top21],
-            ["🏹 Shooting", clubInfo.avg_shooting],
-            ["🎯 Passing", clubInfo.avg_passing],
-            ["🛡️ Tackling", clubInfo.avg_tackling],
-            ["🧤 GK", clubInfo.gk_rating],
-            ["💸 Avg Wages", formatSVC(clubInfo.avg_wages)]
-          ].map(([label, val], i) => (
-            <div key={i} style={{
-              background: "#232644",
-              color: "#ffd700",
-              fontWeight: 700,
-              borderRadius: 8,
-              fontSize: 17,
-              padding: "6px 14px",
-              minWidth: 88,
-              textAlign: "center",
-              marginRight: 4,
-              boxShadow: "0 2px 6px #0d0d3a44"
-            }}>{label} <br /><span style={{ color: "#fff", fontSize: 19 }}>{val ?? "-"}</span>
-            </div>
-          ))}
-        </div>
-        {/* Influenceurs */}
-        {clubInfo.top_influencers && clubInfo.top_influencers.length > 0 && (
-          <div style={{ marginTop: 10, width: "100%" }}>
-            <div style={{ fontWeight: 700, fontSize: 19, color: "#4f47ff", marginBottom: 8 }}>Top Influenceurs</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "22px" }}>
-              {clubInfo.top_influencers.slice(0, 5).map((inf, i) => (
-                <div key={i} style={{
-                  background: "#21242c",
-                  borderRadius: 12,
-                  padding: "12px 24px",
-                  minWidth: 140,
-                  textAlign: "center",
-                  boxShadow: "0 2px 8px #0004"
-                }}>
-                  <img src={inf.profile_pic || "/default_profile.jpg"} alt={inf.name} style={{
-                    width: 48, height: 48, borderRadius: "50%", objectFit: "cover", marginBottom: 6
-                  }} />
-                  <div style={{ fontWeight: 700, fontSize: 17, color: "#fff" }}>{inf.name}</div>
-                  <div style={{ color: "#ffd700", fontWeight: 800, fontSize: 15 }}>{inf.num}</div>
-                  <div style={{ fontSize: 13, color: "#aaa", marginTop: 2 }}>
-                    {inf.last_active_unix ? formatDate(inf.last_active_unix) : ""}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Tableau d’effectif visuel
-  function renderSquadTable() {
-    if (squadLoading) return <div style={{ color: "#ffd700", fontWeight: 500, margin: 12 }}>Chargement effectif...</div>;
-    if (squadErr) return <div style={{ color: "#ff4e5e", margin: 12 }}>{squadErr}</div>;
-    if (!squad || squad.length === 0) return null;
-    return (
-      <div style={{
-        width: "100%",
-        maxWidth: 1100,
-        background: "#21232e",
-        borderRadius: 18,
-        boxShadow: "0 4px 22px #0007",
-        padding: "28px 18px 16px 18px",
-        marginBottom: 18,
-        marginTop: 4
-      }}>
-        <div style={{
-          fontWeight: 900,
-          fontSize: 25,
-          marginBottom: 16,
-          color: "#ffd700"
-        }}>Effectif du Club</div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            color: "#eee",
-            fontSize: 16,
-            borderRadius: 10,
-            minWidth: 900
+          {/* Colonne droite : stats */}
+          <div style={{
+            minWidth: 210,
+            flex: 1,
+            background: "#21232e",
+            borderRadius: 16,
+            padding: "22px 28px 12px 22px",
+            boxShadow: "0 2px 16px #0002",
+            marginBottom: 6,
+            marginTop: 8,
+            alignSelf: "center"
           }}>
-            <thead>
-              <tr style={{ background: "#191d22", fontWeight: 700, fontSize: 17 }}>
-                <th style={{ padding: "8px" }}>Nom</th>
-                <th style={{ padding: "8px" }}>Pos.</th>
-                <th style={{ padding: "8px" }}>Note</th>
-                <th style={{ padding: "8px" }}>GK</th>
-                <th style={{ padding: "8px" }}>Tac.</th>
-                <th style={{ padding: "8px" }}>Pas.</th>
-                <th style={{ padding: "8px" }}>Tir</th>
-                <th style={{ padding: "8px" }}>Âge</th>
-                <th style={{ padding: "8px" }}>Forme</th>
-                <th style={{ padding: "8px" }}>Valeur</th>
-                <th style={{ padding: "8px" }}>Fitness</th>
-                <th style={{ padding: "8px" }}>Morale</th>
-                <th style={{ padding: "8px" }}>Agent</th>
-                <th style={{ padding: "8px" }}>Contrat</th>
-                <th style={{ padding: "8px" }}>Cartons</th>
-                <th style={{ padding: "8px" }}>Pays</th>
-              </tr>
-            </thead>
-            <tbody>
-              {squad.map(p => {
-                const pm = playerMap?.[p.player_id];
-                const name = pm?.name || (pm?.f || "") + " " + (pm?.s || "");
-                const posLabel = getPositionLabel(p.position);
-                return (
-                  <tr key={p.player_id} style={{ background: p.retired ? "#4446" : undefined }}>
-                    <td style={{ padding: "6px 8px", fontWeight: 700 }}>
-                      <a
-                        href={`https://play.soccerverse.com/player/${p.player_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: "#4f47ff", fontWeight: 700, textDecoration: "underline"
-                        }}>
-                        {name?.trim() || p.player_id}
-                      </a>
-                    </td>
-                    <td style={{
-                      padding: "6px 8px",
-                      fontWeight: 700,
-                      color: getPositionColor(posLabel),
-                    }}>{posLabel}</td>
-                    <td style={{
-                      padding: "6px 8px",
-                      fontWeight: 900,
-                      color: (p.rating >= 75 ? "#64ffae" : (p.rating < 65 ? "#ff7575" : "#fff"))
-                    }}>{p.rating ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.rating_gk ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.rating_tackling ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.rating_passing ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.rating_shooting ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.form || "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{formatSVC(p.value)}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.fitness ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.morale ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.agent_name || "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>{p.contract ?? "-"}</td>
-                    <td style={{ padding: "6px 8px" }}>
-                      <span title="Jaune">{p.yellow_cards || 0}</span>
-                      {p.red_cards ? <span style={{ color: "red" }}> | <b>{p.red_cards}</b></span> : ""}
-                    </td>
-                    <td style={{ padding: "6px 8px" }}>{p.country_id || "-"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            <table style={{ width: "100%", color: "#dde6f7", fontSize: 16, borderCollapse: "collapse" }}>
+              <tbody>
+                <tr><td>{getEmoji("Rating GK")} <b>GK</b></td><td style={{ textAlign: "right", fontWeight: 700 }}>{playerInfo.rating_gk || "-"}</td></tr>
+                <tr><td>{getEmoji("Tackling")} <b>Tackling</b></td><td style={{ textAlign: "right", fontWeight: 700 }}>{playerInfo.rating_tackling || "-"}</td></tr>
+                <tr><td>{getEmoji("Passing")} <b>Passing</b></td><td style={{ textAlign: "right", fontWeight: 700 }}>{playerInfo.rating_passing || "-"}</td></tr>
+                <tr><td>{getEmoji("Shooting")} <b>Shooting</b></td><td style={{ textAlign: "right", fontWeight: 700 }}>{playerInfo.rating_shooting || "-"}</td></tr>
+                <tr><td>{getEmoji("Stamina")} <b>Stamina</b></td><td style={{ textAlign: "right", fontWeight: 700 }}>{playerInfo.rating_stamina || "-"}</td></tr>
+                <tr><td>{getEmoji("Aggression")} <b>Aggression</b></td><td style={{ textAlign: "right" }}>{playerInfo.rating_aggression || "-"}</td></tr>
+                <tr><td>{getEmoji("Fitness")} <b>Fitness</b></td><td style={{ textAlign: "right" }}>{playerInfo.fitness ?? "-"}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {/* Liens rapides */}
+        <div style={{
+          display: "flex", gap: 0, justifyContent: "center", alignItems: "center", margin: "32px 0 0 0", width: "100%", flexWrap: "wrap"
+        }}>
+          <a
+            href={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{
+              display: "inline-block",
+              background: "linear-gradient(90deg, #2050b0, #40bff7)",
+              color: "#fff",
+              borderRadius: 8,
+              padding: "14px 34px",
+              fontWeight: 700,
+              fontSize: 17,
+              textDecoration: "none",
+              boxShadow: "0 2px 8px #0af2",
+              margin: "0 auto"
+            }}>
+            Voir sur Transfermarkt
+          </a>
         </div>
       </div>
     );
   }
 
-  // Rendu principal
   return (
-    <div style={{
-      maxWidth: 1400,
-      margin: "0 auto",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center"
-    }}>
-      {/* Saisie ID club */}
-      <div style={{
-        background: "#23272e",
-        padding: 24,
-        borderRadius: 14,
-        boxShadow: "0 2px 12px #0008",
-        width: "100%",
-        maxWidth: 520,
-        marginBottom: 34
-      }}>
-        <label style={{ fontWeight: 600, fontSize: 17 }}>ID Club :</label>
-        <input type="number" value={clubId} onChange={e => setClubId(e.target.value)}
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      {/* Saisie ID joueur */}
+      <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
+        <label style={{ fontWeight: 600, fontSize: 17 }}>ID Joueur :</label>
+        <input type="number" value={playerId} onChange={e => setPlayerId(e.target.value)}
           style={{
             width: "100%", margin: "12px 0 16px 0", padding: "12px 16px", borderRadius: 6,
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}
-          placeholder="Ex : 5902" min={1}
+          placeholder="Ex : 17" min={1}
         />
-        <button onClick={fetchClub} disabled={loading || !clubId}
+        <button onClick={fetchPlayer} disabled={loading || !playerId}
           style={{
             background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
             border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
-            cursor: loading || !clubId ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
+            cursor: loading || !playerId ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
           }}
         >{loading ? "Recherche..." : "Afficher infos"}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
-      {/* Carte club pro */}
-      {clubInfo && renderClubCard()}
-      {/* Effectif pro */}
-      {clubInfo && renderSquadTable()}
+      {/* Carte détaillée + iframe/bouton */}
+      {playerInfo && (
+        <div style={{ width: "100%", maxWidth: 1200 }}>
+          <PlayerDetailsCard />
+          {/* Bloc Iframe SoccerRatings */}
+          <div style={{
+            display: "flex",
+            flexDirection: "row",
+            gap: 24,
+            margin: "0 auto",
+            marginTop: 0,
+            width: "100%",
+            flexWrap: "wrap"
+          }}>
+            <div style={{
+              flex: "1 1 440px",
+              minWidth: 360,
+              background: "#181d23",
+              borderRadius: 14,
+              padding: 0,
+              boxShadow: "0 2px 8px #0003",
+              display: "flex",
+              flexDirection: "column",
+              marginBottom: 18
+            }}>
+              <div style={{
+                fontSize: 16, fontWeight: 700, color: "#4f47ff",
+                background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
+              }}>
+                Analyse SoccerRatings.org
+              </div>
+              {isMobile() ? (
+                <div style={{ textAlign: "center", padding: 24 }}>
+                  <a
+                    href={`https://soccerratings.org/player/${playerId}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: "inline-block", background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
+                      color: "#fff", borderRadius: 8, padding: "16px 36px",
+                      fontWeight: 800, fontSize: 18, textDecoration: "none"
+                    }}>
+                    Voir l’analyse complète sur SoccerRatings.org
+                  </a>
+                  <div style={{ marginTop: 10, color: "#bbb", fontSize: 13 }}>
+                    (L’aperçu n’est pas disponible sur mobile)
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <iframe
+                    src={`https://soccerratings.org/player/${playerId}`}
+                    style={{
+                      width: "100%",
+                      minHeight: 550,
+                      border: "none",
+                      borderRadius: "0 0 0 0",
+                      background: "#191d22"
+                    }}
+                    title="Soccer Ratings"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                  />
+                  <div style={{ textAlign: "center", padding: 12 }}>
+                    <a href={`https://soccerratings.org/player/${playerId}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display: "inline-block", background: "linear-gradient(90deg, #0d8bff, #4f47ff)",
+                        color: "#fff", borderRadius: 8, padding: "8px 24px",
+                        fontWeight: 700, fontSize: 16, textDecoration: "none"
+                      }}>
+                      Ouvrir sur SoccerRatings.org
+                    </a>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
