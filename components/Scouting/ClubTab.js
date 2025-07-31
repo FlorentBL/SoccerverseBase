@@ -69,29 +69,30 @@ export default function ClubTab() {
 
   // 3. Fetch squad (RPC)
   const fetchSquad = async (clubId) => {
-    setSquad([]); setSquadErr(""); setSquadLoading(true);
-    try {
-      const body = JSON.stringify({
-        jsonrpc: "2.0",
-        method: "get_squad",
-        params: { club_id: Number(clubId) },
-        id: 1
-      });
-      const resp = await fetch(SQUAD_RPC_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body
-      });
-      const data = await resp.json();
-      if (data.result && Array.isArray(data.result) && data.result.length > 0) {
-        setSquad(data.result);
-      } else {
-        setSquadErr("Aucun joueur trouvé dans l'effectif.");
-      }
-    } catch (e) {
-      setSquadErr("Erreur réseau ou parsing effectif.");
-    } finally { setSquadLoading(false); }
-  };
+  setSquad([]); setSquadErr(""); setSquadLoading(true);
+  try {
+    const body = JSON.stringify({
+      jsonrpc: "2.0",
+      method: "get_squad",
+      params: { club_id: Number(clubId) },
+      id: 1
+    });
+    const resp = await fetch(SQUAD_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+    const data = await resp.json();
+    // Correction ici
+    if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
+      setSquad(data.result.data);
+    } else {
+      setSquadErr("Aucun joueur trouvé dans l'effectif.");
+    }
+  } catch (e) {
+    setSquadErr("Erreur réseau ou parsing effectif.");
+  } finally { setSquadLoading(false); }
+};
 
   // 4. Table d'effectif
   function renderSquadTable() {
