@@ -266,22 +266,38 @@ export default function ClubTab() {
 
     // mapping complet, prioritaire : player.positions (API détaillée)
     let squadToShow = squad.map(p => {
-      const pm = playerMap?.[p.player_id];
-      const positions = p.positions || []; // principal + secondaires
-      const principal = positions[0] || "-";
-      const secondaires = positions.slice(1);
-      const name = pm?.name || (pm?.f || "") + " " + (pm?.s || "");
-      const isGK = principal === "GK";
-      return {
-        ...p,
-        name: name?.trim() || p.player_id,
-        principal,
-        secondaires,
-        age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
-        wages: p.wages,
-        cartons: (p.yellow_cards || 0) + (p.red_cards ? " | " + p.red_cards : "")
-      };
-    });
+  const pm = playerMap?.[p.player_id];
+  const name = pm?.name || (pm?.f || "") + " " + (pm?.s || "");
+  
+  // Pour la position principale
+  let principal = "-";
+  let secondaires = [];
+  
+  // Cherche le champ position principal et secondaires (dans ta structure squad OU via pm.positions)
+  if (p.positions && Array.isArray(p.positions) && p.positions.length > 0) {
+    principal = p.positions[0];
+    secondaires = p.positions.slice(1);
+  } else if (p.position) {
+    principal = getPositionLabel(p.position);
+  }
+  // Si pas dans squad, essaye dans mapping joueur
+  else if (pm?.positions && pm.positions.length > 0) {
+    principal = pm.positions[0];
+    secondaires = pm.positions.slice(1);
+  }
+  
+  const isGK = principal === "GK";
+  return {
+    ...p,
+    name: name?.trim() || p.player_id,
+    positions: [principal, ...secondaires].filter(Boolean).join(", "),
+    principal,
+    secondaires,
+    age: p.dob ? (2025 - new Date(p.dob * 1000).getFullYear()) : "-",
+    wages: p.wages,
+    cartons: (p.yellow_cards || 0) + (p.red_cards ? " | " + p.red_cards : "")
+  };
+});
     squadToShow = sortSquad(squadToShow, sortKey, sortAsc);
 
     return (
