@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import {
   FIELD_ORDER, COST_FIELDS, NON_PROJECTED_FIELDS,
-  isMatchWeek, formatBigSVC, aggregateBilan, generateProjectionDetail, generateSimulatedDetail
+  isMatchWeek, formatBigSVC, aggregateBilan
 } from "../../components/utils";
 import Saison1 from "../../components/Saison1";
 import Saison2 from "../../components/Saison2";
@@ -63,20 +63,44 @@ export default function ClubProjectionPage() {
       const bilanS1 = aggregate(s1);
       const bilanS2 = aggregate(s2);
 
-      // Moyenne par champ sur les manches jouées S2
+      // Moyenne par champ sur S2
       const sumMatchWeeksS2 = {};
-s2.forEach(week => {
-  Object.entries(week).forEach(([k, v]) => {
-    if (typeof v === "number") sumMatchWeeksS2[k] = (sumMatchWeeksS2[k] ?? 0) + v;
-  });
-});
+      s2.forEach(week => {
+        Object.entries(week).forEach(([k, v]) => {
+          if (typeof v === "number") sumMatchWeeksS2[k] = (sumMatchWeeksS2[k] ?? 0) + v;
+        });
+      });
       const moyS2 = {};
       FIELD_ORDER.forEach(k => {
         moyS2[k] = s2.length > 0 ? (sumMatchWeeksS2[k] ?? 0) / s2.length : 0;
       });
 
-      // PROJECTION PAR MANCHE
-      const projDetail = generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal);
+      // Dernier salaire joueurs connu (journée passée) ou 0
+      const lastPlayerWages = matchWeeksS2.length > 0
+        ? matchWeeksS2[matchWeeksS2.length - 1].player_wages || 0
+        : 0;
+
+      // ---- PROJECTION PAR JOUR ----
+      // On garde les vraies semaines passées, puis on duplique une base pour les journées futures
+      let projDetail = [...matchWeeksS2.map(week => ({ ...week }))];
+      for (let i = 0; i < nbJoursRestantes; i++) {
+        const base = {};
+        FIELD_ORDER.forEach(k => {
+          if (k === "player_wages") {
+            base[k] = lastPlayerWages; // On garde le dernier salaire connu
+          } else if (NON_PROJECTED_FIELDS.includes(k)) {
+            base[k] = 0;
+          } else if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
+            // Pour ces champs, tu peux garder ta logique (exemple : un match sur deux pour domicile/extérieur)
+            base[k] = (nbJoursS2 + i) % 2 === 0 ? moyS2[k] : 0;
+          } else {
+            base[k] = moyS2[k];
+          }
+        });
+        base.game_week = nbJoursS2 + i + 1;
+        base.date = null;
+        projDetail.push(base);
+      }
 
       // Projection totale (somme de chaque champ)
       const projS2 = aggregate(projDetail);
@@ -89,30 +113,30 @@ s2.forEach(week => {
         else totalRecettes += projS2[k] ?? 0;
       });
       const soldeFinS2 = Number.isFinite(solde)
-  ? solde + Object.entries(projS2).reduce((acc, [k, v]) => (
-      COST_FIELDS.includes(k) ? acc - Math.abs(v || 0) : acc + (v || 0)
-    ), 0)
-  : 0;
+        ? solde + Object.entries(projS2).reduce((acc, [k, v]) => (
+            COST_FIELDS.includes(k) ? acc - Math.abs(v || 0) : acc + (v || 0)
+          ), 0)
+        : 0;
       const masseSalariale = Math.abs(projS2.player_wages ?? 0);
 
       setResults({
-  solde,
-  bilanS1,
-  matchWeeksS1,   // = s1.filter(isMatchWeek)
-  nbJoursTotal,
-  bilanS2,
-  matchWeeksS2,
-  nbJoursS2,
-  nbJoursRestantes,
-  projS2,
-  projDetail,
-  soldeFinS2,
-  masseSalariale,
-  totalRecettes,
-  totalCharges,
-  s1,   // <-- liste complète TOUTES les gameweeks S1 (pas matchWeeksS1)
-  s2,   // <-- idem pour S2
-});
+        solde,
+        bilanS1,
+        matchWeeksS1,
+        nbJoursTotal,
+        bilanS2,
+        matchWeeksS2,
+        nbJoursS2,
+        nbJoursRestantes,
+        projS2,
+        projDetail,
+        soldeFinS2,
+        masseSalariale,
+        totalRecettes,
+        totalCharges,
+        s1,
+        s2,
+      });
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -121,45 +145,44 @@ s2.forEach(week => {
   };
 
   // === SIMULATION LOGIC ===
-function runSimulation() {
-  if (!results) return;
-  const simDetail = JSON.parse(JSON.stringify(results.projDetail));
-  const transfert = (parseFloat(transfertSim.replace(",", ".")) || 0) * 10000;
-  const salaireHebdo = (parseFloat(salaireSim.replace(",", ".")) || 0) * 10000;
-  let simRecettes = 0, simCharges = 0;
+  function runSimulation() {
+    if (!results) return;
+    const simDetail = JSON.parse(JSON.stringify(results.projDetail));
+    const transfert = (parseFloat(transfertSim.replace(",", ".")) || 0) * 10000;
+    const salaireHebdo = (parseFloat(salaireSim.replace(",", ".")) || 0) * 10000;
+    let simRecettes = 0, simCharges = 0;
 
-  // Ajoute le salaire simulé sur les journées restantes
-  for (let i = results.nbJoursS2; i < simDetail.length; ++i) {
-    simDetail[i].player_wages = (simDetail[i].player_wages ?? 0) + salaireHebdo;
+    // Ajoute le salaire simulé sur les journées restantes uniquement !
+    for (let i = results.nbJoursS2; i < simDetail.length; ++i) {
+      simDetail[i].player_wages = (simDetail[i].player_wages ?? 0) + salaireHebdo;
+    }
+
+    // Ajoute le transfert sur la première journée restante
+    if (transfert > 0 && results.nbJoursS2 < simDetail.length) {
+      simDetail[results.nbJoursS2].transfers_out = (simDetail[results.nbJoursS2].transfers_out ?? 0) + transfert;
+    }
+
+    // Récap total simulé
+    const simBilan = aggregate(simDetail);
+    const simSoldeFin = results.solde + Object.entries(simBilan).reduce((acc, [k, v]) => (
+      COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v
+    ), 0);
+    const simMasseSalariale = Math.abs(simBilan.player_wages ?? 0);
+    FIELD_ORDER.forEach(k => {
+      if (NON_PROJECTED_FIELDS.includes(k)) return;
+      if (COST_FIELDS.includes(k)) simCharges += Math.abs(simBilan[k] ?? 0);
+      else simRecettes += simBilan[k] ?? 0;
+    });
+
+    setSimData({
+      bilan: simBilan,
+      soldeFinS2: simSoldeFin,
+      masseSalariale: simMasseSalariale,
+      totalRecettes: simRecettes,
+      totalCharges: simCharges,
+      detail: simDetail,
+    });
   }
-
-  // Ajoute le transfert sur la première journée restante
-  if (transfert > 0 && results.nbJoursS2 < simDetail.length) {
-    simDetail[results.nbJoursS2].transfers_out = (simDetail[results.nbJoursS2].transfers_out ?? 0) + transfert;
-  }
-
-  // Récap total simulé
-  const simBilan = aggregate(simDetail);
-  const simSoldeFin = results.solde + Object.entries(simBilan).reduce((acc, [k, v]) => (
-    COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v
-  ), 0);
-  const simMasseSalariale = Math.abs(simBilan.player_wages ?? 0);
-  FIELD_ORDER.forEach(k => {
-    if (NON_PROJECTED_FIELDS.includes(k)) return;
-    if (COST_FIELDS.includes(k)) simCharges += Math.abs(simBilan[k] ?? 0);
-    else simRecettes += simBilan[k] ?? 0;
-  });
-
-  setSimData({
-    bilan: simBilan,
-    soldeFinS2: simSoldeFin,
-    masseSalariale: simMasseSalariale,
-    totalRecettes: simRecettes,
-    totalCharges: simCharges,
-    detail: simDetail,
-  });
-}
-
 
   // Appelle la simulation en live
   React.useEffect(() => {
@@ -209,16 +232,16 @@ function runSimulation() {
             <Saison2 bilan={results.bilanS2} weeks={results.nbJoursS2} details={results.s2} />
             {/* Projection Fin S2 */}
             <ProjectionFinS2
-  bilan={results.projS2}
-  nbJoursTotal={results.nbJoursTotal}
-  detailProj={results.projDetail} // <-- GOOD : existe bien dans setResults
-  recap={{
-    soldeFin: results.soldeFinS2,
-    masseSalariale: results.masseSalariale,
-    totalRecettes: results.totalRecettes,
-    totalCharges: results.totalCharges
-  }}
-/>
+              bilan={results.projS2}
+              nbJoursTotal={results.nbJoursTotal}
+              detailProj={results.projDetail}
+              recap={{
+                soldeFin: results.soldeFinS2,
+                masseSalariale: results.masseSalariale,
+                totalRecettes: results.totalRecettes,
+                totalCharges: results.totalCharges
+              }}
+            />
 
             {/* Simulation */}
             <SimulationFinS2
