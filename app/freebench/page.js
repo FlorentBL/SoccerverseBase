@@ -35,9 +35,9 @@ const columns = [
   { key: "value", label: "Valeur", style: { minWidth: 80 }, sortable: true },
   { key: "wages", label: "Salaire", style: { minWidth: 80 }, sortable: true },
   { key: "team_name", label: "Club actuel", style: { minWidth: 120 }, sortable: true },
-  { key: "current_ovr_fiche", label: "Ovr Fiche", style: { minWidth: 40 }, sortable: true },
-  { key: "current_ovr_team", label: "Ovr Club", style: { minWidth: 40 }, sortable: true },
-  { key: "delta_ovr_team", label: "Delta", style: { minWidth: 40 }, sortable: true },
+  { key: "current_ovr_fiche", label: "Ovr Fiche", style: { minWidth: 40 }, sortable: true }, // Ovr actuel
+  { key: "projected_ovr_team", label: "Ovr Club", style: { minWidth: 40 }, sortable: true }, // Projected ovr team
+  { key: "delta", label: "Delta", style: { minWidth: 40 }, sortable: true },
   { key: "fiche", label: "Fiche", style: { minWidth: 40 } },
 ];
 
@@ -45,6 +45,7 @@ function sortData(data, key, asc) {
   return [...data].sort((a, b) => {
     let av = a[key], bv = b[key];
     if (key === "age") { av = ageFromDob(a.dob); bv = ageFromDob(b.dob); }
+    if (key === "delta") { av = (a.projected_ovr_team ?? 0) - (a.current_ovr_fiche ?? 0); bv = (b.projected_ovr_team ?? 0) - (b.current_ovr_fiche ?? 0); }
     if (av === undefined || av === null) return 1;
     if (bv === undefined || bv === null) return -1;
     if (typeof av === "number" && typeof bv === "number") return asc ? av - bv : bv - av;
@@ -78,11 +79,12 @@ export default function FreebenchTable() {
     setLoading(false);
   }
 
-  // Trie dynamique + Age
+  // Trie dynamique + calcul du delta à l'affichage
   const playersSorted = useMemo(() => {
     let arr = players.map(p => ({
       ...p,
-      age: ageFromDob(p.dob)
+      age: ageFromDob(p.dob),
+      delta: (p.projected_ovr_team ?? 0) - (p.current_ovr_fiche ?? 0)
     }));
     if (sortKey && columns.find(c => c.key === sortKey)?.sortable) {
       arr = sortData(arr, sortKey, sortAsc);
@@ -183,12 +185,12 @@ export default function FreebenchTable() {
                   <td style={columns[6].style}>{formatSVC(p.wages)}</td>
                   <td style={columns[7].style}>{p.team_name || "-"}</td>
                   <td style={columns[8].style}>{p.current_ovr_fiche ?? "-"}</td>
-                  <td style={columns[9].style}>{p.current_ovr_team ?? "-"}</td>
+                  <td style={columns[9].style}>{p.projected_ovr_team ?? "-"}</td>
                   <td style={{
                     ...columns[10].style,
-                    color: getDeltaColor(p.delta_ovr_team)
+                    color: getDeltaColor(p.delta)
                   }}>
-                    {p.delta_ovr_team ?? "-"}
+                    {p.delta ?? "-"}
                   </td>
                   <td style={columns[11].style}>
                     <a
