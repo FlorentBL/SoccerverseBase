@@ -1,10 +1,12 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 
+// --- CONFIG
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_KEY;
 const TABLE = "freebench_players";
 
+// Utils
 function formatSVC(val) {
   if (!val || isNaN(val)) return "-";
   return (
@@ -23,24 +25,40 @@ function getDeltaColor(val) {
   return "#fff";
 }
 
+// --- Colonnes dynamiques
 const columns = [
-  { key: "name", label: "Nom", style: { fontWeight: 700, minWidth: 120 } },
-  { key: "country_id", label: "Pays", style: { minWidth: 50 } },
-  { key: "rating", label: "Note", style: { fontWeight: 900, minWidth: 40 } },
-  { key: "position", label: "Pos.", style: { minWidth: 50 } },
-  { key: "age", label: "Âge", style: { minWidth: 30 } },
-  { key: "value", label: "Valeur", style: { minWidth: 80 } },
-  { key: "wages", label: "Salaire", style: { minWidth: 80 } },
-  { key: "team_name", label: "Club actuel", style: { minWidth: 120 } },
-  { key: "current_ovr_fiche", label: "Ovr Fiche", style: { minWidth: 40 } },
-  { key: "current_ovr_team", label: "Ovr Club", style: { minWidth: 40 } },
-  { key: "delta_ovr_team", label: "Delta", style: { minWidth: 40 } },
+  { key: "name", label: "Nom", style: { fontWeight: 700, minWidth: 120 }, sortable: true },
+  { key: "country_id", label: "Pays", style: { minWidth: 50 }, sortable: true },
+  { key: "rating", label: "Note", style: { fontWeight: 900, minWidth: 40 }, sortable: true },
+  { key: "position", label: "Pos.", style: { minWidth: 50 }, sortable: true },
+  { key: "age", label: "Âge", style: { minWidth: 30 }, sortable: true },
+  { key: "value", label: "Valeur", style: { minWidth: 80 }, sortable: true },
+  { key: "wages", label: "Salaire", style: { minWidth: 80 }, sortable: true },
+  { key: "team_name", label: "Club actuel", style: { minWidth: 120 }, sortable: true },
+  { key: "current_ovr_fiche", label: "Ovr Fiche", style: { minWidth: 40 }, sortable: true },
+  { key: "current_ovr_team", label: "Ovr Club", style: { minWidth: 40 }, sortable: true },
+  { key: "delta_ovr_team", label: "Delta", style: { minWidth: 40 }, sortable: true },
   { key: "fiche", label: "Fiche", style: { minWidth: 40 } },
 ];
+
+function sortData(data, key, asc) {
+  return [...data].sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (key === "age") { av = ageFromDob(a.dob); bv = ageFromDob(b.dob); }
+    if (av === undefined || av === null) return 1;
+    if (bv === undefined || bv === null) return -1;
+    if (typeof av === "number" && typeof bv === "number") return asc ? av - bv : bv - av;
+    return asc
+      ? ("" + av).localeCompare("" + bv)
+      : ("" + bv).localeCompare("" + av);
+  });
+}
 
 export default function FreebenchTable() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState("rating");
+  const [sortAsc, setSortAsc] = useState(false);
 
   useEffect(() => { fetchFreebench(); }, []);
 
@@ -56,9 +74,21 @@ export default function FreebenchTable() {
       }
     );
     const data = await res.json();
-    setPlayers(data.filter(p => p.name && p.name !== "NULL")); // On exclut les NULL
+    setPlayers(data.filter(p => p.name && p.name !== "NULL")); // Exclure NULL
     setLoading(false);
   }
+
+  // Trie dynamique + Age
+  const playersSorted = useMemo(() => {
+    let arr = players.map(p => ({
+      ...p,
+      age: ageFromDob(p.dob)
+    }));
+    if (sortKey && columns.find(c => c.key === sortKey)?.sortable) {
+      arr = sortData(arr, sortKey, sortAsc);
+    }
+    return arr;
+  }, [players, sortKey, sortAsc]);
 
   return (
     <div style={{
@@ -94,21 +124,32 @@ export default function FreebenchTable() {
               <tr style={{ background: "#181b2a", color: "#ffd700" }}>
                 {columns.map(col => (
                   <th key={col.key}
-                      style={{
-                        padding: "7px 6px",
-                        userSelect: "none",
-                        textAlign: "left",
-                        fontWeight: 800,
-                        fontSize: 16,
-                        ...col.style
-                      }}>
+                    onClick={() => col.sortable && (
+                      sortKey === col.key ? setSortAsc(s => !s) : (setSortKey(col.key), setSortAsc(false))
+                    )}
+                    style={{
+                      padding: "7px 6px",
+                      userSelect: "none",
+                      textAlign: "left",
+                      fontWeight: 800,
+                      fontSize: 16,
+                      ...col.style,
+                      cursor: col.sortable ? "pointer" : undefined,
+                      background: sortKey === col.key ? "#23233a" : "#181b2a",
+                      color: "#ffd700"
+                    }}>
                     {col.label}
+                    {col.sortable && sortKey === col.key && (
+                      <span style={{ marginLeft: 5, fontSize: 13 }}>
+                        {sortAsc ? "▲" : "▼"}
+                      </span>
+                    )}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {players.map((p, idx) => (
+              {playersSorted.map((p, idx) => (
                 <tr key={p.player_id}
                   style={{
                     background: idx % 2 === 0 ? "#1a1c22" : "#181b22",
@@ -137,7 +178,7 @@ export default function FreebenchTable() {
                     {p.rating ?? "-"}
                   </td>
                   <td style={columns[3].style}>{p.position ?? "-"}</td>
-                  <td style={columns[4].style}>{ageFromDob(p.dob)}</td>
+                  <td style={columns[4].style}>{p.age ?? "-"}</td>
                   <td style={columns[5].style}>{formatSVC(p.value)}</td>
                   <td style={columns[6].style}>{formatSVC(p.wages)}</td>
                   <td style={columns[7].style}>{p.team_name || "-"}</td>
@@ -172,7 +213,7 @@ export default function FreebenchTable() {
             </tbody>
           </table>
         )}
-        {!loading && players.length === 0 && (
+        {!loading && playersSorted.length === 0 && (
           <div style={{ color: "#ffd700", margin: 18 }}>Aucun joueur trouvé.</div>
         )}
       </div>
