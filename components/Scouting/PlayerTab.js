@@ -2,6 +2,74 @@ import React, { useState, useRef } from "react";
 
 const PLAYER_MAPPING_URL = "/player_mapping.json";
 
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+
+const T = {
+  fr: {
+    idLabel: "ID Joueur :",
+    idPlaceholder: "Ex : 17",
+    showInfo: "Afficher infos",
+    searching: "Recherche...",
+    errorNotFound: "Aucun joueur trouvé pour cet ID.",
+    errorNetwork: "Erreur réseau ou parsing données.",
+    allValues: "Toutes les valeurs sont en SVC",
+    notAvailable: "Non dispo",
+    age: "Âge :",
+    club: "Club :",
+    rating: "Note :",
+    value: "Valeur :",
+    wages: "Salaire :",
+    analysis: "Analyse SoccerRatings.org",
+    openAnalysis: "Voir l’analyse complète sur SoccerRatings.org",
+    mobileUnavailable: "(L’aperçu n’est pas disponible sur mobile)",
+    openSoccerRatings: "Ouvrir sur SoccerRatings.org",
+    transfermarkt: "Voir sur Transfermarkt",
+    seePlayer: "Voir le joueur sur Soccerverse",
+  },
+  en: {
+    idLabel: "Player ID:",
+    idPlaceholder: "Eg: 17",
+    showInfo: "Show info",
+    searching: "Searching...",
+    errorNotFound: "No player found for this ID.",
+    errorNetwork: "Network or parsing error.",
+    allValues: "All values in SVC",
+    notAvailable: "Not available",
+    age: "Age:",
+    club: "Club:",
+    rating: "Rating:",
+    value: "Value:",
+    wages: "Wages:",
+    analysis: "SoccerRatings.org analysis",
+    openAnalysis: "View full analysis on SoccerRatings.org",
+    mobileUnavailable: "(Preview not available on mobile)",
+    openSoccerRatings: "Open on SoccerRatings.org",
+    transfermarkt: "View on Transfermarkt",
+    seePlayer: "See player on Soccerverse",
+  },
+  it: {
+    idLabel: "ID Giocatore:",
+    idPlaceholder: "Es: 17",
+    showInfo: "Mostra info",
+    searching: "Ricerca...",
+    errorNotFound: "Nessun giocatore trovato per questo ID.",
+    errorNetwork: "Errore di rete o di parsing.",
+    allValues: "Tutti i valori in SVC",
+    notAvailable: "Non disponibile",
+    age: "Età:",
+    club: "Club:",
+    rating: "Valutazione:",
+    value: "Valore:",
+    wages: "Stipendio:",
+    analysis: "Analisi SoccerRatings.org",
+    openAnalysis: "Vedi analisi completa su SoccerRatings.org",
+    mobileUnavailable: "(Anteprima non disponibile su mobile)",
+    openSoccerRatings: "Apri su SoccerRatings.org",
+    transfermarkt: "Vedi su Transfermarkt",
+    seePlayer: "Vedi il giocatore su Soccerverse",
+  },
+};
+
 function getEmoji(label) {
   switch (label) {
     case "Rating GK": return <span style={{ color: "#b891ff" }}>🧤</span>;
@@ -15,24 +83,27 @@ function getEmoji(label) {
   }
 }
 
-function formatSVC(val) {
+function formatSVC(val, lang) {
   if (val === null || val === undefined || isNaN(val)) return "-";
-  return (val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " SVC";
+  return (
+    val / 10000
+  ).toLocaleString(LOCALES[lang] || LOCALES.fr, { maximumFractionDigits: 0 }) + " SVC";
 }
 
-// Détection mobile (peut être déplacé dans un hook si tu veux)
+// Mobile detection helper
 function isMobile() {
   if (typeof window === "undefined") return false;
   return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 }
 
-export default function PlayerTab() {
+export default function PlayerTab({ lang = "fr" }) {
   const [playerId, setPlayerId] = useState("");
   const [playerInfo, setPlayerInfo] = useState(null);
   const [playerMap, setPlayerMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const loadedMap = useRef(false);
+  const t = T[lang] || T.fr;
 
   const fetchPlayerMap = async () => {
     if (loadedMap.current) return playerMap;
@@ -50,7 +121,7 @@ export default function PlayerTab() {
       const api = await fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${playerId}`);
       const j = await api.json();
       if (!j.items || j.items.length === 0) {
-        setErr("Aucun joueur trouvé pour cet ID."); setLoading(false); return;
+        setErr(t.errorNotFound); setLoading(false); return;
       }
       const playerApi = j.items[0];
       const playerRincon = playerMapData[playerId] ?? {};
@@ -59,7 +130,7 @@ export default function PlayerTab() {
         nom = `${playerRincon.f ?? ""} ${playerRincon.s ?? ""}`.trim();
       setPlayerInfo({ ...playerApi, nom });
     } catch (e) {
-      setErr("Erreur réseau ou parsing données.");
+      setErr(t.errorNetwork);
     } finally { setLoading(false); }
   };
 
@@ -83,7 +154,7 @@ export default function PlayerTab() {
         }}
       >
         <div style={{ fontSize: 15, color: "#ffd700", fontWeight: 600, marginBottom: 14, letterSpacing: ".04em", alignSelf: "flex-start" }}>
-          Toutes les valeurs sont en SVC
+          {t.allValues}
         </div>
         <div style={{
           display: "flex", width: "100%", justifyContent: "center", gap: 34, flexWrap: "wrap", alignItems: "flex-start"
@@ -91,7 +162,7 @@ export default function PlayerTab() {
           {/* Colonne gauche : identité joueur */}
           <div style={{ minWidth: 220, maxWidth: 350, flex: 1 }}>
             <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", marginBottom: 6, lineHeight: 1.1 }}>
-              {playerInfo.nom || <span style={{ color: "#ff6" }}>Non dispo</span>}
+              {playerInfo.nom || <span style={{ color: "#ff6" }}>{t.notAvailable}</span>}
               {playerInfo.player_id && (
                 <>{" "}
                   <a
@@ -105,7 +176,7 @@ export default function PlayerTab() {
                       textDecoration: "underline",
                       marginLeft: 4,
                     }}
-                    title="Voir le joueur sur Soccerverse"
+                    title={t.seePlayer}
                   >
                     ({playerInfo.player_id})
                   </a>
@@ -116,10 +187,10 @@ export default function PlayerTab() {
               {playerInfo.positions && (Array.isArray(playerInfo.positions) ? playerInfo.positions.join(", ") : playerInfo.positions)}
             </div>
             <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
-              Âge : <span style={{ fontWeight: 700 }}>{playerInfo.age || "-"}</span>
+              {t.age} <span style={{ fontWeight: 700 }}>{playerInfo.age || "-"}</span>
             </div>
             <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
-              Club :{" "}
+              {t.club}{" "}
               {playerInfo.club_id ? (
                 <a
                   href={`https://play.soccerverse.com/club/${playerInfo.club_id}`}
@@ -135,13 +206,13 @@ export default function PlayerTab() {
               )}
             </div>
             <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
-              Note : <b style={{ color: "#76ffb1" }}>{playerInfo.rating || "-"}</b>
+              {t.rating} <b style={{ color: "#76ffb1" }}>{playerInfo.rating || "-"}</b>
             </div>
             <div style={{ fontSize: 16, marginBottom: 2, color: "#eee" }}>
-              Valeur : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.value)}</span>
+              {t.value} <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.value, lang)}</span>
             </div>
             <div style={{ fontSize: 16, marginBottom: 6, color: "#eee" }}>
-              Salaire : <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.wages)}</span>
+              {t.wages} <span style={{ fontWeight: 700 }}>{formatSVC(playerInfo.wages, lang)}</span>
             </div>
           </div>
           {/* Colonne droite : stats */}
@@ -188,7 +259,7 @@ export default function PlayerTab() {
               boxShadow: "0 2px 8px #0af2",
               margin: "0 auto"
             }}>
-            Voir sur Transfermarkt
+            {t.transfermarkt}
           </a>
         </div>
       </div>
@@ -199,13 +270,13 @@ export default function PlayerTab() {
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
       {/* Saisie ID joueur */}
       <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
-        <label style={{ fontWeight: 600, fontSize: 17 }}>ID Joueur :</label>
+        <label style={{ fontWeight: 600, fontSize: 17 }}>{t.idLabel}</label>
         <input type="number" value={playerId} onChange={e => setPlayerId(e.target.value)}
           style={{
             width: "100%", margin: "12px 0 16px 0", padding: "12px 16px", borderRadius: 6,
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}
-          placeholder="Ex : 17" min={1}
+          placeholder={t.idPlaceholder} min={1}
         />
         <button onClick={fetchPlayer} disabled={loading || !playerId}
           style={{
@@ -213,7 +284,7 @@ export default function PlayerTab() {
             border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
             cursor: loading || !playerId ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
           }}
-        >{loading ? "Recherche..." : "Afficher infos"}</button>
+        >{loading ? t.searching : t.showInfo}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
       {/* Carte détaillée + iframe/bouton */}
@@ -245,7 +316,7 @@ export default function PlayerTab() {
                 fontSize: 16, fontWeight: 700, color: "#4f47ff",
                 background: "#21252b", padding: "11px 20px", borderRadius: "14px 14px 0 0"
               }}>
-                Analyse SoccerRatings.org
+                {t.analysis}
               </div>
               {isMobile() ? (
                 <div style={{ textAlign: "center", padding: 24 }}>
@@ -257,10 +328,10 @@ export default function PlayerTab() {
                       color: "#fff", borderRadius: 8, padding: "16px 36px",
                       fontWeight: 800, fontSize: 18, textDecoration: "none"
                     }}>
-                    Voir l’analyse complète sur SoccerRatings.org
+                    {t.openAnalysis}
                   </a>
                   <div style={{ marginTop: 10, color: "#bbb", fontSize: 13 }}>
-                    (L’aperçu n’est pas disponible sur mobile)
+                    {t.mobileUnavailable}
                   </div>
                 </div>
               ) : (
@@ -285,7 +356,7 @@ export default function PlayerTab() {
                         color: "#fff", borderRadius: 8, padding: "8px 24px",
                         fontWeight: 700, fontSize: 16, textDecoration: "none"
                       }}>
-                      Ouvrir sur SoccerRatings.org
+                      {t.openSoccerRatings}
                     </a>
                   </div>
                 </>

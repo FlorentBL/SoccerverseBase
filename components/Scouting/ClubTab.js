@@ -4,6 +4,155 @@ const PLAYER_MAPPING_URL = "/player_mapping.json";
 const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+
+const T = {
+  fr: {
+    idLabel: "ID Club :",
+    idPlaceholder: "Ex : 5902",
+    showInfo: "Afficher infos",
+    searching: "Recherche...",
+    errorNotFound: "Aucun club trouvé pour cet ID.",
+    errorNetwork: "Erreur réseau ou parsing données.",
+    squadLoading: "Chargement effectif...",
+    squadError: "Aucun joueur trouvé dans l'effectif.",
+    squadErrorNetwork: "Erreur réseau ou parsing effectif.",
+    manager: "Manager",
+    division: "Division",
+    fans: "Fans",
+    balance: "Balance",
+    stadium: "Stade",
+    value: "Valeur",
+    avgWage: "Salaire moyen",
+    league: "League",
+    teamRating: "⭑ Rating équipe",
+    top21: "⭑ Top 21",
+    shooting: "🏹 Shooting",
+    passing: "🎯 Passing",
+    tackling: "🛡️ Tackling",
+    gk: "🧤 GK",
+    topInfluencers: "Top Influenceurs",
+    squadTitle: "Effectif du Club",
+    columns: {
+      name: "Nom",
+      positions: "Pos.",
+      rating: "Note",
+      rating_gk: "GK",
+      rating_tackling: "Tac.",
+      rating_passing: "Pas.",
+      rating_shooting: "Tir",
+      age: "Âge",
+      form: "Forme",
+      value: "Valeur",
+      wages: "Salaire",
+      morale: "Morale",
+      agent_name: "Agent",
+      contract: "Contrat",
+      cartons: "Cartons",
+      country_id: "Pays",
+    },
+    moraleGood: "Bonne morale",
+    moraleNeutral: "Morale neutre",
+    moraleBad: "Mauvaise morale",
+  },
+  en: {
+    idLabel: "Club ID:",
+    idPlaceholder: "Eg: 5902",
+    showInfo: "Show info",
+    searching: "Searching...",
+    errorNotFound: "No club found for this ID.",
+    errorNetwork: "Network or parsing error.",
+    squadLoading: "Loading squad...",
+    squadError: "No players found in the squad.",
+    squadErrorNetwork: "Network or squad parsing error.",
+    manager: "Manager",
+    division: "Division",
+    fans: "Fans",
+    balance: "Balance",
+    stadium: "Stadium",
+    value: "Value",
+    avgWage: "Avg wage",
+    league: "League",
+    teamRating: "⭑ Team rating",
+    top21: "⭑ Top 21",
+    shooting: "🏹 Shooting",
+    passing: "🎯 Passing",
+    tackling: "🛡️ Tackling",
+    gk: "🧤 GK",
+    topInfluencers: "Top Influencers",
+    squadTitle: "Club Squad",
+    columns: {
+      name: "Name",
+      positions: "Pos.",
+      rating: "Rating",
+      rating_gk: "GK",
+      rating_tackling: "Tackling",
+      rating_passing: "Passing",
+      rating_shooting: "Shooting",
+      age: "Age",
+      form: "Form",
+      value: "Value",
+      wages: "Wages",
+      morale: "Morale",
+      agent_name: "Agent",
+      contract: "Contract",
+      cartons: "Cards",
+      country_id: "Country",
+    },
+    moraleGood: "Good morale",
+    moraleNeutral: "Neutral morale",
+    moraleBad: "Bad morale",
+  },
+  it: {
+    idLabel: "ID Club:",
+    idPlaceholder: "Es: 5902",
+    showInfo: "Mostra info",
+    searching: "Ricerca...",
+    errorNotFound: "Nessun club trovato per questo ID.",
+    errorNetwork: "Errore di rete o di parsing.",
+    squadLoading: "Caricamento rosa...",
+    squadError: "Nessun giocatore trovato nella rosa.",
+    squadErrorNetwork: "Errore di rete o di parsing rosa.",
+    manager: "Manager",
+    division: "Divisione",
+    fans: "Tifosi",
+    balance: "Bilancio",
+    stadium: "Stadio",
+    value: "Valore",
+    avgWage: "Salario medio",
+    league: "Lega",
+    teamRating: "⭑ Valutazione squadra",
+    top21: "⭑ Top 21",
+    shooting: "🏹 Tiro",
+    passing: "🎯 Passaggi",
+    tackling: "🛡️ Contrasto",
+    gk: "🧤 Portiere",
+    topInfluencers: "Top Influencer",
+    squadTitle: "Rosa del club",
+    columns: {
+      name: "Nome",
+      positions: "Pos.",
+      rating: "Valut.",
+      rating_gk: "GK",
+      rating_tackling: "Contr.",
+      rating_passing: "Pass.",
+      rating_shooting: "Tiro",
+      age: "Età",
+      form: "Forma",
+      value: "Valore",
+      wages: "Salario",
+      morale: "Morale",
+      agent_name: "Agente",
+      contract: "Contratto",
+      cartons: "Cartellini",
+      country_id: "Paese",
+    },
+    moraleGood: "Buona morale",
+    moraleNeutral: "Morale neutro",
+    moraleBad: "Cattiva morale",
+  },
+};
+
 const SOCCERVERSE_POSITIONS_ORDER = [
   "GK", "LB", "CB", "RB",
   "DML", "DMR", "DMC",
@@ -22,18 +171,19 @@ function getPositionColor(label) {
   if (!label) return "#fff";
   return POSITION_COLORS[label] || "#fff";
 }
-function formatSVC(val) {
+function formatSVC(val, lang) {
   if (val === null || val === undefined || isNaN(val)) return "-";
   return (
     <span style={{ color: "#00ffd0", fontWeight: 700 }}>
-      {(val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })} SVC
+      {(val / 10000).toLocaleString(LOCALES[lang] || LOCALES.fr, { maximumFractionDigits: 0 })} SVC
     </span>
   );
 }
-function formatDate(ts) {
+function formatDate(ts, lang) {
   if (!ts || isNaN(ts)) return "-";
   const d = new Date(ts * 1000);
-  return d.toLocaleDateString("fr-FR") + " " + d.toLocaleTimeString("fr-FR");
+  const locale = LOCALES[lang] || LOCALES.fr;
+  return d.toLocaleDateString(locale) + " " + d.toLocaleTimeString(locale);
 }
 function sortSquad(arr, key, asc = false) {
   return arr.slice().sort((a, b) => {
@@ -49,7 +199,7 @@ function sortSquad(arr, key, asc = false) {
     return asc ? ("" + av).localeCompare("" + bv) : ("" + bv).localeCompare("" + av);
   });
 }
-function renderMorale(morale) {
+function renderMorale(morale, t) {
   let color = "#b0b8cc";
   if (morale === 1) color = "#19e36d";
   else if (morale === 0) color = "#ffd700";
@@ -62,12 +212,12 @@ function renderMorale(morale) {
       background: color,
       border: "2px solid #23242e",
       verticalAlign: "middle"
-    }} title={morale === 1 ? "Bonne morale" : morale === 0 ? "Morale neutre" : "Mauvaise morale"}></span>
+    }} title={morale === 1 ? t.moraleGood : morale === 0 ? t.moraleNeutral : t.moraleBad}></span>
   );
 }
 
 
-export default function ClubTab() {
+export default function ClubTab({ lang = "fr" }) {
   const [clubId, setClubId] = useState("");
   const [clubInfo, setClubInfo] = useState(null);
   const [playerMap, setPlayerMap] = useState({});
@@ -80,6 +230,7 @@ export default function ClubTab() {
   const [sortKey, setSortKey] = useState("rating");
   const [sortAsc, setSortAsc] = useState(false);
   const loadedPlayerMap = useRef(false);
+  const t = T[lang] || T.fr;
 
   useEffect(() => { fetchPlayerMap(); fetchLeagueMap(); }, []);
   const fetchPlayerMap = async () => {
@@ -103,13 +254,13 @@ export default function ClubTab() {
       const api = await fetch(`https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`);
       const j = await api.json();
       if (!j.items || j.items.length === 0) {
-        setErr("Aucun club trouvé pour cet ID."); setLoading(false); return;
+        setErr(t.errorNotFound); setLoading(false); return;
       }
       const clubApi = j.items[0];
       setClubInfo(clubApi);
       await fetchSquad(clubId);
     } catch (e) {
-      setErr("Erreur réseau ou parsing données.");
+      setErr(t.errorNetwork);
     } finally { setLoading(false); }
   };
 
@@ -129,7 +280,7 @@ export default function ClubTab() {
       });
       const data = await resp.json();
       if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
-        // Fetch positions détaillées
+        // Fetch detailed positions
         const detailedSquad = await Promise.all(
           data.result.data.map(async p => {
             try {
@@ -144,10 +295,10 @@ export default function ClubTab() {
         );
         setSquad(detailedSquad);
       } else {
-        setSquadErr("Aucun joueur trouvé dans l'effectif.");
+        setSquadErr(t.squadError);
       }
     } catch (e) {
-      setSquadErr("Erreur réseau ou parsing effectif.");
+      setSquadErr(t.squadErrorNetwork);
     } finally { setSquadLoading(false); }
   };
 
@@ -183,23 +334,23 @@ export default function ClubTab() {
               </a>
             </div>
             <div style={{ fontWeight: 600, fontSize: 17, color: "#4f47ff", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
-              Manager : <span style={{ color: "#fff", fontWeight: 700 }}>{clubInfo.manager_name}</span>
+              {t.manager} : <span style={{ color: "#fff", fontWeight: 700 }}>{clubInfo.manager_name}</span>
               <span style={{ color: "#ffd700", marginLeft: 11, fontWeight: 700 }}>{clubInfo.country_id}</span>
               <span style={{ color: "#b0b8cc", marginLeft: 11 }}>| ID:
                 <a href={`https://play.soccerverse.com/club/${clubInfo.club_id}`} target="_blank" rel="noopener noreferrer"
-                  style={{ color: "#4f47ff", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }} title="Voir la page du club">{clubInfo.club_id}</a>
+                  style={{ color: "#4f47ff", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }}>{clubInfo.club_id}</a>
               </span>
-              <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• Division:
+              <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• {t.division}:
                 <a href={`https://play.soccerverse.com/league/${clubInfo.league_id}`} target="_blank" rel="noopener noreferrer"
-                  style={{ color: "#ffd700", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }} title="Voir la page de la division">{getLeagueLabel(clubInfo.league_id)}</a>
+                  style={{ color: "#ffd700", fontWeight: 700, marginLeft: 3, textDecoration: "underline" }}>{getLeagueLabel(clubInfo.league_id)}</a>
               </span>
-              <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• Fans: <span style={{ color: "#ffd700" }}>{clubInfo.fans_current}</span></span>
+              <span style={{ color: "#b0b8cc", marginLeft: 8 }}>• {t.fans}: <span style={{ color: "#ffd700" }}>{clubInfo.fans_current}</span></span>
             </div>
           </div>
           <div style={{ minWidth: 150, textAlign: "right", alignSelf: "flex-start" }}>
-            <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 21 }}>Balance</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd700" }}>{formatSVC(clubInfo.balance)}</div>
-            <div style={{ color: "#ddd", fontWeight: 600, fontSize: 14, marginTop: 5 }}>Stade</div>
+            <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 21 }}>{t.balance}</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd700" }}>{formatSVC(clubInfo.balance, lang)}</div>
+            <div style={{ color: "#ddd", fontWeight: 600, fontSize: 14, marginTop: 5 }}>{t.stadium}</div>
             <div style={{ color: "#ffd700", fontWeight: 900, fontSize: 18 }}>{clubInfo.stadium_size_current}</div>
           </div>
         </div>
@@ -207,27 +358,27 @@ export default function ClubTab() {
           display: "flex", gap: 20, marginTop: 9, alignItems: "center", flexWrap: "wrap"
         }}>
           <div>
-            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>Valeur</div>
-            <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 18 }}>{formatSVC(clubInfo.value)}</div>
+            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>{t.value}</div>
+            <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 18 }}>{formatSVC(clubInfo.value, lang)}</div>
           </div>
           <div>
-            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>Salaire moyen</div>
-            <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 17 }}>{formatSVC(clubInfo.avg_wages)}</div>
+            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>{t.avgWage}</div>
+            <div style={{ fontWeight: 900, color: "#ffd700", fontSize: 17 }}>{formatSVC(clubInfo.avg_wages, lang)}</div>
           </div>
           <div>
-            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>League</div>
+            <div style={{ color: "#b2bcf5", fontWeight: 700, fontSize: 15 }}>{t.league}</div>
             <div style={{ fontWeight: 800, color: "#ffd700", fontSize: 17 }}>{getLeagueLabel(clubInfo.league_id)}</div>
           </div>
           <div style={{
             display: "flex", gap: 11, alignItems: "center", flexWrap: "nowrap", marginLeft: 28
           }}>
             {[
-              ["⭑ Rating équipe", clubInfo.avg_player_rating],
-              ["⭑ Top 21", clubInfo.avg_player_rating_top21],
-              ["🏹 Shooting", clubInfo.avg_shooting],
-              ["🎯 Passing", clubInfo.avg_passing],
-              ["🛡️ Tackling", clubInfo.avg_tackling],
-              ["🧤 GK", clubInfo.gk_rating],
+              [t.teamRating, clubInfo.avg_player_rating],
+              [t.top21, clubInfo.avg_player_rating_top21],
+              [t.shooting, clubInfo.avg_shooting],
+              [t.passing, clubInfo.avg_passing],
+              [t.tackling, clubInfo.avg_tackling],
+              [t.gk, clubInfo.gk_rating],
             ].map(([label, val], i) => (
               <div key={i} style={{
                 background: "#232644", color: "#ffd700", fontWeight: 700, borderRadius: 9,
@@ -241,7 +392,7 @@ export default function ClubTab() {
         </div>
         {clubInfo.top_influencers && clubInfo.top_influencers.length > 0 && (
           <div style={{ marginTop: 10, width: "100%" }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: "#4f47ff", marginBottom: 6 }}>Top Influenceurs</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: "#4f47ff", marginBottom: 6 }}>{t.topInfluencers}</div>
             <div style={{
               display: "flex", flexDirection: "row", gap: "17px", overflowX: "auto", whiteSpace: "nowrap", paddingBottom: 3
             }}>
@@ -261,7 +412,7 @@ export default function ClubTab() {
                   <div style={{ fontWeight: 800, fontSize: 14, color: "#fff" }}>{inf.name}</div>
                   <div style={{ color: "#ffd700", fontWeight: 800, fontSize: 14 }}>{inf.num}</div>
                   <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
-                    {inf.last_active_unix ? formatDate(inf.last_active_unix) : ""}
+                    {inf.last_active_unix ? formatDate(inf.last_active_unix, lang) : ""}
                   </div>
                 </div>
               ))}
@@ -273,28 +424,29 @@ export default function ClubTab() {
   }
 
   function renderSquadTable() {
-    if (squadLoading) return <div style={{ color: "#ffd700", fontWeight: 500, margin: 12 }}>Chargement effectif...</div>;
+    if (squadLoading) return <div style={{ color: "#ffd700", fontWeight: 500, margin: 12 }}>{t.squadLoading}</div>;
     if (squadErr) return <div style={{ color: "#ff4e5e", margin: 12 }}>{squadErr}</div>;
     if (!squad || squad.length === 0) return null;
 
-    const COLUMNS = [
-      { key: "name", label: "Nom" },
-      { key: "positions", label: "Pos." },
-      { key: "rating", label: "Note" },
-      { key: "rating_gk", label: "GK" },
-      { key: "rating_tackling", label: "Tac." },
-      { key: "rating_passing", label: "Pas." },
-      { key: "rating_shooting", label: "Tir" },
-      { key: "age", label: "Âge" },
-      { key: "form", label: "Forme" },
-      { key: "value", label: "Valeur" },
-      { key: "wages", label: "Salaire" },
-      { key: "morale", label: "Morale" },
-      { key: "agent_name", label: "Agent" },
-      { key: "contract", label: "Contrat" },
-      { key: "cartons", label: "Cartons" },
-      { key: "country_id", label: "Pays" },
+    const BASE_COLUMNS = [
+      { key: "name" },
+      { key: "positions" },
+      { key: "rating" },
+      { key: "rating_gk" },
+      { key: "rating_tackling" },
+      { key: "rating_passing" },
+      { key: "rating_shooting" },
+      { key: "age" },
+      { key: "form" },
+      { key: "value" },
+      { key: "wages" },
+      { key: "morale" },
+      { key: "agent_name" },
+      { key: "contract" },
+      { key: "cartons" },
+      { key: "country_id" },
     ];
+    const COLUMNS = BASE_COLUMNS.map(c => ({ ...c, label: t.columns[c.key] }));
 
     let squadToShow = squad.map(p => {
       let principal = p.positionsArr && p.positionsArr[0] || "-";
@@ -328,7 +480,7 @@ export default function ClubTab() {
           fontSize: 23,
           marginBottom: 6,
           color: "#ffd700"
-        }}>Effectif du Club</div>
+        }}>{t.squadTitle}</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{
             width: "100%",
@@ -426,7 +578,7 @@ export default function ClubTab() {
                       if (col.key === "morale") {
                         return (
                           <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>
-                            {renderMorale(p.morale)}
+                            {renderMorale(p.morale, t)}
                           </td>
                         );
                       }
@@ -442,7 +594,7 @@ export default function ClubTab() {
                       }
                       if (col.key === "value" || col.key === "wages") {
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{formatSVC(p[col.key])}</td>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{formatSVC(p[col.key], lang)}</td>
                         );
                       }
                       return (
@@ -477,13 +629,13 @@ export default function ClubTab() {
         maxWidth: 480,
         marginBottom: 32
       }}>
-        <label style={{ fontWeight: 600, fontSize: 17 }}>ID Club :</label>
+        <label style={{ fontWeight: 600, fontSize: 17 }}>{t.idLabel}</label>
         <input type="number" value={clubId} onChange={e => setClubId(e.target.value)}
           style={{
             width: "100%", margin: "12px 0 14px 0", padding: "11px 16px", borderRadius: 6,
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}
-          placeholder="Ex : 5902" min={1}
+          placeholder={t.idPlaceholder} min={1}
         />
         <button onClick={fetchClub} disabled={loading || !clubId}
           style={{
@@ -491,7 +643,7 @@ export default function ClubTab() {
             border: "none", borderRadius: 6, padding: "10px 26px", fontWeight: 700, fontSize: 16,
             cursor: loading || !clubId ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
           }}
-        >{loading ? "Recherche..." : "Afficher infos"}</button>
+        >{loading ? t.searching : t.showInfo}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 13, fontWeight: 600 }}>{err}</div>}
       </div>
       {clubInfo && renderClubCard()}
