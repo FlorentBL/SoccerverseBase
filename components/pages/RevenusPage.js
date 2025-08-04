@@ -2,49 +2,21 @@
 import React, { useEffect, useState } from "react";
 import SVCRewardsTable from "@/components/SVCRewardsTable";
 
-// -- labels multilingues (à compléter selon besoin) --
 const LABELS = {
   fr: {
-    title: (
-      <>
-        <span className="text-green-400">Soccerverse</span>
-        <span className="block sm:inline">: Revenus Agent & Actionnaire</span>
-      </>
-    ),
-    desc: (
-      <>
-        Devenez <b>actionnaire</b> ou <b>agent</b> et touchez des revenus réels selon les performances de vos joueurs !<br />
-        Retrouvez ici tous les salaires, primes et commissions par note.
-      </>
-    )
+    title1: "Soccerverse",
+    title2: ": Revenus Agent & Actionnaire",
+    desc: "Devenez actionnaire ou agent et touchez des revenus réels selon les performances de vos joueurs ! Retrouvez ici tous les salaires, primes et commissions par note."
   },
   en: {
-    title: (
-      <>
-        <span className="text-green-400">Soccerverse</span>
-        <span className="block sm:inline">: Agent & Shareholder Earnings</span>
-      </>
-    ),
-    desc: (
-      <>
-        Become a <b>shareholder</b> or <b>agent</b> and earn real rewards based on your players’ performances!<br />
-        Find here all salaries, bonuses, and commissions by rating.
-      </>
-    )
+    title1: "Soccerverse",
+    title2: ": Agent & Shareholder Earnings",
+    desc: "Become a shareholder or agent and earn real rewards based on your players’ performances! Find here all salaries, bonuses, and commissions by rating."
   },
   it: {
-    title: (
-      <>
-        <span className="text-green-400">Soccerverse</span>
-        <span className="block sm:inline">: Entrate Agente & Azionista</span>
-      </>
-    ),
-    desc: (
-      <>
-        Diventa <b>azionista</b> o <b>agente</b> e ricevi premi reali secondo le prestazioni dei tuoi giocatori!<br />
-        Qui trovi tutti gli stipendi, bonus e commissioni per valore.
-      </>
-    )
+    title1: "Soccerverse",
+    title2: ": Entrate Agente & Azionista",
+    desc: "Diventa azionista o agente e ricevi premi reali secondo le prestazioni dei tuoi giocatori! Qui trovi tutti gli stipendi, bonus e commissioni per valore."
   }
 };
 
@@ -59,7 +31,8 @@ export default function RevenusPage({ lang = "fr" }) {
     <div className="min-h-screen bg-[#101217] text-white py-8 px-2 sm:px-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 flex flex-col sm:flex-row items-center sm:gap-2 text-center sm:text-left leading-tight">
-          {t.title}
+          <span className="text-green-400">{t.title1}</span>
+          <span className="block sm:inline">{t.title2}</span>
         </h1>
         <p className="text-base sm:text-lg text-gray-300 mb-6 text-center sm:text-left">
           {t.desc}
