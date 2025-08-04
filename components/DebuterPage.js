@@ -256,9 +256,13 @@ const LABELS = {
     hero2: <>Guida pratica per iniziare e progredire su Soccerverse.<br />Accedi rapidamente alle risorse, informazioni e alla community italiana.</>,
     signup: "Iscriviti a Soccerverse",
     patch: "Patch IT (loghi, nomi)",
-    discordTitle: "Community italiana K-SOCIOS",
-    discordText: <>Spazio di supporto, discussione e informazioni per la community italiana.<br />Entra su Discord per domande o scambio con altri manager.</>,
-    discordBtn: "Entra nella Discord K-SOCIOS",
+    discordTitle: "K-SOCIOS – Community internazionale",
+discordText: <>
+  Server gestito dalla community francese, ma aperto a tutti!<br />
+  Scambia idee, fai domande e unisciti a manager di ogni paese.<br />
+  Entra e partecipa alle discussioni in francese, inglese o italiano.
+</>,
+discordBtn: "Unisciti a K-SOCIOS su Discord",
     sections: [
       {
         key: "soccerverse",
