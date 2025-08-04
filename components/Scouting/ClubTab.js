@@ -43,6 +43,9 @@ const T = {
       rating_shooting: "Tir",
       age: "Âge",
       form: "Forme",
+      matches: "Matchs",
+      goals: "Buts",
+      assists: "Passes décisives",
       value: "Valeur",
       wages: "Salaire",
       morale: "Morale",
@@ -91,6 +94,9 @@ const T = {
       rating_shooting: "Shooting",
       age: "Age",
       form: "Form",
+      matches: "Matches",
+      goals: "Goals",
+      assists: "Assists",
       value: "Value",
       wages: "Wages",
       morale: "Morale",
@@ -139,6 +145,9 @@ const T = {
       rating_shooting: "Tiro",
       age: "Età",
       form: "Forma",
+      matches: "Partite",
+      goals: "Gol",
+      assists: "Assist",
       value: "Valore",
       wages: "Salario",
       morale: "Morale",
@@ -280,16 +289,36 @@ export default function ClubTab({ lang = "fr" }) {
       });
       const data = await resp.json();
       if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
-        // Fetch detailed positions
+        // Fetch detailed positions and season stats
         const detailedSquad = await Promise.all(
           data.result.data.map(async p => {
             try {
-              const resp = await fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${p.player_id}`);
-              const detail = await resp.json();
+              const [detailResp, statsResp] = await Promise.all([
+                fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${p.player_id}`),
+                fetch(SQUAD_RPC_URL, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    jsonrpc: "2.0",
+                    method: "get_league_player_data",
+                    params: { player_id: p.player_id },
+                    id: p.player_id
+                  })
+                })
+              ]);
+              const detail = await detailResp.json();
+              const statsJson = await statsResp.json();
               const positionsArr = (detail.items && detail.items[0]?.positions) || [];
-              return { ...p, positionsArr };
+              const stats = statsJson.result?.data?.[0] || {};
+              return {
+                ...p,
+                positionsArr,
+                matches: stats.apearances,
+                goals: stats.goals,
+                assists: stats.assists,
+              };
             } catch (e) {
-              return { ...p, positionsArr: [] };
+              return { ...p, positionsArr: [], matches: undefined, goals: undefined, assists: undefined };
             }
           })
         );
@@ -438,6 +467,9 @@ export default function ClubTab({ lang = "fr" }) {
       { key: "rating_shooting" },
       { key: "age" },
       { key: "form" },
+      { key: "matches" },
+      { key: "goals" },
+      { key: "assists" },
       { key: "value" },
       { key: "wages" },
       { key: "morale" },
