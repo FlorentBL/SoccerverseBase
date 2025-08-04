@@ -1,4 +1,2 @@
-import HomePage from "@/components/HomePage";
-export default function Page() {
-  return <HomePage lang="fr" />;
-}
+import RevenusPage from "@/components/pages/RevenusPage";
+export default function() { return <RevenusPage lang="fr" />; }
