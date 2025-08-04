@@ -16,7 +16,7 @@ const LABELS = {
   },
   it: {
     soldeFin: "Saldo previsto fine S2: ",
-    masseSalariale: "Massa salariale giocatori prevista S2: ",
+    masseSalariale: "Stipendio giocatori previsto S2: ",
     totalRecettes: "Totale entrate S2: ",
     totalCharges: "Totale spese S2: ",
   },

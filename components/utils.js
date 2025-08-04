@@ -37,7 +37,7 @@ export const FIELD_LABELS = {
     other_outgoings: "Other outgoings"
   },
   it: {
-    cash_injection: "Iniezione di cassa",
+    cash_injection: "Finanziamento",
     gate_receipts: "Incassi biglietti",
     tv_revenue: "Introiti TV",
     sponsor: "Sponsor",
