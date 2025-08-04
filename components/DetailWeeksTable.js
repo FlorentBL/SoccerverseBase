@@ -1,7 +1,14 @@
 import React from "react";
 import { FIELD_ORDER, FIELD_LABELS, COST_FIELDS, formatSVC, formatDate } from "./utils";
 
-export default function DetailWeeksTable({ weeks, title }) {
+const LABELS = {
+  fr: { week: "Journée", date: "Date" },
+  en: { week: "Week", date: "Date" },
+  it: { week: "Giornata", date: "Data" }
+};
+
+export default function DetailWeeksTable({ weeks, title, lang = "fr" }) {
+  const t = LABELS[lang] || LABELS.fr;
   return (
     <div className="bg-[#0e111b] rounded-xl shadow-sm p-4 text-xs border border-[#3a3e5c] mb-6">
       {title && <h3 className="font-bold mb-3 text-gray-200">{title}</h3>}
@@ -9,10 +16,12 @@ export default function DetailWeeksTable({ weeks, title }) {
         <table className="min-w-full border border-[#363a57] text-xs text-gray-100">
           <thead className="bg-[#202330]">
             <tr>
-              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Week</th>
-              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">Date</th>
+              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">{t.week}</th>
+              <th className="px-2 py-1 border-b border-[#363a57] text-left font-semibold text-gray-300">{t.date}</th>
               {FIELD_ORDER.map(k => (
-                <th key={k} className="px-2 py-1 border-b border-[#363a57] font-semibold text-gray-300">{FIELD_LABELS[k] || k}</th>
+                <th key={k} className="px-2 py-1 border-b border-[#363a57] font-semibold text-gray-300">
+                  {FIELD_LABELS[lang][k] || FIELD_LABELS.fr[k] || k}
+                </th>
               ))}
             </tr>
           </thead>
@@ -20,7 +29,7 @@ export default function DetailWeeksTable({ weeks, title }) {
             {weeks.map((w, i) => (
               <tr key={i} className={i % 2 ? "bg-[#222436]" : "bg-[#1b1e29]"}>
                 <td className="px-2 py-1 border-b border-[#363a57]">{w.game_week || i + 1}</td>
-                <td className="px-2 py-1 border-b border-[#363a57]">{formatDate(w.date)}</td>
+                <td className="px-2 py-1 border-b border-[#363a57]">{formatDate(w.date, lang)}</td>
                 {FIELD_ORDER.map(k => (
                   <td
                     key={k}
@@ -29,7 +38,7 @@ export default function DetailWeeksTable({ weeks, title }) {
                       (COST_FIELDS.includes(k) && w[k] !== 0 ? "text-red-400" : "")
                     }
                   >
-                    {formatSVC(w[k] ?? 0, k)}
+                    {formatSVC(w[k] ?? 0, k, lang)}
                   </td>
                 ))}
               </tr>

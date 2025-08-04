@@ -3,38 +3,159 @@ import React, { useState, useRef } from "react";
 const CLUB_MAPPING_URL = "/club_mapping.json";
 const COUNTRY_MAPPING_URL = "/country_mapping.json";
 
-function formatSVC(val) {
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+
+const T = {
+  fr: {
+    countryLabel: "Pays :",
+    countryPlaceholder: "Sélectionner un pays",
+    divisionLabel: "Division :",
+    divisionPlaceholder: "Sélectionner une division",
+    showTable: "Afficher classement",
+    searching: "Recherche...",
+    loadingDetails: "Chargement stats clubs...",
+    errorNetwork: "Erreur réseau ou parsing données.",
+    noLeague: "Aucun championnat trouvé ou aucune équipe.",
+    standingsTitle: "Classement",
+    championshipLabel: "Championnat :",
+    columns: {
+      rank: "#",
+      club: "Club",
+      manager_name: "Manager",
+      pts: "Pts",
+      played: "J",
+      won: "G",
+      drawn: "N",
+      lost: "P",
+      goals_for: "BP",
+      goals_against: "BC",
+      fanbase: "Fanbase",
+      avg_player_rating: "Rating",
+      avg_wages: "💸Avg",
+      total_wages: "💸Total",
+      total_player_value: "🏦Value",
+      balance: "Balance",
+      transfers_in: "In",
+      transfers_out: "Out",
+      avg_player_rating_top21: "Top21",
+      avg_shooting: "🏹",
+      avg_passing: "🎯",
+      avg_tackling: "🛡️",
+      gk_rating: "🧤",
+    },
+  },
+  en: {
+    countryLabel: "Country:",
+    countryPlaceholder: "Select a country",
+    divisionLabel: "Division:",
+    divisionPlaceholder: "Select a division",
+    showTable: "Show standings",
+    searching: "Searching...",
+    loadingDetails: "Loading club stats...",
+    errorNetwork: "Network or parsing error.",
+    noLeague: "No league found or no teams.",
+    standingsTitle: "Standings",
+    championshipLabel: "League:",
+    columns: {
+      rank: "#",
+      club: "Club",
+      manager_name: "Manager",
+      pts: "Pts",
+      played: "P",
+      won: "W",
+      drawn: "D",
+      lost: "L",
+      goals_for: "GF",
+      goals_against: "GA",
+      fanbase: "Fanbase",
+      avg_player_rating: "Rating",
+      avg_wages: "💸Avg",
+      total_wages: "💸Total",
+      total_player_value: "🏦Value",
+      balance: "Balance",
+      transfers_in: "In",
+      transfers_out: "Out",
+      avg_player_rating_top21: "Top21",
+      avg_shooting: "🏹",
+      avg_passing: "🎯",
+      avg_tackling: "🛡️",
+      gk_rating: "🧤",
+    },
+  },
+  it: {
+    countryLabel: "Paese:",
+    countryPlaceholder: "Seleziona un paese",
+    divisionLabel: "Divisione:",
+    divisionPlaceholder: "Seleziona una divisione",
+    showTable: "Mostra classifica",
+    searching: "Ricerca...",
+    loadingDetails: "Caricamento statistiche club...",
+    errorNetwork: "Errore di rete o di parsing.",
+    noLeague: "Nessun campionato trovato o nessuna squadra.",
+    standingsTitle: "Classifica",
+    championshipLabel: "Campionato:",
+    columns: {
+      rank: "#",
+      club: "Club",
+      manager_name: "Manager",
+      pts: "Pt",
+      played: "G",
+      won: "V",
+      drawn: "N",
+      lost: "P",
+      goals_for: "GF",
+      goals_against: "GS",
+      fanbase: "Tifosi",
+      avg_player_rating: "Rating",
+      avg_wages: "💸Medio",
+      total_wages: "💸Totale",
+      total_player_value: "🏦Valore",
+      balance: "Bilancio",
+      transfers_in: "Entr.",
+      transfers_out: "Usc.",
+      avg_player_rating_top21: "Top21",
+      avg_shooting: "🏹",
+      avg_passing: "🎯",
+      avg_tackling: "🛡️",
+      gk_rating: "🧤",
+    },
+  },
+};
+
+function formatSVC(val, lang) {
   if (val === null || val === undefined || isNaN(val)) return "-";
-  return (val / 10000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " SVC";
+  return (
+    val / 10000
+  ).toLocaleString(LOCALES[lang] || LOCALES.fr, { maximumFractionDigits: 0 }) + " SVC";
 }
 
-const COLUMNS = [
-  { key: "rank", label: "#", sortable: false },
-  { key: "club", label: "Club", sortable: true },
-  { key: "manager_name", label: "Manager", sortable: true },
-  { key: "pts", label: "Pts", sortable: true },
-  { key: "played", label: "J", sortable: true },
-  { key: "won", label: "G", sortable: true },
-  { key: "drawn", label: "N", sortable: true },
-  { key: "lost", label: "P", sortable: true },
-  { key: "goals_for", label: "BP", sortable: true },
-  { key: "goals_against", label: "BC", sortable: true },
-  { key: "fanbase", label: "Fanbase", sortable: true },
-  { key: "avg_player_rating", label: "Rating", sortable: true },
-  { key: "avg_wages", label: "💸Avg", sortable: true, details: true },
-  { key: "total_wages", label: "💸Total", sortable: true, details: true },
-  { key: "total_player_value", label: "🏦Value", sortable: true, details: true },
-  { key: "balance", label: "Balance", sortable: true, details: true },
-  { key: "transfers_in", label: "In", sortable: true, details: true },
-  { key: "transfers_out", label: "Out", sortable: true, details: true },
-  { key: "avg_player_rating_top21", label: "Top21", sortable: true, details: true },
-  { key: "avg_shooting", label: "🏹", sortable: true, details: true },
-  { key: "avg_passing", label: "🎯", sortable: true, details: true },
-  { key: "avg_tackling", label: "🛡️", sortable: true, details: true },
-  { key: "gk_rating", label: "🧤", sortable: true, details: true },
+const BASE_COLUMNS = [
+  { key: "rank", sortable: false },
+  { key: "club", sortable: true },
+  { key: "manager_name", sortable: true },
+  { key: "pts", sortable: true },
+  { key: "played", sortable: true },
+  { key: "won", sortable: true },
+  { key: "drawn", sortable: true },
+  { key: "lost", sortable: true },
+  { key: "goals_for", sortable: true },
+  { key: "goals_against", sortable: true },
+  { key: "fanbase", sortable: true },
+  { key: "avg_player_rating", sortable: true },
+  { key: "avg_wages", sortable: true, details: true },
+  { key: "total_wages", sortable: true, details: true },
+  { key: "total_player_value", sortable: true, details: true },
+  { key: "balance", sortable: true, details: true },
+  { key: "transfers_in", sortable: true, details: true },
+  { key: "transfers_out", sortable: true, details: true },
+  { key: "avg_player_rating_top21", sortable: true, details: true },
+  { key: "avg_shooting", sortable: true, details: true },
+  { key: "avg_passing", sortable: true, details: true },
+  { key: "avg_tackling", sortable: true, details: true },
+  { key: "gk_rating", sortable: true, details: true },
 ];
 
-export default function LeagueTab() {
+export default function LeagueTab({ lang = "fr" }) {
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
   const [standings, setStandings] = useState([]);
@@ -50,6 +171,8 @@ export default function LeagueTab() {
 
   const loadedClubMap = useRef(false);
   const loadedCountryMap = useRef(false);
+  const t = T[lang] || T.fr;
+  const COLUMNS = BASE_COLUMNS.map(c => ({ ...c, label: t.columns[c.key] }));
 
   const fetchClubMap = async () => {
     if (loadedClubMap.current) return clubMap;
@@ -86,18 +209,18 @@ export default function LeagueTab() {
     try {
       const selectedCountry = countryMap.find(c => c.code === country);
       const selectedDivision = selectedCountry?.divisions.find(d => d.leagueId === Number(division));
-      if (!selectedDivision) throw new Error("Division non trouvée");
+      if (!selectedDivision) throw new Error("Division not found");
       const api = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${division}`);
       const j = await api.json();
       if (!Array.isArray(j) || j.length === 0) {
-        setErr("Aucun championnat trouvé ou aucune équipe.");
+        setErr(t.noLeague);
         setLoading(false);
         return;
       }
       setStandings(j.sort((a, b) => b.pts - a.pts));
       setTimeout(() => fetchAllClubsDetails(j.map(c => c.club_id)), 100);
     } catch (e) {
-      setErr("Erreur réseau ou parsing données.");
+      setErr(t.errorNetwork);
     } finally {
       setLoading(false);
     }
@@ -140,7 +263,7 @@ export default function LeagueTab() {
       if (valB === undefined || valB === null) valB = -Infinity;
 
       if (typeof valA === "string") {
-        const cmp = valA.localeCompare(valB, "fr");
+        const cmp = valA.localeCompare(valB, lang);
         return asc ? cmp : -cmp;
       }
       if (!isNaN(valA) && !isNaN(valB)) {
@@ -160,7 +283,7 @@ export default function LeagueTab() {
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
-        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>Pays :</label>
+        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.countryLabel}</label>
         <select
           value={country}
           onChange={e => setCountry(e.target.value)}
@@ -168,14 +291,14 @@ export default function LeagueTab() {
             width: "100%", marginBottom: 14, padding: "12px 16px", borderRadius: 6,
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}>
-          <option value="">Sélectionner un pays</option>
+          <option value="">{t.countryPlaceholder}</option>
           {[...countryMap]
-            .sort((a, b) => a.country.localeCompare(b.country, "fr"))
+            .sort((a, b) => a.country.localeCompare(b.country, lang))
             .map(c => (
               <option key={c.code} value={c.code}>{c.flag} {c.country}</option>
             ))}
         </select>
-        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>Division :</label>
+        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.divisionLabel}</label>
         <select
           value={division}
           onChange={e => setDivision(e.target.value)}
@@ -184,7 +307,7 @@ export default function LeagueTab() {
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}
           disabled={!selectedCountry}>
-          <option value="">Sélectionner une division</option>
+          <option value="">{t.divisionPlaceholder}</option>
           {selectedCountry?.divisions.map(d => (
             <option key={d.leagueId} value={d.leagueId}>{d.label} (ID {d.leagueId})</option>
           ))}
@@ -196,7 +319,7 @@ export default function LeagueTab() {
             border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
             cursor: loading || !country || !division ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
           }}
-        >{loading ? "Recherche..." : detailsLoading ? "Chargement stats clubs..." : "Afficher classement"}</button>
+        >{loading ? t.searching : detailsLoading ? t.loadingDetails : t.showTable}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
 
@@ -204,8 +327,8 @@ export default function LeagueTab() {
         <div style={{ width: "100%", maxWidth: 1200, background: "#181d23", borderRadius: 16, padding: 18, marginBottom: 30, boxShadow: "0 2px 8px #0003" }}>
           <div style={{ fontSize: 17, color: "#ffd700", fontWeight: 500, marginBottom: 12 }}>
             {selectedCountry && selectedDivision
-              ? <>Championnat : <span style={{ color: "#4f47ff" }}>{selectedCountry.flag} {selectedCountry.country} - {selectedDivision.label}</span></>
-              : "Classement"}
+              ? <>{t.championshipLabel} <span style={{ color: "#4f47ff" }}>{selectedCountry.flag} {selectedCountry.country} - {selectedDivision.label}</span></>
+              : t.standingsTitle}
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{
@@ -254,10 +377,10 @@ export default function LeagueTab() {
                       <td>{club.goals_against}</td>
                       <td>{club.fanbase || "-"}</td>
                       <td style={{ fontWeight: 700 }}>{club.avg_player_rating || "-"}</td>
-                      <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.avg_wages)}</td>
-                      <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.total_wages)}</td>
-                      <td style={{ color: "#6fffe6", fontWeight: 700 }}>{formatSVC(d.total_player_value)}</td>
-                      <td style={{ color: "#ffd700", fontWeight: 700 }}>{formatSVC(d.balance)}</td>
+                      <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.avg_wages, lang)}</td>
+                      <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.total_wages, lang)}</td>
+                      <td style={{ color: "#6fffe6", fontWeight: 700 }}>{formatSVC(d.total_player_value, lang)}</td>
+                      <td style={{ color: "#ffd700", fontWeight: 700 }}>{formatSVC(d.balance, lang)}</td>
                       <td style={{ color: "#b2ff5a", fontWeight: 700 }}>{d.transfers_in ?? "-"}</td>
                       <td style={{ color: "#ffb26b", fontWeight: 700 }}>{d.transfers_out ?? "-"}</td>
                       <td style={{ color: "#ffd700", fontWeight: 700 }}>{d.avg_player_rating_top21 ?? "-"}</td>

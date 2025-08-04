@@ -1,11 +1,29 @@
 import React, { useState } from "react";
 import FinanceTable from "./FinanceTable";
-import DetailWeeksTable from "./DetailWeeksTable";
 import RecapSynthese from "./RecapSynthese";
 import GroupedWeeksTable from "./GroupedWeeksTable";
 
-export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap }) {
+const LABELS = {
+  fr: {
+    title: "Projection Fin Saison 2",
+    show: "Afficher le détail par manche",
+    hide: "Masquer le détail par manche",
+  },
+  en: {
+    title: "End of Season 2 Projection",
+    show: "Show match detail",
+    hide: "Hide match detail",
+  },
+  it: {
+    title: "Proiezione Fine Stagione 2",
+    show: "Mostra dettaglio per giornata",
+    hide: "Nascondi dettaglio per giornata",
+  },
+};
+
+export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap, lang = "fr" }) {
   const [showDetail, setShowDetail] = useState(false);
+  const t = LABELS[lang] || LABELS.fr;
 
   if (showDetail) {
     console.log("🔎 [ProjectionFinS2] detailProj passed to GroupedWeeksTable:", detailProj);
@@ -30,20 +48,20 @@ export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap
   return (
     <>
       <h2 className="text-lg font-bold mt-8 mb-3 text-yellow-300 text-center">
-        Projection Fin Saison 2
+        {t.title}
       </h2>
-      <FinanceTable bilan={bilan} weeks={nbJoursTotal} isProj />
+      <FinanceTable bilan={bilan} weeks={nbJoursTotal} isProj lang={lang} />
       {/* Affiche le recap synthèse en utilisant les props */}
-      <RecapSynthese {...recap} />
+      <RecapSynthese {...recap} lang={lang} />
       <div className="mt-2 mb-4 flex justify-end">
         <button
           className="text-sm underline text-gray-300 hover:text-green-300"
           onClick={() => setShowDetail(s => !s)}
         >
-          {showDetail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
+          {showDetail ? t.hide : t.show}
         </button>
       </div>
-      {showDetail && <GroupedWeeksTable weeks={detailProj} />}
+      {showDetail && <GroupedWeeksTable weeks={detailProj} lang={lang} />}
     </>
   );
 }

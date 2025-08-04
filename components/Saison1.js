@@ -1,23 +1,41 @@
 import React, { useState } from "react";
 import FinanceTable from "./FinanceTable";
-import DetailWeeksTable from "./DetailWeeksTable";
 import GroupedWeeksTable from "./GroupedWeeksTable";
 
-export default function Saison1({ bilan, weeks, details }) {
+const LABELS = {
+  fr: {
+    title: "Bilan Saison 1",
+    show: "Afficher le détail par manche",
+    hide: "Masquer le détail par manche",
+  },
+  en: {
+    title: "Season 1 balance",
+    show: "Show match detail",
+    hide: "Hide match detail",
+  },
+  it: {
+    title: "Bilancio Stagione 1",
+    show: "Mostra dettaglio per giornata",
+    hide: "Nascondi dettaglio per giornata",
+  },
+};
+
+export default function Saison1({ bilan, weeks, details, lang = "fr" }) {
   const [showDetail, setShowDetail] = useState(false);
+  const t = LABELS[lang] || LABELS.fr;
   return (
     <>
-      <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">Bilan Saison 1</h2>
-      <FinanceTable bilan={bilan} weeks={weeks} />
+      <h2 className="text-lg font-bold mt-8 mb-3 text-gray-200 text-center">{t.title}</h2>
+      <FinanceTable bilan={bilan} weeks={weeks} lang={lang} />
       <div className="mt-2 mb-4 flex justify-end">
         <button
           className="text-sm underline text-gray-300 hover:text-green-300"
           onClick={() => setShowDetail(s => !s)}
         >
-          {showDetail ? "Masquer le détail par manche" : "Afficher le détail par manche"}
+          {showDetail ? t.hide : t.show}
         </button>
       </div>
-      {showDetail && <GroupedWeeksTable weeks={details} />}
+      {showDetail && <GroupedWeeksTable weeks={details} lang={lang} />}
     </>
   );
 }
