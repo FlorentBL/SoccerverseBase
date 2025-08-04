@@ -43,6 +43,9 @@ const T = {
       rating_shooting: "Tir",
       age: "Âge",
       form: "Forme",
+      matches: "Matchs",
+      goals: "Buts",
+      assists: "Passes décisives",
       value: "Valeur",
       wages: "Salaire",
       morale: "Morale",
@@ -91,6 +94,9 @@ const T = {
       rating_shooting: "Shooting",
       age: "Age",
       form: "Form",
+      matches: "Matches",
+      goals: "Goals",
+      assists: "Assists",
       value: "Value",
       wages: "Wages",
       morale: "Morale",
@@ -139,6 +145,9 @@ const T = {
       rating_shooting: "Tiro",
       age: "Età",
       form: "Forma",
+      matches: "Partite",
+      goals: "Gol",
+      assists: "Assist",
       value: "Valore",
       wages: "Salario",
       morale: "Morale",
@@ -280,16 +289,36 @@ export default function ClubTab({ lang = "fr" }) {
       });
       const data = await resp.json();
       if (data.result && Array.isArray(data.result.data) && data.result.data.length > 0) {
-        // Fetch detailed positions
+        // Fetch detailed positions and season stats
         const detailedSquad = await Promise.all(
           data.result.data.map(async p => {
             try {
-              const resp = await fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${p.player_id}`);
-              const detail = await resp.json();
+              const [detailResp, statsResp] = await Promise.all([
+                fetch(`https://services.soccerverse.com/api/players/detailed?player_id=${p.player_id}`),
+                fetch(SQUAD_RPC_URL, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    jsonrpc: "2.0",
+                    method: "get_league_player_data",
+                    params: { player_id: p.player_id },
+                    id: p.player_id
+                  })
+                })
+              ]);
+              const detail = await detailResp.json();
+              const statsJson = await statsResp.json();
               const positionsArr = (detail.items && detail.items[0]?.positions) || [];
-              return { ...p, positionsArr };
+              const stats = statsJson.result?.data?.[0] || {};
+              return {
+                ...p,
+                positionsArr,
+                matches: stats.apearances ?? 0,
+                goals: stats.goals ?? 0,
+                assists: stats.assists ?? 0,
+              };
             } catch (e) {
-              return { ...p, positionsArr: [] };
+              return { ...p, positionsArr: [], matches: 0, goals: 0, assists: 0 };
             }
           })
         );
@@ -438,6 +467,9 @@ export default function ClubTab({ lang = "fr" }) {
       { key: "rating_shooting" },
       { key: "age" },
       { key: "form" },
+      { key: "matches" },
+      { key: "goals" },
+      { key: "assists" },
       { key: "value" },
       { key: "wages" },
       { key: "morale" },
@@ -447,6 +479,23 @@ export default function ClubTab({ lang = "fr" }) {
       { key: "country_id" },
     ];
     const COLUMNS = BASE_COLUMNS.map(c => ({ ...c, label: t.columns[c.key] }));
+    const NUMERIC_COLS = new Set([
+      "rating",
+      "rating_gk",
+      "rating_tackling",
+      "rating_passing",
+      "rating_shooting",
+      "age",
+      "form",
+      "matches",
+      "goals",
+      "assists",
+      "value",
+      "wages",
+      "morale",
+      "contract",
+      "cartons",
+    ]);
 
     let squadToShow = squad.map(p => {
       let principal = p.positionsArr && p.positionsArr[0] || "-";
@@ -481,7 +530,7 @@ export default function ClubTab({ lang = "fr" }) {
           marginBottom: 6,
           color: "#ffd700"
         }}>{t.squadTitle}</div>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 600 }}>
           <table style={{
             width: "100%",
             borderCollapse: "collapse",
@@ -490,7 +539,7 @@ export default function ClubTab({ lang = "fr" }) {
             minWidth: 1100,
             whiteSpace: "nowrap"
           }}>
-            <thead>
+            <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr style={{ background: "#181b2a", color: "#ffd700" }}>
                 {COLUMNS.map(col => (
                   <th key={col.key}
@@ -503,7 +552,7 @@ export default function ClubTab({ lang = "fr" }) {
                       cursor: "pointer",
                       background: sortKey === col.key ? "#191e2b" : undefined,
                       color: "#ffd700", userSelect: "none", minWidth: 52,
-                      whiteSpace: "nowrap", textAlign: "left", fontWeight: 800, fontSize: 16
+                      whiteSpace: "nowrap", textAlign: NUMERIC_COLS.has(col.key) ? "center" : "left", fontWeight: 800, fontSize: 16
                     }}>
                     {col.label}
                     {sortKey === col.key && (
@@ -565,19 +614,19 @@ export default function ClubTab({ lang = "fr" }) {
                       }
                       if (col.key === "rating_gk")
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900, color: isGK ? "#b891ff" : "#888" }}>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center", fontWeight: 900, color: isGK ? "#b891ff" : "#888" }}>
                             {isGK ? (p.rating_gk ?? "-") : "-"}
                           </td>
                         );
                       if (["rating_tackling", "rating_passing", "rating_shooting"].includes(col.key))
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900 }}>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center", fontWeight: 900 }}>
                             {!isGK ? (p[col.key] ?? "-") : "-"}
                           </td>
                         );
                       if (col.key === "morale") {
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center" }}>
                             {renderMorale(p.morale, t)}
                           </td>
                         );
@@ -588,17 +637,18 @@ export default function ClubTab({ lang = "fr" }) {
                             padding: "7px",
                             fontWeight: 900,
                             color: (p.rating >= 75 ? "#64ffae" : (p.rating < 65 ? "#ff7575" : "#fff")),
-                            whiteSpace: "nowrap"
+                            whiteSpace: "nowrap",
+                            textAlign: "center"
                           }}>{p.rating ?? "-"}</td>
                         );
                       }
                       if (col.key === "value" || col.key === "wages") {
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{formatSVC(p[col.key], lang)}</td>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center" }}>{formatSVC(p[col.key], lang)}</td>
                         );
                       }
                       return (
-                        <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{p[col.key] ?? "-"}</td>
+                        <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: NUMERIC_COLS.has(col.key) ? "center" : "left" }}>{p[col.key] ?? "-"}</td>
                       );
                     })}
                   </tr>
