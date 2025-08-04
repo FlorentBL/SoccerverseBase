@@ -1,21 +1,59 @@
 // Champs d'affichage & mapping métier
 export const FIELD_LABELS = {
-  cash_injection: "Injection de trésorerie",
-  gate_receipts: "Recettes guichets",
-  tv_revenue: "Droits TV",
-  sponsor: "Sponsors",
-  merchandise: "Produits dérivés",
-  prize_money: "Gains compétitions",
-  transfers_in: "Transferts (entrées)",
-  other_income: "Autres revenus",
-  player_wages: "Salaires joueurs",
-  agent_wages: "Salaires agents",
-  managers_wage: "Salaire entraîneur",
-  ground_maintenance: "Entretien stade",
-  transfers_out: "Transferts (sorties)",
-  shareholder_payouts: "Dividendes",
-  shareholder_prize_money: "Gains actionnaires",
-  other_outgoings: "Autres dépenses"
+  fr: {
+    cash_injection: "Injection de trésorerie",
+    gate_receipts: "Recettes guichets",
+    tv_revenue: "Droits TV",
+    sponsor: "Sponsors",
+    merchandise: "Produits dérivés",
+    prize_money: "Gains compétitions",
+    transfers_in: "Transferts (entrées)",
+    other_income: "Autres revenus",
+    player_wages: "Salaires joueurs",
+    agent_wages: "Salaires agents",
+    managers_wage: "Salaire entraîneur",
+    ground_maintenance: "Entretien stade",
+    transfers_out: "Transferts (sorties)",
+    shareholder_payouts: "Dividendes",
+    shareholder_prize_money: "Gains actionnaires",
+    other_outgoings: "Autres dépenses"
+  },
+  en: {
+    cash_injection: "Cash injection",
+    gate_receipts: "Gate receipts",
+    tv_revenue: "TV revenue",
+    sponsor: "Sponsors",
+    merchandise: "Merchandise",
+    prize_money: "Prize money",
+    transfers_in: "Transfers in",
+    other_income: "Other income",
+    player_wages: "Player wages",
+    agent_wages: "Agent wages",
+    managers_wage: "Manager wage",
+    ground_maintenance: "Ground maintenance",
+    transfers_out: "Transfers out",
+    shareholder_payouts: "Shareholder payouts",
+    shareholder_prize_money: "Shareholder prize money",
+    other_outgoings: "Other outgoings"
+  },
+  it: {
+    cash_injection: "Iniezione di cassa",
+    gate_receipts: "Incassi biglietti",
+    tv_revenue: "Introiti TV",
+    sponsor: "Sponsor",
+    merchandise: "Merchandising",
+    prize_money: "Premi competizioni",
+    transfers_in: "Trasferimenti in entrata",
+    other_income: "Altri ricavi",
+    player_wages: "Stipendi giocatori",
+    agent_wages: "Stipendi agenti",
+    managers_wage: "Stipendio allenatore",
+    ground_maintenance: "Manutenzione stadio",
+    transfers_out: "Trasferimenti in uscita",
+    shareholder_payouts: "Dividendi",
+    shareholder_prize_money: "Premi azionisti",
+    other_outgoings: "Altre uscite"
+  }
 };
 
 export const FIELD_ORDER = [
@@ -38,26 +76,35 @@ export function isMatchWeek(week) {
   return typeof week.player_wages === "number" && Math.abs(week.player_wages) > 0;
 }
 
-export function formatSVC(val, field) {
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+
+export function formatSVC(val, field, lang = "fr") {
   if (typeof val !== "number") return "-";
   const absVal = Math.abs(val / 10000);
   const isCost = field && COST_FIELDS.includes(field);
   const sign = isCost && absVal > 0 ? "-" : "";
-  return sign + absVal.toLocaleString("fr-FR", {
-    maximumFractionDigits: absVal < 1000 ? 2 : 0,
-    minimumFractionDigits: 0,
-  }) + " $SVC";
+  return (
+    sign +
+    absVal.toLocaleString(LOCALES[lang] || LOCALES.fr, {
+      maximumFractionDigits: absVal < 1000 ? 2 : 0,
+      minimumFractionDigits: 0,
+    }) +
+    " $SVC"
+  );
 }
 
-export function formatBigSVC(val) {
+export function formatBigSVC(val, lang = "fr") {
   if (typeof val !== "number") return "-";
-  return Math.round(val / 10000).toLocaleString("fr-FR") + " $SVC";
+  return (
+    Math.round(val / 10000).toLocaleString(LOCALES[lang] || LOCALES.fr) +
+    " $SVC"
+  );
 }
 
-export function formatDate(timestamp) {
+export function formatDate(timestamp, lang = "fr") {
   if (!timestamp) return "-";
   const d = new Date(timestamp * 1000);
-  return d.toLocaleDateString("fr-FR");
+  return d.toLocaleDateString(LOCALES[lang] || LOCALES.fr);
 }
 
 // Agrégation d'un tableau de semaines

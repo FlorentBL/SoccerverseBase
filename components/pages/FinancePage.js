@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import {
   FIELD_ORDER, COST_FIELDS, NON_PROJECTED_FIELDS,
-  isMatchWeek, formatBigSVC, aggregateBilan
+  isMatchWeek, aggregateBilan
 } from "../utils";
 import Saison1 from "../Saison1";
 import Saison2 from "../Saison2";
