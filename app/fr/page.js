@@ -1,2 +1,4 @@
-import RevenusPage from "@/components/pages/RevenusPage";
-export default function() { return <RevenusPage lang="fr" />; }
+import DebuterPage from "@/components/DebuterPage";
+export default function Page() {
+  return <DebuterPage lang="fr" />;
+}
