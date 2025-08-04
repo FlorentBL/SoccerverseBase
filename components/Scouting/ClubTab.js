@@ -479,6 +479,23 @@ export default function ClubTab({ lang = "fr" }) {
       { key: "country_id" },
     ];
     const COLUMNS = BASE_COLUMNS.map(c => ({ ...c, label: t.columns[c.key] }));
+    const NUMERIC_COLS = new Set([
+      "rating",
+      "rating_gk",
+      "rating_tackling",
+      "rating_passing",
+      "rating_shooting",
+      "age",
+      "form",
+      "matches",
+      "goals",
+      "assists",
+      "value",
+      "wages",
+      "morale",
+      "contract",
+      "cartons",
+    ]);
 
     let squadToShow = squad.map(p => {
       let principal = p.positionsArr && p.positionsArr[0] || "-";
@@ -513,7 +530,7 @@ export default function ClubTab({ lang = "fr" }) {
           marginBottom: 6,
           color: "#ffd700"
         }}>{t.squadTitle}</div>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 600 }}>
           <table style={{
             width: "100%",
             borderCollapse: "collapse",
@@ -522,7 +539,7 @@ export default function ClubTab({ lang = "fr" }) {
             minWidth: 1100,
             whiteSpace: "nowrap"
           }}>
-            <thead>
+            <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr style={{ background: "#181b2a", color: "#ffd700" }}>
                 {COLUMNS.map(col => (
                   <th key={col.key}
@@ -535,7 +552,7 @@ export default function ClubTab({ lang = "fr" }) {
                       cursor: "pointer",
                       background: sortKey === col.key ? "#191e2b" : undefined,
                       color: "#ffd700", userSelect: "none", minWidth: 52,
-                      whiteSpace: "nowrap", textAlign: "left", fontWeight: 800, fontSize: 16
+                      whiteSpace: "nowrap", textAlign: NUMERIC_COLS.has(col.key) ? "center" : "left", fontWeight: 800, fontSize: 16
                     }}>
                     {col.label}
                     {sortKey === col.key && (
@@ -597,19 +614,19 @@ export default function ClubTab({ lang = "fr" }) {
                       }
                       if (col.key === "rating_gk")
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900, color: isGK ? "#b891ff" : "#888" }}>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center", fontWeight: 900, color: isGK ? "#b891ff" : "#888" }}>
                             {isGK ? (p.rating_gk ?? "-") : "-"}
                           </td>
                         );
                       if (["rating_tackling", "rating_passing", "rating_shooting"].includes(col.key))
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", fontWeight: 900 }}>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center", fontWeight: 900 }}>
                             {!isGK ? (p[col.key] ?? "-") : "-"}
                           </td>
                         );
                       if (col.key === "morale") {
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center" }}>
                             {renderMorale(p.morale, t)}
                           </td>
                         );
@@ -620,17 +637,18 @@ export default function ClubTab({ lang = "fr" }) {
                             padding: "7px",
                             fontWeight: 900,
                             color: (p.rating >= 75 ? "#64ffae" : (p.rating < 65 ? "#ff7575" : "#fff")),
-                            whiteSpace: "nowrap"
+                            whiteSpace: "nowrap",
+                            textAlign: "center"
                           }}>{p.rating ?? "-"}</td>
                         );
                       }
                       if (col.key === "value" || col.key === "wages") {
                         return (
-                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{formatSVC(p[col.key], lang)}</td>
+                          <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: "center" }}>{formatSVC(p[col.key], lang)}</td>
                         );
                       }
                       return (
-                        <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap" }}>{p[col.key] ?? "-"}</td>
+                        <td key={col.key} style={{ padding: "7px", whiteSpace: "nowrap", textAlign: NUMERIC_COLS.has(col.key) ? "center" : "left" }}>{p[col.key] ?? "-"}</td>
                       );
                     })}
                   </tr>
