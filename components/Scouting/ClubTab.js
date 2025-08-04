@@ -165,8 +165,8 @@ const T = {
 const SOCCERVERSE_POSITIONS_ORDER = [
   "GK", "LB", "CB", "RB",
   "DML", "DMR", "DMC",
-  "LM", "CM", "RM",
-  "AML", "AMR", "AM",
+  "LM", "RM", "CM",
+  "AML", "AMR", "AMC",
   "FL", "FC", "FR"
 ];
 const POSITION_COLORS = {
