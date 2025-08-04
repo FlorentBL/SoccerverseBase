@@ -313,12 +313,12 @@ export default function ClubTab({ lang = "fr" }) {
               return {
                 ...p,
                 positionsArr,
-                matches: stats.apearances,
-                goals: stats.goals,
-                assists: stats.assists,
+                matches: stats.apearances ?? 0,
+                goals: stats.goals ?? 0,
+                assists: stats.assists ?? 0,
               };
             } catch (e) {
-              return { ...p, positionsArr: [], matches: undefined, goals: undefined, assists: undefined };
+              return { ...p, positionsArr: [], matches: 0, goals: 0, assists: 0 };
             }
           })
         );
