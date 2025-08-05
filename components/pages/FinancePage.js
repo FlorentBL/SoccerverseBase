@@ -8,34 +8,41 @@ import Saison1 from "../Saison1";
 import Saison2 from "../Saison2";
 import ProjectionFinS2 from "../ProjectionFinS2";
 import SimulationFinS2 from "../SimulationFinS2";
+import FinanceHistoryChart from "../FinanceHistoryChart";
 
 const LABELS = {
   fr: {
     title: "Projection Financière Club Soccerverse",
     clubId: "ID Club",
     placeholder: "ex: 5902",
+    seasons: "Nb saisons",
     launch: "Lancer l'analyse",
     loading: "Chargement…",
     errorClub: "Erreur solde club",
     errorSeason: s => `Erreur bilan S${s}`,
+    errorHistory: "Erreur historique",
   },
   en: {
     title: "Soccerverse Club Financial Projection",
     clubId: "Club ID",
     placeholder: "e.g. 5902",
+     seasons: "Seasons",
     launch: "Start analysis",
     loading: "Loading…",
     errorClub: "Club balance error",
     errorSeason: s => `Season ${s} balance error`,
+     errorHistory: "History error",
   },
   it: {
     title: "Proiezione Finanziaria Club Soccerverse",
     clubId: "ID Club",
     placeholder: "es: 5902",
+     seasons: "Numero stagioni",
     launch: "Avvia analisi",
     loading: "Caricamento…",
     errorClub: "Errore saldo club",
     errorSeason: s => `Errore bilancio S${s}`,
+     errorHistory: "Errore storico",
   }
 };
 
@@ -59,6 +66,8 @@ export default function FinancePage({ lang = "fr" }) {
   const [transfertSim, setTransfertSim] = useState("");
   const [salaireSim, setSalaireSim] = useState("");
   const [simData, setSimData] = useState(null);
+  const [seasonCount, setSeasonCount] = useState(3);
+  const [history, setHistory] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,6 +77,7 @@ export default function FinancePage({ lang = "fr" }) {
     setTransfertSim("");
     setSalaireSim("");
     setSimData(null);
+    setHistory(null);
 
     try {
       // Récup solde
@@ -82,6 +92,11 @@ export default function FinancePage({ lang = "fr" }) {
         if (!res.ok) throw new Error(t.errorSeason(season));
         return await res.json();
       }));
+
+      // Historique sur plusieurs saisons
+      const histRes = await fetch(`/api/club_balance_sheet/history?club_id=${clubId}&seasons=${seasonCount}`);
+      if (!histRes.ok) throw new Error(t.errorHistory);
+      const histData = await histRes.json();
 
       // Filtre "manches de match"
       const matchWeeksS1 = s1.filter(isMatchWeek);
@@ -149,6 +164,8 @@ export default function FinancePage({ lang = "fr" }) {
           ), 0)
         : 0;
       const masseSalariale = Math.abs(projS2.player_wages ?? 0);
+
+      setHistory(histData);
 
       setResults({
         solde,
@@ -249,6 +266,18 @@ export default function FinancePage({ lang = "fr" }) {
               required
             />
           </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1 text-gray-300">{t.seasons}</label>
+            <select
+              value={seasonCount}
+              onChange={e => setSeasonCount(Number(e.target.value))}
+              className="border border-gray-600 rounded p-2 w-24 bg-[#202330] text-white"
+            >
+              {[1,2,3,4,5].map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
           <button type="submit" className="bg-green-500 text-black font-bold rounded px-5 py-2 shadow hover:bg-green-400 transition">
             {t.launch}
           </button>
@@ -286,6 +315,7 @@ export default function FinancePage({ lang = "fr" }) {
               setSalaireSim={setSalaireSim}
               lang={lang}
             />
+            {history && <FinanceHistoryChart data={history} />}
           </>
         )}
       </div>
