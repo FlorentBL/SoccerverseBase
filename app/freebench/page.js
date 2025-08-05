@@ -39,6 +39,7 @@ const columns = [
   { key: "projected_ovr_team", label: "Ovr Club", style: { minWidth: 40 }, sortable: true }, // Projected ovr team
   { key: "delta", label: "Delta", style: { minWidth: 40 }, sortable: true },
   { key: "fiche", label: "Fiche", style: { minWidth: 40 } },
+  { key: "compare", label: "Comparer", style: { minWidth: 60 } },
 ];
 
 function sortData(data, key, asc) {
@@ -208,6 +209,22 @@ export default function FreebenchTable() {
                       }}
                     >
                       Fiche
+                    </a>
+                  </td>
+                  <td style={columns[12].style}>
+                    <a
+                      href={`/player/compare?player_ids=${p.player_id}`}
+                      style={{
+                        background: "#76b4ff",
+                        color: "#23232c",
+                        fontWeight: 900,
+                        borderRadius: 6,
+                        padding: "6px 13px",
+                        textDecoration: "none",
+                        fontSize: 15,
+                      }}
+                    >
+                      Comparer
                     </a>
                   </td>
                 </tr>
