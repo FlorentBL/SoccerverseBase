@@ -15,7 +15,7 @@ export default function ScoutingPage({ lang = "fr" }) {
   const labels = TAB_LABELS[lang] || TAB_LABELS.fr;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#181c21", color: "#f6f6f7", paddingTop: 60 }}>
+    <div style={{ minHeight: "100vh", color: "#f6f6f7", paddingTop: 60 }}>
       <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 32 }}>
         {["player", "club", "league"].map(key => (
           <button key={key} onClick={() => setTab(key)}
