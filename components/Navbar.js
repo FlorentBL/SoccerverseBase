@@ -52,19 +52,22 @@ export default function Navbar() {
     <header className="fixed top-0 w-full z-50">
       <div className="max-w-7xl mx-auto px-6 mt-4">
         <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/40 backdrop-blur-md px-5 py-3">
-          <Link
-            href={`/${currentLang}`}
-            aria-label="Accueil SoccerverseBase"
-            className="flex items-center gap-2"
-          >
-            <Image
-              src="/logo.png"
-              alt="SoccerverseBase logo"
-              width={36}
-              height={36}
-              className="rounded-md"
-            />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/${currentLang}`}
+              aria-label="Accueil SoccerverseBase"
+              className="flex items-center gap-2"
+            >
+              <Image
+                src="/logo.png"
+                alt="SoccerverseBase logo"
+                width={36}
+                height={36}
+                className="rounded-md"
+              />
+            </Link>
+            <SVCRate className="hidden md:inline-block" />
+          </div>
 
           <ul className="hidden md:flex gap-6 text-sm font-medium">
             {menuItems.map(({ href, label }) => (
@@ -83,7 +86,6 @@ export default function Navbar() {
           </ul>
 
           <div className="flex items-center gap-3">
-            <SVCRate className="hidden md:inline-block" />
             <a
               href="https://buymeacoffee.com/klov"
               target="_blank"

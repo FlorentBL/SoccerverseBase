@@ -26,7 +26,7 @@ export default function SVCRate({ className = "" }) {
 
   return (
     <span className={`text-sm text-gray-300 ${className}`}>
-      {`1 SVC = $${rate.toFixed(8)}`}
+      {`1 SVC = $${rate.toFixed(4)}`}
     </span>
   );
 }
