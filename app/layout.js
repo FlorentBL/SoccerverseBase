@@ -13,12 +13,17 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
-      <body>
+      <body className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-white min-h-screen relative">
         <Navbar />
-        <div style={{ paddingTop: 60 }}>
+        <img
+          src="/logo.png"
+          alt="SoccerverseBase logo"
+          className="fixed right-6 top-16 w-28 md:w-40 opacity-20 pointer-events-none select-none hidden md:block z-0"
+        />
+        <div className="relative z-10" style={{ paddingTop: 60 }}>
           {children}
         </div>
-        <Analytics /> {/* <-- Ajoute cette ligne ici */}
+        <Analytics />
       </body>
     </html>
   );

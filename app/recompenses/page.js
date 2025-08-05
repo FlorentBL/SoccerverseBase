@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Navbar from "@/components/Navbar";
 
 export default function RecompensesPage() {
   const [totalPrize, setTotalPrize] = useState(0);
@@ -38,8 +37,7 @@ export default function RecompensesPage() {
   }, [basePrize, influencePercent]);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <Navbar />
+    <div className="min-h-screen text-white">
       <div className="py-12 px-4 flex flex-col items-center">
         <h1 className="text-3xl md:text-4xl font-bold mb-8 text-center">
           Calculateur de Récompenses – Soccerverse

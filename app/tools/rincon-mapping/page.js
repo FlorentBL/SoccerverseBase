@@ -82,7 +82,7 @@ export default function SoccerverseMappingGenerator() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#181c21] text-gray-100">
+    <div className="min-h-screen flex flex-col items-center justify-center text-gray-100">
       <div className="bg-[#21252b] p-8 rounded-2xl shadow-2xl w-full max-w-md flex flex-col items-center">
         <h2 className="mb-5 font-extrabold text-2xl text-blue-400 tracking-wide text-center">
           Générer les mappings Soccerverse <span className="text-green-400">optimisés</span>

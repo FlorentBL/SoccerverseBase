@@ -4,5 +4,5 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gradient-to-br from-green-100 via-white to-blue-100;
+  @apply bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-white;
 }
