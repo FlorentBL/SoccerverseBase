@@ -9,7 +9,7 @@ export default function RevenusSoccerverse() {
     fetch("/svc_rewards.json").then(r => r.json()).then(setData);
   }, []);
   return (
-    <div className="min-h-screen bg-[#101217] text-white py-8 px-2 sm:px-4">
+    <div className="min-h-screen text-white py-8 px-2 sm:px-4">
   <div className="max-w-6xl mx-auto">
     <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 flex flex-col sm:flex-row items-center sm:gap-2 text-center sm:text-left leading-tight">
       <span className="text-indigo-400">Soccerverse</span>
