@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { FiMenu, FiX, FiCoffee } from "react-icons/fi";
 import { usePathname } from "next/navigation";
+import SVCRate from "./SVCRate";
 
 const MENU_LABELS = {
   fr: [
@@ -82,6 +83,7 @@ export default function Navbar() {
           </ul>
 
           <div className="flex items-center gap-3">
+            <SVCRate className="hidden md:inline-block" />
             <a
               href="https://buymeacoffee.com/klov"
               target="_blank"
@@ -130,6 +132,7 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+          <SVCRate />
           <div className="flex gap-3 mt-6">
             {LANGS.map((l) => (
               <Link
