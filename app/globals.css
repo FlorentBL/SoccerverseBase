@@ -4,5 +4,15 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gradient-to-br from-green-100 via-white to-blue-100;
+  @apply text-gray-100 bg-black overflow-x-hidden;
+  min-height: 100vh;
+  background: radial-gradient(circle at 25% 25%, #1e1e1e, #000);
+  background-size: 200% 200%;
+  animation: drift 15s ease-in-out infinite;
+}
+
+@keyframes drift {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
 }
