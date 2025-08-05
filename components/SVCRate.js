@@ -33,7 +33,7 @@ export default function SVCRate() {
   return (
     <div className="text-sm text-gray-300">
       {rate !== null ? (
-        <p className="text-green-400">
+        <p className="text-indigo-400">
           💰 Taux SVC actuel : <strong>1 SVC = {rate} USDC</strong>
         </p>
       ) : (

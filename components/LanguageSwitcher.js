@@ -29,7 +29,7 @@ export default function LanguageSwitcher() {
           <button
             className={`text-sm px-3 py-1 rounded ml-1 ${
               current === l.code
-                ? "bg-green-600 text-white font-bold"
+                ? "bg-indigo-600 text-white font-bold"
                 : "bg-gray-700 hover:bg-gray-600 text-gray-300"
             }`}
             disabled={current === l.code}
