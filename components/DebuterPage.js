@@ -1,6 +1,5 @@
 "use client";
 
-import Navbar from "@/components/Navbar";
 import {
   FaBookOpen, FaSearch, FaChartLine, FaDiscord, FaUsers, FaCheckCircle,
   FaUserPlus, FaPuzzlePiece, FaChevronDown, FaChevronUp
@@ -12,7 +11,7 @@ const LOGO_MASCOTTE = "/logo.png";
 // Map icônes pour injection dynamique depuis le mapping de chaque langue
 const ICONS = {
   book: <FaBookOpen className="text-sky-400 text-2xl mr-2" />,
-  users: <FaUsers className="text-emerald-400 text-2xl mr-2" />,
+  users: <FaUsers className="text-indigo-400 text-2xl mr-2" />,
   search: <FaSearch className="text-blue-400 text-2xl mr-2" />,
   chart: <FaChartLine className="text-pink-400 text-2xl mr-2" />,
 };
@@ -62,9 +61,9 @@ const LABELS = {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {/* ENTRAÎNEUR */}
-              <div className="rounded-xl bg-gradient-to-b from-gray-900/95 to-gray-800/80 border border-emerald-700/30 shadow p-5 flex flex-col min-h-[170px]">
-                <div className="flex items-center gap-2 mb-1"><FaBookOpen className="text-emerald-400" /><span className="font-bold text-emerald-200">Entraîneur</span></div>
-                <span className="text-xs text-emerald-300 mb-1">Le stratège</span>
+              <div className="rounded-xl bg-gradient-to-b from-gray-900/95 to-gray-800/80 border border-indigo-700/30 shadow p-5 flex flex-col min-h-[170px]">
+                <div className="flex items-center gap-2 mb-1"><FaBookOpen className="text-indigo-400" /><span className="font-bold text-indigo-200">Entraîneur</span></div>
+                <span className="text-xs text-indigo-300 mb-1">Le stratège</span>
                 <span className="text-gray-300 text-sm flex-1">Prépare les matchs, gère mercato & effectif, décisions sportives. Diplomatie & vision !</span>
               </div>
               {/* AGENT */}
@@ -92,7 +91,7 @@ const LABELS = {
                 <span className="text-gray-300 text-sm flex-1">Repère les jeunes à potentiel. Clé pour gagner gros !</span>
               </div>
             </div>
-            <p className="text-gray-500 mt-8 text-xs italic text-center"><FaCheckCircle className="inline mr-1 text-emerald-400" />Combine les rôles à volonté pour une expérience unique.</p>
+            <p className="text-gray-500 mt-8 text-xs italic text-center"><FaCheckCircle className="inline mr-1 text-indigo-400" />Combine les rôles à volonté pour une expérience unique.</p>
           </div>
         ),
       },
@@ -177,9 +176,9 @@ const LABELS = {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {/* COACH */}
-              <div className="rounded-xl bg-gradient-to-b from-gray-900/95 to-gray-800/80 border border-emerald-700/30 shadow p-5 flex flex-col min-h-[170px]">
-                <div className="flex items-center gap-2 mb-1"><FaBookOpen className="text-emerald-400" /><span className="font-bold text-emerald-200">Coach</span></div>
-                <span className="text-xs text-emerald-300 mb-1">The Strategist</span>
+              <div className="rounded-xl bg-gradient-to-b from-gray-900/95 to-gray-800/80 border border-indigo-700/30 shadow p-5 flex flex-col min-h-[170px]">
+                <div className="flex items-center gap-2 mb-1"><FaBookOpen className="text-indigo-400" /><span className="font-bold text-indigo-200">Coach</span></div>
+                <span className="text-xs text-indigo-300 mb-1">The Strategist</span>
                 <span className="text-gray-300 text-sm flex-1">Prepare matches, manage transfer market & squad, make sporting decisions. Diplomacy & vision required!</span>
               </div>
               {/* AGENT */}
@@ -208,7 +207,7 @@ const LABELS = {
               </div>
             </div>
             <p className="text-gray-500 mt-8 text-xs italic text-center">
-              <FaCheckCircle className="inline mr-1 text-emerald-400" />
+              <FaCheckCircle className="inline mr-1 text-indigo-400" />
               Mix roles freely for a unique experience.
             </p>
           </div>
@@ -299,9 +298,9 @@ discordBtn: "Unisciti a K-SOCIOS su Discord",
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {/* ALLENATORE */}
-              <div className="rounded-xl bg-gradient-to-b from-gray-900/95 to-gray-800/80 border border-emerald-700/30 shadow p-5 flex flex-col min-h-[170px]">
-                <div className="flex items-center gap-2 mb-1"><FaBookOpen className="text-emerald-400" /><span className="font-bold text-emerald-200">Allenatore</span></div>
-                <span className="text-xs text-emerald-300 mb-1">Lo stratega</span>
+              <div className="rounded-xl bg-gradient-to-b from-gray-900/95 to-gray-800/80 border border-indigo-700/30 shadow p-5 flex flex-col min-h-[170px]">
+                <div className="flex items-center gap-2 mb-1"><FaBookOpen className="text-indigo-400" /><span className="font-bold text-indigo-200">Allenatore</span></div>
+                <span className="text-xs text-indigo-300 mb-1">Lo stratega</span>
                 <span className="text-gray-300 text-sm flex-1">Prepara le partite, gestisce mercato & rosa, decisioni sportive. Diplomazia & visione!</span>
               </div>
               {/* AGENTE */}
@@ -330,7 +329,7 @@ discordBtn: "Unisciti a K-SOCIOS su Discord",
               </div>
             </div>
             <p className="text-gray-500 mt-8 text-xs italic text-center">
-              <FaCheckCircle className="inline mr-1 text-emerald-400" />
+              <FaCheckCircle className="inline mr-1 text-indigo-400" />
               Combina i ruoli come vuoi per un’esperienza unica.
             </p>
           </div>
@@ -386,33 +385,34 @@ export default function DebuterPage({ lang = "fr" }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 text-white">
-      <Navbar />
+    <div className="min-h-screen text-gray-100">
 
       {/* Hero section */}
-      <section className="relative w-full min-h-[420px] flex flex-col items-center justify-center bg-gradient-to-br from-sky-950 via-gray-900 to-emerald-950 pb-14 pt-8 shadow-2xl">
+      <section className="relative flex flex-col items-center justify-center text-center py-32">
         <img
           src={LOGO_MASCOTTE}
           alt="Logo"
           className="absolute right-6 top-10 w-28 md:w-40 opacity-20 pointer-events-none select-none hidden md:block"
-          onError={e => { e.target.style.display = 'none'; }}
+          onError={(e) => { e.target.style.display = 'none'; }}
         />
-        <h1 className="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-sky-400 via-emerald-300 to-sky-500 bg-clip-text text-transparent drop-shadow-lg mb-3 mt-8 text-center">
-          {t.hero1}
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-sky-300">
+            {t.hero1}
+          </span>
         </h1>
-        <p className="text-lg md:text-xl text-gray-200 mb-8 text-center max-w-2xl">{t.hero2}</p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-lg mt-2">
+        <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl">{t.hero2}</p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-xl">
           <a
             href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
-            className="flex items-center justify-center gap-2 bg-sky-700 hover:bg-sky-800 rounded-xl px-7 py-4 text-lg font-bold shadow transition w-full focus:outline-none"
+            className="flex items-center justify-center gap-2 rounded-full bg-indigo-500 hover:bg-indigo-400 px-8 py-4 text-lg font-bold text-gray-900 transition-colors w-full"
           >
             <FaUserPlus className="text-xl" /> {t.signup}
           </a>
           <a
             href="https://play.soccerverse.com?ref=klo&pack=https://elrincondeldt.com/sv/rincon_v1.json"
             target="_blank" rel="noopener"
-            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl px-7 py-4 text-lg font-bold shadow transition w-full focus:outline-none"
+            className="flex items-center justify-center gap-2 rounded-full border border-indigo-500 px-8 py-4 text-lg font-bold text-indigo-400 hover:bg-indigo-500 hover:text-gray-900 transition-colors w-full"
           >
             <FaPuzzlePiece className="text-xl" /> {t.patch}
           </a>
@@ -420,10 +420,10 @@ export default function DebuterPage({ lang = "fr" }) {
       </section>
 
       <div className="w-full flex justify-center items-center my-0">
-        <div className="h-1 w-1/2 bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-400 rounded-full opacity-40" />
+        <div className="h-1 w-1/2 bg-gradient-to-r from-fuchsia-500 via-indigo-400 to-sky-500 rounded-full opacity-40" />
       </div>
 
-      <section className="flex flex-col md:flex-row items-center justify-center gap-8 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 rounded-2xl shadow-lg px-6 md:px-10 py-8 md:py-10 border border-emerald-600/20 max-w-3xl mx-auto mt-10 mb-10">
+      <section className="flex flex-col md:flex-row items-center justify-center gap-8 bg-white/5 rounded-2xl shadow-lg px-6 md:px-10 py-8 md:py-10 border border-white/10 backdrop-blur max-w-3xl mx-auto mt-10 mb-10">
         <FaDiscord className="text-5xl text-sky-400 hidden md:block mr-6" />
         <div className="flex-1 flex flex-col items-center md:items-start">
           <h2 className="text-2xl font-bold mb-2 text-white">{t.discordTitle}</h2>
@@ -432,7 +432,7 @@ export default function DebuterPage({ lang = "fr" }) {
             href="https://discord.gg/sd5aa8TW"
             target="_blank"
             rel="noopener"
-            className="inline-flex items-center bg-sky-700 hover:bg-sky-900 transition rounded-xl px-7 py-3 text-lg font-semibold shadow gap-2 text-white mb-1"
+            className="inline-flex items-center rounded-full bg-gradient-to-r from-fuchsia-500 to-sky-500 px-7 py-3 text-lg font-semibold shadow gap-2 text-white mb-1 transition-opacity hover:opacity-90"
           >
             <FaDiscord className="text-xl" /> {t.discordBtn}
           </a>
@@ -445,7 +445,7 @@ export default function DebuterPage({ lang = "fr" }) {
             <div key={s.key} className="rounded-2xl shadow-xl border border-gray-700 bg-gradient-to-tr from-gray-900/90 to-gray-800/70">
               <button
                 className={`w-full flex items-center justify-between text-left px-7 py-5 focus:outline-none rounded-t-2xl transition
-                  ${openSections[idx] ? "bg-gradient-to-r from-sky-950/60 to-emerald-950/50" : "bg-transparent hover:bg-gray-900/40"}`}
+                  ${openSections[idx] ? "bg-gradient-to-r from-sky-950/60 to-indigo-950/50" : "bg-transparent hover:bg-gray-900/40"}`}
                 onClick={() => toggleSection(idx)}
                 aria-expanded={openSections[idx]}
               >

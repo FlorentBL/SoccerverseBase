@@ -106,7 +106,7 @@ export default function SVCRewardsTable({ data, lang = "fr" }) {
             max={99}
             value={minRating}
             onChange={e => setMinRating(Math.min(99, Math.max(50, +e.target.value)))}
-            className="bg-[#101217] text-white rounded-md px-3 py-2 w-20 mt-1 text-center border border-gray-700 font-bold focus:ring-2 focus:ring-green-400 outline-none transition"
+            className="bg-[#101217] text-white rounded-md px-3 py-2 w-20 mt-1 text-center border border-gray-700 font-bold focus:ring-2 focus:ring-indigo-400 outline-none transition"
           />
         </label>
         <label className="flex flex-col items-center text-base text-gray-200 font-semibold">
@@ -117,12 +117,12 @@ export default function SVCRewardsTable({ data, lang = "fr" }) {
             max={99}
             value={maxRating}
             onChange={e => setMaxRating(Math.max(50, Math.min(99, +e.target.value)))}
-            className="bg-[#101217] text-white rounded-md px-3 py-2 w-20 mt-1 text-center border border-gray-700 font-bold focus:ring-2 focus:ring-green-400 outline-none transition"
+            className="bg-[#101217] text-white rounded-md px-3 py-2 w-20 mt-1 text-center border border-gray-700 font-bold focus:ring-2 focus:ring-indigo-400 outline-none transition"
           />
         </label>
       </div>
 
-      <div className="text-sm text-green-400 font-semibold mb-4 text-center">
+      <div className="text-sm text-indigo-400 font-semibold mb-4 text-center">
         {t.allSVC}
       </div>
 
@@ -144,7 +144,7 @@ export default function SVCRewardsTable({ data, lang = "fr" }) {
                     {col.label}
                     {col.tip && (
                       <Tooltip content={col.tip}>
-                        <Info size={14} className="text-green-400 cursor-pointer" />
+                        <Info size={14} className="text-indigo-400 cursor-pointer" />
                       </Tooltip>
                     )}
                   </div>
@@ -161,7 +161,7 @@ export default function SVCRewardsTable({ data, lang = "fr" }) {
                 {t.columns.map(col => (
                   <td
                     key={col.key}
-                    className={`px-2 sm:px-4 py-2 whitespace-nowrap ${col.key === "rating" ? "font-bold text-green-300" : ""}`}
+                    className={`px-2 sm:px-4 py-2 whitespace-nowrap ${col.key === "rating" ? "font-bold text-indigo-300" : ""}`}
                   >
                     {col.key === "rating"
                       ? row[col.key]
