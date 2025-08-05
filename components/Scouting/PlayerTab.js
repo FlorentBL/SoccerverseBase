@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import Link from "next/link";
 
 const PLAYER_MAPPING_URL = "/player_mapping.json";
 
@@ -25,6 +26,7 @@ const T = {
     openSoccerRatings: "Ouvrir sur SoccerRatings.org",
     transfermarkt: "Voir sur Transfermarkt",
     seePlayer: "Voir le joueur sur Soccerverse",
+    career: "Voir la carrière",
   },
   en: {
     idLabel: "Player ID:",
@@ -46,6 +48,7 @@ const T = {
     openSoccerRatings: "Open on SoccerRatings.org",
     transfermarkt: "View on Transfermarkt",
     seePlayer: "See player on Soccerverse",
+    career: "View career",
   },
   it: {
     idLabel: "ID Giocatore:",
@@ -67,6 +70,7 @@ const T = {
     openSoccerRatings: "Apri su SoccerRatings.org",
     transfermarkt: "Vedi su Transfermarkt",
     seePlayer: "Vedi il giocatore su Soccerverse",
+    career: "Vedi carriera",
   },
 };
 
@@ -242,8 +246,24 @@ export default function PlayerTab({ lang = "fr" }) {
         </div>
         {/* Liens rapides */}
         <div style={{
-          display: "flex", gap: 0, justifyContent: "center", alignItems: "center", margin: "32px 0 0 0", width: "100%", flexWrap: "wrap"
+          display: "flex", gap: 16, justifyContent: "center", alignItems: "center", margin: "32px 0 0 0", width: "100%", flexWrap: "wrap"
         }}>
+          <Link
+            href={`/${lang}/player/${playerInfo.player_id}/career`}
+            style={{
+              display: "inline-block",
+              background: "linear-gradient(90deg, #4f47ff, #0d8bff)",
+              color: "#fff",
+              borderRadius: 8,
+              padding: "14px 34px",
+              fontWeight: 700,
+              fontSize: 17,
+              textDecoration: "none",
+              boxShadow: "0 2px 8px #0af2"
+            }}
+          >
+            {t.career}
+          </Link>
           <a
             href={`https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(playerInfo.nom || "")}`}
             target="_blank" rel="noopener noreferrer"
@@ -256,9 +276,9 @@ export default function PlayerTab({ lang = "fr" }) {
               fontWeight: 700,
               fontSize: 17,
               textDecoration: "none",
-              boxShadow: "0 2px 8px #0af2",
-              margin: "0 auto"
-            }}>
+              boxShadow: "0 2px 8px #0af2"
+            }}
+          >
             {t.transfermarkt}
           </a>
         </div>
