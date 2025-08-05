@@ -19,6 +19,8 @@ const T = {
     championshipLabel: "Championnat :",
     columns: { rank: "#", club: "Club", manager: "Manager", pts: "Pts", reward: "Gain" },
     prizePot: "Cagnotte :",
+    noteDebt: "Veuillez noter que les paiements peuvent être inférieurs si le club est endetté",
+    influencers: "Influenceurs",
   },
   en: {
     title: "Rewards Calculator",
@@ -33,6 +35,8 @@ const T = {
     championshipLabel: "League:",
     columns: { rank: "#", club: "Club", manager: "Manager", pts: "Pts", reward: "Reward" },
     prizePot: "Prize pot:",
+    noteDebt: "Please note payments may be lower if the club is in debt",
+    influencers: "Influencers",
   },
   it: {
     title: "Calcolatore Ricompense",
@@ -47,6 +51,8 @@ const T = {
     championshipLabel: "Campionato:",
     columns: { rank: "#", club: "Club", manager: "Manager", pts: "Pt", reward: "Premio" },
     prizePot: "Montepremi:",
+    noteDebt: "Si noti che i pagamenti possono essere inferiori se il club è indebitato",
+    influencers: "Influencer",
   },
 };
 
@@ -61,6 +67,8 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
   const [leagueInfo, setLeagueInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
+  const [influencersMap, setInfluencersMap] = useState({});
+  const [expandedClub, setExpandedClub] = useState(null);
 
   useEffect(() => {
     fetch(COUNTRY_MAPPING_URL).then(r => r.json()).then(setCountryMap);
@@ -85,6 +93,7 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
       const tableJson = await tableRes.json();
       setLeagueInfo(leagueJson.items?.[0] || null);
       setStandings(Array.isArray(tableJson) ? tableJson : []);
+      setExpandedClub(null);
     } catch (e) {
       console.error(e);
       setErr(t.errorNetwork);
@@ -93,13 +102,45 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
     }
   }
 
+  useEffect(() => {
+    if (!standings.length) return;
+    Promise.all(
+      standings.map(async (club) => {
+        try {
+          const res = await fetch(
+            `https://services.soccerverse.com/api/share_balances?sort_order=asc&club_id=${club.club_id}&countries=false&leagues=false`
+          );
+          const json = await res.json();
+          return [club.club_id, json.items || []];
+        } catch (e) {
+          return [club.club_id, []];
+        }
+      })
+    ).then((entries) => setInfluencersMap(Object.fromEntries(entries)));
+  }, [standings]);
+
   const totalTeams = leagueInfo?.num_teams || standings.length;
   const prizePot = leagueInfo?.prize_money_pot || 0;
-  const sum = totalTeams * (totalTeams + 1) / 2;
-  const standingsWithRewards = useMemo(() => standings.map((club, idx) => ({
-    ...club,
-    reward: prizePot * (totalTeams - idx) / sum,
-  })), [standings, prizePot, totalTeams, sum]);
+  const sum = (totalTeams * (totalTeams + 1)) / 2;
+  const standingsWithRewards = useMemo(
+    () =>
+      standings.map((club, idx) => {
+        const equalShare = prizePot * 0.5 / totalTeams;
+        const linearShare = prizePot * 0.5 * (totalTeams - idx) / sum;
+        const reward = equalShare + linearShare;
+        const playerInfluencerReward = reward * 0.001;
+        const influencerReward = club.balance >= 0 ? reward * 0.1 : 0;
+        const clubReward = reward - influencerReward - playerInfluencerReward;
+        return {
+          ...club,
+          reward,
+          clubReward,
+          influencerReward,
+          playerInfluencerReward,
+        };
+      }),
+    [standings, prizePot, totalTeams, sum]
+  );
 
   return (
     <div className="min-h-screen text-gray-100 p-4 flex flex-col items-center">
@@ -137,6 +178,7 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
               <div className="text-sm text-gray-400">{t.prizePot} {formatBigSVC(prizePot, lang)}</div>
             )}
           </div>
+          <div className="mb-4 text-xs text-yellow-400 text-center">{t.noteDebt}</div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
@@ -149,19 +191,55 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
                 </tr>
               </thead>
               <tbody>
-                {standingsWithRewards.map((club, idx) => (
-                  <tr key={club.club_id} className={idx % 2 === 0 ? "bg-gray-800" : "bg-gray-700"}>
-                    <td className="px-2 py-1 text-center">{idx + 1}</td>
-                    <td className="px-2 py-1">
-                      <a href={`https://play.soccerverse.com/club/${club.club_id}`} target="_blank" rel="noopener noreferrer" className="text-blue-400">
-                        {clubMap[club.club_id]?.name || club.club_id}
-                      </a>
-                    </td>
-                    <td className="px-2 py-1">{club.manager_name || "-"}</td>
-                    <td className="px-2 py-1 text-center">{club.pts}</td>
-                    <td className="px-2 py-1 text-right">{formatBigSVC(club.reward, lang)}</td>
-                  </tr>
-                ))}
+                {standingsWithRewards.map((club, idx) => {
+                  const isExpanded = expandedClub === club.club_id;
+                  const infList = influencersMap[club.club_id] || [];
+                  const totalShares = infList.reduce((s, i) => s + i.num, 0) || 1;
+                  return (
+                    <React.Fragment key={club.club_id}>
+                      <tr
+                        className={idx % 2 === 0 ? "bg-gray-800 cursor-pointer" : "bg-gray-700 cursor-pointer"}
+                        onClick={() =>
+                          setExpandedClub(isExpanded ? null : club.club_id)
+                        }
+                     >
+                        <td className="px-2 py-1 text-center">{idx + 1}</td>
+                        <td className="px-2 py-1">
+                          <a
+                            href={`https://play.soccerverse.com/club/${club.club_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400"
+                          >
+                            {clubMap[club.club_id]?.name || club.club_id}
+                          </a>
+                        </td>
+                        <td className="px-2 py-1">{club.manager_name || "-"}</td>
+                        <td className="px-2 py-1 text-center">{club.pts}</td>
+                        <td className="px-2 py-1 text-right">{formatBigSVC(club.clubReward, lang)}</td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-gray-800">
+                          <td colSpan={5} className="px-4 py-2">
+                            <div className="text-sm">
+                              <div className="font-medium mb-1">{t.influencers}</div>
+                              <ul className="list-disc pl-4 space-y-1">
+                                {infList.map((inf) => (
+                                  <li key={inf.name}>
+                                    {inf.name}: {formatBigSVC(
+                                      club.influencerReward * (inf.num / totalShares),
+                                      lang
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
