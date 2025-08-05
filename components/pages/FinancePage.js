@@ -233,7 +233,7 @@ export default function FinancePage({ lang = "fr" }) {
 
   // ==== UI ====
   return (
-    <div className="min-h-screen bg-[#181B23] py-8 px-4 flex flex-col items-center">
+    <div className="min-h-screen py-8 px-4 flex flex-col items-center">
       <div className="w-full max-w-4xl">
         <h1 className="text-3xl font-bold mb-8 text-center text-white tracking-tight">{t.title}</h1>
         {/* --- Input --- */}
