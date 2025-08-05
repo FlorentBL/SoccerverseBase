@@ -12,6 +12,7 @@ const T = {
     countryPlaceholder: "Sélectionner un pays",
     divisionLabel: "Division :",
     divisionPlaceholder: "Sélectionner une division",
+    seasonLabel: "Saison :",
     showTable: "Afficher récompenses",
     loading: "Chargement...",
     errorNetwork: "Erreur réseau ou parsing données.",
@@ -21,6 +22,7 @@ const T = {
     prizePot: "Cagnotte :",
     noteDebt: "Veuillez noter que les paiements peuvent être inférieurs si le club est endetté",
     influencers: "Influenceurs",
+    season: "Saison",
   },
   en: {
     title: "Rewards Calculator",
@@ -28,6 +30,7 @@ const T = {
     countryPlaceholder: "Select a country",
     divisionLabel: "Division:",
     divisionPlaceholder: "Select a division",
+    seasonLabel: "Season:",
     showTable: "Show rewards",
     loading: "Loading...",
     errorNetwork: "Network or parsing error.",
@@ -37,6 +40,7 @@ const T = {
     prizePot: "Prize pot:",
     noteDebt: "Please note payments may be lower if the club is in debt",
     influencers: "Influencers",
+    season: "Season",
   },
   it: {
     title: "Calcolatore Ricompense",
@@ -44,6 +48,7 @@ const T = {
     countryPlaceholder: "Seleziona un paese",
     divisionLabel: "Divisione:",
     divisionPlaceholder: "Seleziona una divisione",
+    seasonLabel: "Stagione:",
     showTable: "Mostra ricompense",
     loading: "Caricamento...",
     errorNetwork: "Errore di rete o parsing.",
@@ -53,6 +58,7 @@ const T = {
     prizePot: "Montepremi:",
     noteDebt: "Si noti che i pagamenti possono essere inferiori se il club è indebitato",
     influencers: "Influencer",
+    season: "Stagione",
   },
 };
 
@@ -62,6 +68,7 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
   const [clubMap, setClubMap] = useState({});
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
+  const [season, setSeason] = useState("2");
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [standings, setStandings] = useState([]);
   const [leagueInfo, setLeagueInfo] = useState(null);
@@ -86,8 +93,8 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
     setErr(null);
     try {
       const [leagueRes, tableRes] = await Promise.all([
-        fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}`),
-        fetch(`https://services.soccerverse.com/api/league_tables?league_id=${division}`)
+        fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}&season_id=${season}`),
+        fetch(`https://services.soccerverse.com/api/league_tables?league_id=${division}&season_id=${season}`)
       ]);
       const leagueJson = await leagueRes.json();
       const tableJson = await tableRes.json();
@@ -164,6 +171,14 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
             ))}
           </select>
         </div>
+        <div>
+          <label className="block mb-1 font-medium">{t.seasonLabel}</label>
+          <select value={season} onChange={e => setSeason(e.target.value)} className="w-full p-2 rounded bg-gray-800 border border-gray-700">
+            {[2,1].map(s => (
+              <option key={s} value={s}>{t.season} {s}</option>
+            ))}
+          </select>
+        </div>
         <button onClick={fetchRewards} disabled={!division || loading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded">
           {loading ? t.loading : t.showTable}
         </button>
@@ -173,7 +188,7 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
       {standingsWithRewards.length > 0 && (
         <div className="w-full max-w-3xl bg-gray-900 rounded-lg p-6 mt-8">
           <div className="mb-4 text-center">
-            {t.championshipLabel} {selectedCountry?.flag} {selectedCountry?.country} - {selectedCountry?.divisions.find(d=>d.leagueId==division)?.label}
+            {t.championshipLabel} {selectedCountry?.flag} {selectedCountry?.country} - {selectedCountry?.divisions.find(d=>d.leagueId==division)?.label} ({t.season} {season})
             {leagueInfo && (
               <div className="text-sm text-gray-400">{t.prizePot} {formatBigSVC(prizePot, lang)}</div>
             )}
@@ -194,7 +209,6 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
                 {standingsWithRewards.map((club, idx) => {
                   const isExpanded = expandedClub === club.club_id;
                   const infList = influencersMap[club.club_id] || [];
-                  const totalShares = infList.reduce((s, i) => s + i.num, 0) || 1;
                   return (
                     <React.Fragment key={club.club_id}>
                       <tr
@@ -224,14 +238,17 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
                             <div className="text-sm">
                               <div className="font-medium mb-1">{t.influencers}</div>
                               <ul className="list-disc pl-4 space-y-1">
-                                {infList.map((inf) => (
-                                  <li key={inf.name}>
-                                    {inf.name}: {formatBigSVC(
-                                      club.influencerReward * (inf.num / totalShares),
-                                      lang
-                                    )}
-                                  </li>
-                                ))}
+                                {infList.map((inf) => {
+                                  const sharePct = inf.num / 1000000;
+                                  return (
+                                    <li key={inf.name}>
+                                      {inf.name} ({(sharePct * 100).toFixed(3)}%): {formatBigSVC(
+                                        club.influencerReward * sharePct,
+                                        lang
+                                      )}
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             </div>
                           </td>
