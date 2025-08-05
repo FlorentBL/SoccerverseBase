@@ -13,12 +13,12 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
-      <body>
+      <body className="font-sans">
         <Navbar />
-        <div style={{ paddingTop: 60 }}>
+        <div className="pt-20">
           {children}
         </div>
-        <Analytics /> {/* <-- Ajoute cette ligne ici */}
+        <Analytics />
       </body>
     </html>
   );

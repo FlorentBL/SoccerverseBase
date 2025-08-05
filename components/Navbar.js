@@ -51,8 +51,8 @@ export default function Navbar() {
   const getPageHref = (href) => `/${currentLang}${href}`;
 
   return (
-    <header className="bg-gray-800 text-white shadow-md fixed top-0 left-0 w-full z-50">
-      <nav className="flex flex-col items-center max-w-full py-3 px-2 relative">
+    <header className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-white/10 border-b border-white/20 text-white">
+      <nav className="flex flex-col items-center max-w-7xl mx-auto py-3 px-4 relative">
 
         {/* Logo mobile (haut centre) */}
         <Link
@@ -94,7 +94,7 @@ export default function Navbar() {
             <Link
               key={href}
               href={getPageHref(href)}
-              className="hover:text-green-400 transition-colors"
+              className="hover:text-emerald-300 transition-colors"
             >
               {label}
             </Link>
@@ -146,14 +146,14 @@ export default function Navbar() {
 
       {/* Menu mobile */}
       {menuOpen && (
-        <div className="md:hidden bg-gray-800 px-4 pb-4">
+        <div className="md:hidden bg-gray-900/80 backdrop-blur-md border-b border-white/10 px-4 pb-4">
           <ul className="space-y-2 text-center">
             {menuItems.map(({ href, label }) => (
               <li key={href}>
                 <Link
                   href={getPageHref(href)}
                   onClick={() => setMenuOpen(false)}
-                  className="block py-2 border-b border-gray-700 hover:text-green-400 font-bold"
+                  className="block py-2 border-b border-gray-700 hover:text-emerald-300 font-bold"
                 >
                   {label}
                 </Link>
