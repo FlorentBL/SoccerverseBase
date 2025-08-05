@@ -13,11 +13,11 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
-      <body className="font-sans">
+      <body className="font-sans min-h-screen antialiased">
         <Navbar />
-        <div className="pt-20">
+        <main className="pt-24 px-4 md:px-8">
           {children}
-        </div>
+        </main>
         <Analytics />
       </body>
     </html>
