@@ -169,7 +169,7 @@ export default function LeagueTab({ lang = "fr" }) {
   const [standings, setStandings] = useState([]);
   const [clubsDetails, setClubsDetails] = useState({});
   const [clubMap, setClubMap] = useState({});
-  const [countryMap, setCountryMap] = useState([]);
+  const [countryMap, setCountryMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -206,18 +206,20 @@ export default function LeagueTab({ lang = "fr" }) {
   }, []);
 
   React.useEffect(() => {
+    setCountryInput("");
+    setCountry("");
     setDivision("");
-    setSeason("");
-  }, [country]);
+  }, [season]);
 
   React.useEffect(() => {
-    setSeason("");
-  }, [division]);
+    setDivision("");
+  }, [country]);
 
   const handleCountryChange = e => {
     const val = e.target.value;
     setCountryInput(val);
-    const c = countryMap.find(c => c.country.toLowerCase() === val.toLowerCase());
+    const list = countryMap[season] || [];
+    const c = list.find(c => c.country.toLowerCase() === val.toLowerCase());
     setCountry(c ? c.code : "");
   };
 
@@ -227,10 +229,11 @@ export default function LeagueTab({ lang = "fr" }) {
     setClubsDetails({});
     setLoading(true);
     try {
-      const selectedCountry = countryMap.find(c => c.code === country);
+      const list = countryMap[season] || [];
+      const selectedCountry = list.find(c => c.code === country);
       const selectedDivision = selectedCountry?.divisions.find(d => d.leagueId === Number(division));
       if (!selectedDivision) throw new Error("Division not found");
-      const url = `https://services.soccerverse.com/api/league_tables?league_id=${division}${season ? `&season=${season}` : ""}`;
+      const url = `https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${season}`;
       const api = await fetch(url);
       const j = await api.json();
       if (!Array.isArray(j) || j.length === 0) {
@@ -261,10 +264,9 @@ export default function LeagueTab({ lang = "fr" }) {
     setDetailsLoading(false);
   };
 
-  const selectedCountry = countryMap.find(c => c.code === country);
+  const countries = countryMap[season] || [];
+  const selectedCountry = countries.find(c => c.code === country);
   const selectedDivision = selectedCountry?.divisions.find(d => d.leagueId === Number(division));
-  const seasonOptions = selectedDivision?.seasons || [];
-  const seasonRequired = seasonOptions.length > 0;
 
   function getSortFn(colKey, asc) {
     return (a, b) => {
@@ -306,6 +308,21 @@ export default function LeagueTab({ lang = "fr" }) {
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
+        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.seasonLabel}</label>
+        <select
+          value={season}
+          onChange={e => setSeason(e.target.value)}
+          style={{
+            width: "100%", marginBottom: 18, padding: "12px 16px", borderRadius: 6,
+            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
+          }}
+        >
+          <option value="">{t.seasonPlaceholder}</option>
+          {Object.keys(countryMap).map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+
         <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.countryLabel}</label>
         <input
           list="countries"
@@ -316,14 +333,16 @@ export default function LeagueTab({ lang = "fr" }) {
             width: "100%", marginBottom: 14, padding: "12px 16px", borderRadius: 6,
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}
+          disabled={!season}
         />
         <datalist id="countries">
-          {[...countryMap]
+          {(countryMap[season] || [])
             .sort((a, b) => a.country.localeCompare(b.country, lang))
             .map(c => (
               <option key={c.code} value={c.country} label={`${c.flag} ${c.country}`} />
             ))}
         </datalist>
+
         <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.divisionLabel}</label>
         <select
           value={division}
@@ -332,35 +351,19 @@ export default function LeagueTab({ lang = "fr" }) {
             width: "100%", marginBottom: 18, padding: "12px 16px", borderRadius: 6,
             border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
           }}
-          disabled={!selectedCountry}>
+          disabled={!selectedCountry}
+        >
           <option value="">{t.divisionPlaceholder}</option>
           {selectedCountry?.divisions.map(d => (
             <option key={d.leagueId} value={d.leagueId}>{d.label} (ID {d.leagueId})</option>
           ))}
         </select>
 
-        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.seasonLabel}</label>
-        <select
-          value={season}
-          onChange={e => setSeason(e.target.value)}
-          style={{
-            width: "100%", marginBottom: 18, padding: "12px 16px", borderRadius: 6,
-            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-          }}
-          disabled={!seasonRequired}>
-          <option value="">{t.seasonPlaceholder}</option>
-          {seasonOptions.map(s => (
-            <option key={typeof s === 'object' ? s.id : s} value={typeof s === 'object' ? s.id : s}>
-              {typeof s === 'object' ? s.label : s}
-            </option>
-          ))}
-        </select>
-
-        <button onClick={fetchTable} disabled={loading || !country || !division || (seasonRequired && !season)}
+        <button onClick={fetchTable} disabled={loading || !season || !country || !division}
           style={{
             background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
             border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
-            cursor: loading || !country || !division || (seasonRequired && !season) ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
+            cursor: loading || !season || !country || !division ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
           }}
         >{loading ? t.searching : detailsLoading ? t.loadingDetails : t.showTable}</button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
