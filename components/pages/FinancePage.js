@@ -2,7 +2,8 @@
 import React, { useState } from "react";
 import {
   FIELD_ORDER, COST_FIELDS, NON_PROJECTED_FIELDS,
-  isMatchWeek, aggregateBilan
+  isMatchWeek, aggregateBilan,
+  generateProjectionDetail, generateSimulatedDetail,
 } from "../utils";
 import Saison1 from "../Saison1";
 import Saison2 from "../Saison2";
@@ -38,17 +39,6 @@ const LABELS = {
     errorSeason: s => `Errore bilancio S${s}`,
   }
 };
-
-// Agrégation d'une liste de semaines en un bilan
-function aggregate(weeks) {
-  const sum = {};
-  weeks.forEach(week => {
-    Object.entries(week).forEach(([k, v]) => {
-      if (typeof v === "number") sum[k] = (sum[k] ?? 0) + v;
-    });
-  });
-  return sum;
-}
 
 export default function FinancePage({ lang = "fr" }) {
   const t = LABELS[lang] || LABELS.fr;
@@ -91,50 +81,17 @@ export default function FinancePage({ lang = "fr" }) {
       const nbJoursRestantes = nbJoursTotal - nbJoursS2;
 
       // Bilans par saison
-      const bilanS1 = aggregate(s1);
-      const bilanS2 = aggregate(s2);
-
-      // Moyenne par champ sur S2
-      const sumMatchWeeksS2 = {};
-      s2.forEach(week => {
-        Object.entries(week).forEach(([k, v]) => {
-          if (typeof v === "number") sumMatchWeeksS2[k] = (sumMatchWeeksS2[k] ?? 0) + v;
-        });
-      });
-      const moyS2 = {};
-      FIELD_ORDER.forEach(k => {
-        moyS2[k] = s2.length > 0 ? (sumMatchWeeksS2[k] ?? 0) / s2.length : 0;
-      });
-
-      // Dernier salaire joueurs connu (journée passée) ou 0
-      const lastPlayerWages = matchWeeksS2.length > 0
-        ? matchWeeksS2[matchWeeksS2.length - 1].player_wages || 0
-        : 0;
+      const bilanS1 = aggregateBilan(s1);
+      const bilanS2 = aggregateBilan(s2);
 
       // ---- PROJECTION PAR JOUR ----
-      // On garde les vraies semaines passées, puis on duplique une base pour les journées futures
-      let projDetail = [...matchWeeksS2.map(week => ({ ...week }))];
-      for (let i = 0; i < nbJoursRestantes; i++) {
-        const base = {};
-        FIELD_ORDER.forEach(k => {
-          if (k === "player_wages") {
-            base[k] = lastPlayerWages; // On garde le dernier salaire connu
-          } else if (NON_PROJECTED_FIELDS.includes(k)) {
-            base[k] = 0;
-          } else if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
-            // Pour ces champs, tu peux garder ta logique (exemple : un match sur deux pour domicile/extérieur)
-            base[k] = (nbJoursS2 + i) % 2 === 0 ? moyS2[k] : 0;
-          } else {
-            base[k] = moyS2[k];
-          }
-        });
-        base.game_week = nbJoursS2 + i + 1;
-        base.date = null;
-        projDetail.push(base);
-      }
+      // On garde toutes les semaines déjà jouées (transferts inclus)
+      // puis on génère les semaines restantes
+      const projRest = generateProjectionDetail(matchWeeksS2, nbJoursRestantes);
+      const projDetail = [...s2.map(week => ({ ...week })), ...projRest];
 
       // Projection totale (somme de chaque champ)
-      const projS2 = aggregate(projDetail);
+      const projS2 = aggregateBilan(projDetail);
 
       // Recap synthèse projection
       let totalRecettes = 0, totalCharges = 0;
@@ -143,8 +100,11 @@ export default function FinancePage({ lang = "fr" }) {
         if (COST_FIELDS.includes(k)) totalCharges += Math.abs(projS2[k] ?? 0);
         else totalRecettes += projS2[k] ?? 0;
       });
+
+      // Bilan des semaines restantes uniquement pour le solde final
+      const projFuture = aggregateBilan(projDetail.slice(s2.length));
       const soldeFinS2 = Number.isFinite(solde)
-        ? solde + Object.entries(projS2).reduce((acc, [k, v]) => (
+        ? solde + Object.entries(projFuture).reduce((acc, [k, v]) => (
             COST_FIELDS.includes(k) ? acc - Math.abs(v || 0) : acc + (v || 0)
           ), 0)
         : 0;
@@ -178,24 +138,21 @@ export default function FinancePage({ lang = "fr" }) {
   // === SIMULATION LOGIC ===
   function runSimulation() {
     if (!results) return;
-    const simDetail = JSON.parse(JSON.stringify(results.projDetail));
     const transfert = (parseFloat(transfertSim.replace(",", ".")) || 0) * 10000;
     const salaireHebdo = (parseFloat(salaireSim.replace(",", ".")) || 0) * 10000;
     let simRecettes = 0, simCharges = 0;
 
-    // Ajoute le salaire simulé sur les journées restantes uniquement !
-    for (let i = results.nbJoursS2; i < simDetail.length; ++i) {
-      simDetail[i].player_wages = (simDetail[i].player_wages ?? 0) + salaireHebdo;
-    }
-
-    // Ajoute le transfert sur la première journée restante
-    if (transfert > 0 && results.nbJoursS2 < simDetail.length) {
-      simDetail[results.nbJoursS2].transfers_out = (simDetail[results.nbJoursS2].transfers_out ?? 0) + transfert;
-    }
+    const simDetail = generateSimulatedDetail(
+      results.projDetail,
+      results.s2.length,
+      transfert,
+      salaireHebdo
+    );
 
     // Récap total simulé
-    const simBilan = aggregate(simDetail);
-    const simSoldeFin = results.solde + Object.entries(simBilan).reduce((acc, [k, v]) => (
+    const simBilan = aggregateBilan(simDetail);
+    const simFuture = aggregateBilan(simDetail.slice(results.s2.length));
+    const simSoldeFin = results.solde + Object.entries(simFuture).reduce((acc, [k, v]) => (
       COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v
     ), 0);
     const simMasseSalariale = Math.abs(simBilan.player_wages ?? 0);
