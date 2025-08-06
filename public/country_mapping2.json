@@ -1,0 +1,409 @@
+[
+  { "country": "Angola", "code": "AGO", "flag": "🇦🇴", "divisions": [ { "label": "D1", "leagueId": 520 } ] },
+  { "country": "Albanie", "code": "ALB", "flag": "🇦🇱", "divisions": [
+      { "label": "D1", "leagueId": 510 }, { "label": "D2", "leagueId": 511 },
+      { "label": "D3", "leagueId": 512 }, { "label": "D4", "leagueId": 513 }
+    ]
+  },
+  { "country": "Andorre", "code": "AND", "flag": "🇦🇩", "divisions": [ { "label": "D1", "leagueId": 518 } ] },
+  { "country": "Émirats Arabes Unis", "code": "ARE", "flag": "🇦🇪", "divisions": [ { "label": "D1", "leagueId": 956 } ] },
+  { "country": "Argentine", "code": "ARG", "flag": "🇦🇷", "divisions": [
+      { "label": "D1", "leagueId": 522 }, { "label": "D2", "leagueId": 523 },
+      { "label": "D3", "leagueId": 524 }, { "label": "D4", "leagueId": 525 },
+      { "label": "D5", "leagueId": 526 }
+    ]
+  },
+  { "country": "Arménie", "code": "ARM", "flag": "🇦🇲", "divisions": [ { "label": "D1", "leagueId": 528 } ] },
+  { "country": "Australie", "code": "AUS", "flag": "🇦🇺", "divisions": [
+      { "label": "D1", "leagueId": 530 }, { "label": "D2", "leagueId": 531 }, { "label": "D3", "leagueId": 532 }
+    ]
+  },
+  { "country": "Autriche", "code": "AUT", "flag": "🇦🇹", "divisions": [
+      { "label": "D1", "leagueId": 534 }, { "label": "D2", "leagueId": 535 }, { "label": "D3", "leagueId": 536 }
+    ]
+  },
+  { "country": "Azerbaïdjan", "code": "AZE", "flag": "🇦🇿", "divisions": [
+      { "label": "D1", "leagueId": 538 }, { "label": "D2", "leagueId": 539 }
+    ]
+  },
+  { "country": "Burundi", "code": "BDI", "flag": "🇧🇮", "divisions": [ { "label": "D1", "leagueId": 584 } ] },
+  { "country": "Belgique", "code": "BEL", "flag": "🇧🇪", "divisions": [
+      { "label": "D1", "leagueId": 548 }, { "label": "D2", "leagueId": 549 }, { "label": "D3", "leagueId": 550 },
+      { "label": "D4", "leagueId": 551 }, { "label": "D5", "leagueId": 552 }
+    ]
+  },
+  { "country": "Bénin", "code": "BEN", "flag": "🇧🇯", "divisions": [
+      { "label": "D1", "leagueId": 554 }, { "label": "D2", "leagueId": 555 }
+    ]
+  },
+  { "country": "Burkina Faso", "code": "BFA", "flag": "🇧🇫", "divisions": [ { "label": "D1", "leagueId": 582 } ] },
+  { "country": "Bangladesh", "code": "BGD", "flag": "🇧🇩", "divisions": [ { "label": "D1", "leagueId": 543 } ] },
+  { "country": "Bulgarie", "code": "BGR", "flag": "🇧🇬", "divisions": [
+      { "label": "D1", "leagueId": 578 }, { "label": "D2", "leagueId": 579 }, { "label": "D3", "leagueId": 580 }
+    ]
+  },
+  { "country": "Bahreïn", "code": "BHR", "flag": "🇧🇭", "divisions": [ { "label": "D1", "leagueId": 541 } ] },
+  { "country": "Bosnie-Herzégovine", "code": "BIH", "flag": "🇧🇦", "divisions": [
+      { "label": "D1", "leagueId": 562 }, { "label": "D2", "leagueId": 563 }
+    ]
+  },
+  { "country": "Biélorussie", "code": "BLR", "flag": "🇧🇾", "divisions": [
+      { "label": "D1", "leagueId": 545 }, { "label": "D2", "leagueId": 546 }
+    ]
+  },
+  { "country": "Bolivie", "code": "BOL", "flag": "🇧🇴", "divisions": [
+      { "label": "D1", "leagueId": 559 }, { "label": "D2", "leagueId": 560 }
+    ]
+  },
+  { "country": "Brésil", "code": "BRA", "flag": "🇧🇷", "divisions": [
+      { "label": "D1", "leagueId": 567 }, { "label": "D2", "leagueId": 568 }, { "label": "D3", "leagueId": 569 },
+      { "label": "D4", "leagueId": 570 }, { "label": "D5", "leagueId": 571 }, { "label": "D6", "leagueId": 572 },
+      { "label": "D7", "leagueId": 573 }, { "label": "D8", "leagueId": 574 }, { "label": "D9", "leagueId": 575 },
+      { "label": "D10", "leagueId": 576 }
+    ]
+  },
+  { "country": "Bhoutan", "code": "BTN", "flag": "🇧🇹", "divisions": [ { "label": "D1", "leagueId": 557 } ] },
+  { "country": "Botswana", "code": "BWA", "flag": "🇧🇼", "divisions": [ { "label": "D1", "leagueId": 565 } ] },
+  { "country": "Canada", "code": "CAN", "flag": "🇨🇦", "divisions": [ { "label": "D1", "leagueId": 590 } ] },
+  { "country": "Suisse", "code": "CHE", "flag": "🇨🇭", "divisions": [
+      { "label": "D1", "leagueId": 922 }, { "label": "D2", "leagueId": 923 }, { "label": "D3", "leagueId": 924 }
+    ]
+  },
+  { "country": "Chili", "code": "CHL", "flag": "🇨🇱", "divisions": [
+      { "label": "D1", "leagueId": 592 }, { "label": "D2", "leagueId": 593 }
+    ]
+  },
+  { "country": "Chine", "code": "CHN", "flag": "🇨🇳", "divisions": [
+      { "label": "D1", "leagueId": 595 }, { "label": "D2", "leagueId": 596 }
+    ]
+  },
+  { "country": "Côte d'Ivoire", "code": "CIV", "flag": "🇨🇮", "divisions": [ { "label": "D1", "leagueId": 742 } ] },
+  { "country": "Cameroun", "code": "CMR", "flag": "🇨🇲", "divisions": [ { "label": "D1", "leagueId": 588 } ] },
+  { "country": "République Démocratique du Congo", "code": "COD", "flag": "🇨🇩", "divisions": [
+      { "label": "D1", "leagueId": 603 }, { "label": "D2", "leagueId": 604 }
+    ]
+  },
+  { "country": "République du Congo", "code": "COG", "flag": "🇨🇬", "divisions": [ { "label": "D1", "leagueId": 601 } ] },
+  { "country": "Colombie", "code": "COL", "flag": "🇨🇴", "divisions": [
+      { "label": "D1", "leagueId": 598 }, { "label": "D2", "leagueId": 599 }
+    ]
+  },
+  { "country": "Costa Rica", "code": "CRI", "flag": "🇨🇷", "divisions": [
+      { "label": "D1", "leagueId": 606 }, { "label": "D2", "leagueId": 607 }
+    ]
+  },
+  { "country": "Cuba", "code": "CUB", "flag": "🇨🇺", "divisions": [ { "label": "D1", "leagueId": 614 } ] },
+  { "country": "Chypre", "code": "CYP", "flag": "🇨🇾", "divisions": [
+      { "label": "D1", "leagueId": 616 }, { "label": "D2", "leagueId": 617 }
+    ]
+  },
+  { "country": "République Tchèque", "code": "CZE", "flag": "🇨🇿", "divisions": [
+      { "label": "D1", "leagueId": 619 }, { "label": "D2", "leagueId": 620 }, { "label": "D3", "leagueId": 621 }
+    ]
+  },
+  { "country": "Allemagne", "code": "DEU", "flag": "🇩🇪", "divisions": [
+      { "label": "D1", "leagueId": 683 }, { "label": "D2", "leagueId": 684 }, { "label": "D3", "leagueId": 685 },
+      { "label": "D4", "leagueId": 686 }, { "label": "D5", "leagueId": 687 }, { "label": "D6", "leagueId": 688 },
+      { "label": "D7", "leagueId": 689 }, { "label": "D8", "leagueId": 690 }, { "label": "D9", "leagueId": 691 },
+      { "label": "D10", "leagueId": 692 }
+    ]
+  },
+    { "country": "Danemark", "code": "DNK", "flag": "🇩🇰", "divisions": [
+      { "label": "D1", "leagueId": 623 }, { "label": "D2", "leagueId": 624 }, { "label": "D3", "leagueId": 625 }
+    ]
+  },
+  { "country": "République Dominicaine", "code": "DOM", "flag": "🇩🇴", "divisions": [
+      { "label": "D1", "leagueId": 627 }
+    ]
+  },
+  { "country": "Algérie", "code": "DZA", "flag": "🇩🇿", "divisions": [
+      { "label": "D1", "leagueId": 515 }, { "label": "D2", "leagueId": 516 }
+    ]
+  },
+  { "country": "Équateur", "code": "ECU", "flag": "🇪🇨", "divisions": [
+      { "label": "D1", "leagueId": 629 }, { "label": "D2", "leagueId": 630 }
+    ]
+  },
+  { "country": "Égypte", "code": "EGY", "flag": "🇪🇬", "divisions": [
+      { "label": "D1", "leagueId": 632 }, { "label": "D2", "leagueId": 633 }
+    ]
+  },
+  { "country": "Angleterre", "code": "ENG", "flag": "🏴", "divisions": [
+      { "label": "D1", "leagueId": 637 }, { "label": "D2", "leagueId": 638 }, { "label": "D3", "leagueId": 639 },
+      { "label": "D4", "leagueId": 640 }, { "label": "D5", "leagueId": 641 }, { "label": "D6", "leagueId": 642 },
+      { "label": "D7", "leagueId": 643 }, { "label": "D8", "leagueId": 644 }, { "label": "D9", "leagueId": 645 },
+      { "label": "D10", "leagueId": 646 }
+    ]
+  },
+  { "country": "Espagne", "code": "ESP", "flag": "🇪🇸", "divisions": [
+      { "label": "D1", "leagueId": 905 }, { "label": "D2", "leagueId": 906 }, { "label": "D3", "leagueId": 907 },
+      { "label": "D4", "leagueId": 908 }, { "label": "D5", "leagueId": 909 }, { "label": "D6", "leagueId": 910 },
+      { "label": "D7", "leagueId": 911 }, { "label": "D8", "leagueId": 912 }, { "label": "D9", "leagueId": 913 },
+      { "label": "D10", "leagueId": 914 }
+    ]
+  },
+  { "country": "Estonie", "code": "EST", "flag": "🇪🇪", "divisions": [
+      { "label": "D1", "leagueId": 648 }, { "label": "D2", "leagueId": 649 }
+    ]
+  },
+  { "country": "Éthiopie", "code": "ETH", "flag": "🇪🇹", "divisions": [ { "label": "D1", "leagueId": 653 } ] },
+  { "country": "Finlande", "code": "FIN", "flag": "🇫🇮", "divisions": [
+      { "label": "D1", "leagueId": 659 }, { "label": "D2", "leagueId": 660 }, { "label": "D3", "leagueId": 661 }, { "label": "D4", "leagueId": 662 }
+    ]
+  },
+  { "country": "Fidji", "code": "FJI", "flag": "🇫🇯", "divisions": [ { "label": "D1", "leagueId": 657 } ] },
+  { "country": "France", "code": "FRA", "flag": "🇫🇷", "divisions": [
+      { "label": "D1", "leagueId": 664 }, { "label": "D2", "leagueId": 665 }, { "label": "D3", "leagueId": 666 },
+      { "label": "D4", "leagueId": 667 }, { "label": "D5", "leagueId": 668 }, { "label": "D6", "leagueId": 669 },
+      { "label": "D7", "leagueId": 670 }, { "label": "D8", "leagueId": 671 }, { "label": "D9", "leagueId": 672 },
+      { "label": "D10", "leagueId": 673 }
+    ]
+  },
+  { "country": "Îles Féroé", "code": "FRO", "flag": "🇫🇴", "divisions": [ { "label": "D1", "leagueId": 655 } ] },
+  { "country": "Gabon", "code": "GAB", "flag": "🇬🇦", "divisions": [ { "label": "D1", "leagueId": 675 } ] },
+  { "country": "Géorgie", "code": "GEO", "flag": "🇬🇪", "divisions": [
+      { "label": "D1", "leagueId": 679 }, { "label": "D2", "leagueId": 680 }, { "label": "D3", "leagueId": 681 }
+    ]
+  },
+  { "country": "Ghana", "code": "GHA", "flag": "🇬🇭", "divisions": [ { "label": "D1", "leagueId": 694 } ] },
+  { "country": "Gibraltar", "code": "GIB", "flag": "🇬🇮", "divisions": [ { "label": "D1", "leagueId": 696 } ] },
+  { "country": "Guinée", "code": "GIN", "flag": "🇬🇳", "divisions": [ { "label": "D1", "leagueId": 705 } ] },
+  { "country": "Gambie", "code": "GMB", "flag": "🇬🇲", "divisions": [ { "label": "D1", "leagueId": 677 } ] },
+  { "country": "Grèce", "code": "GRC", "flag": "🇬🇷", "divisions": [
+      { "label": "D1", "leagueId": 698 }, { "label": "D2", "leagueId": 699 }, { "label": "D3", "leagueId": 700 }
+    ]
+  },
+  { "country": "Guatemala", "code": "GTM", "flag": "🇬🇹", "divisions": [
+      { "label": "D1", "leagueId": 702 }, { "label": "D2", "leagueId": 703 }
+    ]
+  },
+  { "country": "Hong Kong", "code": "HKG", "flag": "🇭🇰", "divisions": [ { "label": "D1", "leagueId": 711 } ] },
+  { "country": "Honduras", "code": "HND", "flag": "🇭🇳", "divisions": [ { "label": "D1", "leagueId": 709 } ] },
+  { "country": "Croatie", "code": "HRV", "flag": "🇭🇷", "divisions": [
+      { "label": "D1", "leagueId": 609 }, { "label": "D2", "leagueId": 610 }, { "label": "D3", "leagueId": 611 }, { "label": "D4", "leagueId": 612 }
+    ]
+  },
+  { "country": "Haïti", "code": "HTI", "flag": "🇭🇹", "divisions": [ { "label": "D1", "leagueId": 707 } ] },
+  { "country": "Hongrie", "code": "HUN", "flag": "🇭🇺", "divisions": [
+      { "label": "D1", "leagueId": 713 }, { "label": "D2", "leagueId": 714 }, { "label": "D3", "leagueId": 715 }
+    ]
+  },
+  { "country": "Indonésie", "code": "IDN", "flag": "🇮🇩", "divisions": [
+      { "label": "D1", "leagueId": 723 }, { "label": "D2", "leagueId": 724 }
+    ]
+  },
+  { "country": "Inde", "code": "IND", "flag": "🇮🇳", "divisions": [
+      { "label": "D1", "leagueId": 720 }, { "label": "D2", "leagueId": 721 }
+    ]
+  },
+  { "country": "Irlande", "code": "IRL", "flag": "🇮🇪", "divisions": [ { "label": "D1", "leagueId": 731 } ] },
+  { "country": "Iran", "code": "IRN", "flag": "🇮🇷", "divisions": [
+      { "label": "D1", "leagueId": 726 }, { "label": "D2", "leagueId": 727 }
+    ]
+  },
+  { "country": "Irak", "code": "IRQ", "flag": "🇮🇶", "divisions": [ { "label": "D1", "leagueId": 729 } ] },
+  { "country": "Islande", "code": "ISL", "flag": "🇮🇸", "divisions": [
+      { "label": "D1", "leagueId": 717 }, { "label": "D2", "leagueId": 718 }
+    ]
+  },
+  { "country": "Israël", "code": "ISR", "flag": "🇮🇱", "divisions": [
+      { "label": "D1", "leagueId": 733 }, { "label": "D2", "leagueId": 734 }
+    ]
+  },
+  { "country": "Italie", "code": "ITA", "flag": "🇮🇹", "divisions": [
+      { "label": "D1", "leagueId": 736 }, { "label": "D2", "leagueId": 737 }, { "label": "D3", "leagueId": 738 },
+      { "label": "D4", "leagueId": 739 }, { "label": "D5", "leagueId": 740 }
+    ]
+  },
+  { "country": "Jamaïque", "code": "JAM", "flag": "🇯🇲", "divisions": [ { "label": "D1", "leagueId": 744 } ] },
+  { "country": "Jordanie", "code": "JOR", "flag": "🇯🇴", "divisions": [ { "label": "D1", "leagueId": 751 } ] },
+  { "country": "Japon", "code": "JPN", "flag": "🇯🇵", "divisions": [
+      { "label": "D1", "leagueId": 746 }, { "label": "D2", "leagueId": 747 }, { "label": "D3", "leagueId": 748 }, { "label": "D4", "leagueId": 749 }
+    ]
+  },
+  { "country": "Kazakhstan", "code": "KAZ", "flag": "🇰🇿", "divisions": [ { "label": "D1", "leagueId": 753 } ] },
+  { "country": "Kenya", "code": "KEN", "flag": "🇰🇪", "divisions": [ { "label": "D1", "leagueId": 755 } ] },
+  { "country": "Kirghizistan", "code": "KGZ", "flag": "🇰🇬", "divisions": [ { "label": "D1", "leagueId": 761 } ] },
+  { "country": "Cambodge", "code": "KHM", "flag": "🇰🇭", "divisions": [ { "label": "D1", "leagueId": 586 } ] },
+  { "country": "Corée du Sud", "code": "KOR", "flag": "🇰🇷", "divisions": [
+      { "label": "D1", "leagueId": 902 }, { "label": "D2", "leagueId": 903 }
+    ]
+  },
+  { "country": "Kosovo", "code": "KOS", "flag": "🇽🇰", "divisions": [ { "label": "D1", "leagueId": 757 } ] },
+  { "country": "Koweït", "code": "KWT", "flag": "🇰🇼", "divisions": [ { "label": "D1", "leagueId": 759 } ] },
+  { "country": "Laos", "code": "LAO", "flag": "🇱🇦", "divisions": [ { "label": "D1", "leagueId": 763 } ] },
+  { "country": "Liban", "code": "LBN", "flag": "🇱🇧", "divisions": [ { "label": "D1", "leagueId": 767 } ] },
+  { "country": "Libéria", "code": "LBR", "flag": "🇱🇷", "divisions": [ { "label": "D1", "leagueId": 771 } ] },
+  { "country": "Libye", "code": "LBY", "flag": "🇱🇾", "divisions": [ { "label": "D1", "leagueId": 773 } ] },
+  { "country": "Lesotho", "code": "LSO", "flag": "🇱🇸", "divisions": [ { "label": "D1", "leagueId": 769 } ] },
+  { "country": "Lituanie", "code": "LTU", "flag": "🇱🇹", "divisions": [ { "label": "D1", "leagueId": 775 } ] },
+  { "country": "Luxembourg", "code": "LUX", "flag": "🇱🇺", "divisions": [ { "label": "D1", "leagueId": 777 } ] },
+  { "country": "Lettonie", "code": "LVA", "flag": "🇱🇻", "divisions": [ { "label": "D1", "leagueId": 765 } ] },
+  { "country": "Maroc", "code": "MAR", "flag": "🇲🇦", "divisions": [
+      { "label": "D1", "leagueId": 805 }, { "label": "D2", "leagueId": 806 }
+    ]
+  },
+  { "country": "Moldavie", "code": "MDA", "flag": "🇲🇩", "divisions": [ { "label": "D1", "leagueId": 798 } ] },
+  { "country": "Mexique", "code": "MEX", "flag": "🇲🇽", "divisions": [
+      { "label": "D1", "leagueId": 795 }, { "label": "D2", "leagueId": 796 }
+    ]
+  },
+  { "country": "Macédoine du Nord", "code": "MKD", "flag": "🇲🇰", "divisions": [
+      { "label": "D1", "leagueId": 779 }, { "label": "D2", "leagueId": 780 }
+    ]
+  },
+  { "country": "Mali", "code": "MLI", "flag": "🇲🇱", "divisions": [ { "label": "D1", "leagueId": 786 } ] },
+  { "country": "Malte", "code": "MLT", "flag": "🇲🇹", "divisions": [
+      { "label": "D1", "leagueId": 788 }, { "label": "D2", "leagueId": 789 }
+    ]
+  },
+  { "country": "Myanmar", "code": "MMR", "flag": "🇲🇲", "divisions": [ { "label": "D1", "leagueId": 808 } ] },
+  { "country": "Monténégro", "code": "MNE", "flag": "🇲🇪", "divisions": [
+      { "label": "D1", "leagueId": 802 }, { "label": "D2", "leagueId": 803 }
+    ]
+  },
+  { "country": "Mongolie", "code": "MNG", "flag": "🇲🇳", "divisions": [ { "label": "D1", "leagueId": 800 } ] },
+  { "country": "Mauritanie", "code": "MRT", "flag": "🇲🇷", "divisions": [ { "label": "D1", "leagueId": 791 } ] },
+  { "country": "Maurice", "code": "MUS", "flag": "🇲🇺", "divisions": [ { "label": "D1", "leagueId": 793 } ] },
+  { "country": "Malawi", "code": "MWI", "flag": "🇲🇼", "divisions": [ { "label": "D1", "leagueId": 782 } ] },
+  { "country": "Malaisie", "code": "MYS", "flag": "🇲🇾", "divisions": [ { "label": "D1", "leagueId": 784 } ] },
+  { "country": "Namibie", "code": "NAM", "flag": "🇳🇦", "divisions": [ { "label": "D1", "leagueId": 810 } ] },
+  { "country": "Nigéria", "code": "NGA", "flag": "🇳🇬", "divisions": [ { "label": "D1", "leagueId": 825 } ] },
+  { "country": "Nicaragua", "code": "NIC", "flag": "🇳🇮", "divisions": [ { "label": "D1", "leagueId": 823 } ] },
+  { "country": "Irlande du Nord", "code": "NIR", "flag": "🇬🇧", "divisions": [
+      { "label": "D1", "leagueId": 827 }, { "label": "D2", "leagueId": 828 }, { "label": "D3", "leagueId": 829 }
+    ]
+  },
+  { "country": "Pays-Bas", "code": "NLD", "flag": "🇳🇱", "divisions": [
+      { "label": "D1", "leagueId": 814 }, { "label": "D2", "leagueId": 815 }, { "label": "D3", "leagueId": 816 },
+      { "label": "D4", "leagueId": 817 }, { "label": "D5", "leagueId": 818 }
+    ]
+  },
+  { "country": "Norvège", "code": "NOR", "flag": "🇳🇴", "divisions": [
+      { "label": "D1", "leagueId": 831 }, { "label": "D2", "leagueId": 832 }, { "label": "D3", "leagueId": 833 }
+    ]
+  },
+  { "country": "Népal", "code": "NPL", "flag": "🇳🇵", "divisions": [ { "label": "D1", "leagueId": 812 } ] },
+  { "country": "Nouvelle-Zélande", "code": "NZL", "flag": "🇳🇿", "divisions": [
+      { "label": "D1", "leagueId": 820 }, { "label": "D2", "leagueId": 821 }
+    ]
+  },
+  { "country": "Oman", "code": "OMN", "flag": "🏴", "divisions": [ { "label": "D1", "leagueId": 835 } ] },
+  { "country": "Panama", "code": "PAN", "flag": "🇵🇦", "divisions": [ { "label": "D1", "leagueId": 837 } ] },
+  { "country": "Pérou", "code": "PER", "flag": "🇵🇪", "divisions": [
+      { "label": "D1", "leagueId": 842 }, { "label": "D2", "leagueId": 843 }
+    ]
+  },
+  { "country": "Philippines", "code": "PHL", "flag": "🇵🇭", "divisions": [ { "label": "D1", "leagueId": 845 } ] },
+  { "country": "Pologne", "code": "POL", "flag": "🇵🇱", "divisions": [
+      { "label": "D1", "leagueId": 847 }, { "label": "D2", "leagueId": 848 }, { "label": "D3", "leagueId": 849 }, { "label": "D4", "leagueId": 850 }
+    ]
+  },
+  { "country": "Portugal", "code": "PRT", "flag": "🇵🇹", "divisions": [
+      { "label": "D1", "leagueId": 852 }, { "label": "D2", "leagueId": 853 }, { "label": "D3", "leagueId": 854 },
+      { "label": "D4", "leagueId": 855 }, { "label": "D5", "leagueId": 856 }
+    ]
+  },
+  { "country": "Paraguay", "code": "PRY", "flag": "🇵🇾", "divisions": [
+      { "label": "D1", "leagueId": 839 }, { "label": "D2", "leagueId": 840 }
+    ]
+  },
+  { "country": "Qatar", "code": "QAT", "flag": "🇶🇦", "divisions": [ { "label": "D1", "leagueId": 858 } ] },
+  { "country": "Roumanie", "code": "ROU", "flag": "🇷🇴", "divisions": [
+      { "label": "D1", "leagueId": 860 }, { "label": "D2", "leagueId": 861 }, { "label": "D3", "leagueId": 862 }
+    ]
+  },
+  { "country": "Russie", "code": "RUS", "flag": "🇷🇺", "divisions": [
+      { "label": "D1", "leagueId": 864 }, { "label": "D2", "leagueId": 865 }, { "label": "D3", "leagueId": 866 },
+      { "label": "D4", "leagueId": 867 }, { "label": "D5", "leagueId": 868 }
+    ]
+  },
+  { "country": "Rwanda", "code": "RWA", "flag": "🇷🇼", "divisions": [ { "label": "D1", "leagueId": 870 } ] },
+  { "country": "Arabie Saoudite", "code": "SAU", "flag": "🇸🇦", "divisions": [
+      { "label": "D1", "leagueId": 874 }, { "label": "D2", "leagueId": 875 }
+    ]
+  },
+  { "country": "Écosse", "code": "SCO", "flag": "🏴", "divisions": [
+      { "label": "D1", "leagueId": 877 }, { "label": "D2", "leagueId": 878 }, { "label": "D3", "leagueId": 879 }, { "label": "D4", "leagueId": 880 }
+    ]
+  },
+  { "country": "Soudan", "code": "SDN", "flag": "🇸🇩", "divisions": [ { "label": "D1", "leagueId": 916 } ] },
+  { "country": "Sénégal", "code": "SEN", "flag": "🇸🇳", "divisions": [ { "label": "D1", "leagueId": 882 } ] },
+  { "country": "Singapour", "code": "SGP", "flag": "🇸🇬", "divisions": [ { "label": "D1", "leagueId": 887 } ] },
+  { "country": "Salvador", "code": "SLV", "flag": "🇸🇻", "divisions": [ { "label": "D1", "leagueId": 635 } ] },
+  { "country": "Saint-Marin", "code": "SMR", "flag": "🇸🇲", "divisions": [ { "label": "D1", "leagueId": 872 } ] },
+  { "country": "Somalie", "code": "SOM", "flag": "🇸🇴", "divisions": [ { "label": "D1", "leagueId": 897 } ] },
+  { "country": "Serbie", "code": "SRB", "flag": "🇷🇸", "divisions": [
+      { "label": "D1", "leagueId": 884 }, { "label": "D2", "leagueId": 885 }
+    ]
+  },
+  { "country": "Slovaquie", "code": "SVK", "flag": "🇸🇰", "divisions": [
+      { "label": "D1", "leagueId": 889 }, { "label": "D2", "leagueId": 890 }, { "label": "D3", "leagueId": 891 }, { "label": "D4", "leagueId": 892 }
+    ]
+  },
+  { "country": "Slovénie", "code": "SVN", "flag": "🇸🇮", "divisions": [
+      { "label": "D1", "leagueId": 894 }, { "label": "D2", "leagueId": 895 }
+    ]
+  },
+  { "country": "Suède", "code": "SWE", "flag": "🇸🇪", "divisions": [
+      { "label": "D1", "leagueId": 918 }, { "label": "D2", "leagueId": 919 }, { "label": "D3", "leagueId": 920 }
+    ]
+  },
+  { "country": "Eswatini", "code": "SWZ", "flag": "🇸🇿", "divisions": [ { "label": "D1", "leagueId": 651 } ] },
+  { "country": "Syrie", "code": "SYR", "flag": "🇸🇾", "divisions": [ { "label": "D1", "leagueId": 926 } ] },
+  { "country": "Togo", "code": "TGO", "flag": "🇹🇬", "divisions": [ { "label": "D1", "leagueId": 935 } ] },
+  { "country": "Thaïlande", "code": "THA", "flag": "🇹🇭", "divisions": [
+      { "label": "D1", "leagueId": 932 }, { "label": "D2", "leagueId": 933 }
+    ]
+  },
+  { "country": "Tadjikistan", "code": "TJK", "flag": "🇹🇯", "divisions": [ { "label": "D1", "leagueId": 928 } ] },
+  { "country": "Turkménistan", "code": "TKM", "flag": "🇹🇲", "divisions": [ { "label": "D1", "leagueId": 948 } ] },
+  { "country": "Trinité-et-Tobago", "code": "TTO", "flag": "🇹🇹", "divisions": [ { "label": "D1", "leagueId": 937 } ] },
+  { "country": "Tunisie", "code": "TUN", "flag": "🇹🇳", "divisions": [
+      { "label": "D1", "leagueId": 939 }, { "label": "D2", "leagueId": 940 }
+    ]
+  },
+  { "country": "Turquie", "code": "TUR", "flag": "🇹🇷", "divisions": [
+      { "label": "D1", "leagueId": 942 }, { "label": "D2", "leagueId": 943 }, { "label": "D3", "leagueId": 944 },
+      { "label": "D4", "leagueId": 945 }, { "label": "D5", "leagueId": 946 }
+    ]
+  },
+  { "country": "Tanzanie", "code": "TZA", "flag": "🇹🇿", "divisions": [ { "label": "D1", "leagueId": 930 } ] },
+  { "country": "Ouganda", "code": "UGA", "flag": "🇺🇬", "divisions": [ { "label": "D1", "leagueId": 950 } ] },
+  { "country": "Ukraine", "code": "UKR", "flag": "🇺🇦", "divisions": [
+      { "label": "D1", "leagueId": 952 }, { "label": "D2", "leagueId": 953 }, { "label": "D3", "leagueId": 954 }
+    ]
+  },
+  { "country": "Uruguay", "code": "URY", "flag": "🇺🇾", "divisions": [
+      { "label": "D1", "leagueId": 958 }, { "label": "D2", "leagueId": 959 }
+    ]
+  },
+  { "country": "États-Unis", "code": "USA", "flag": "🇺🇸", "divisions": [
+      { "label": "D1", "leagueId": 961 }, { "label": "D2", "leagueId": 962 }, { "label": "D3", "leagueId": 963 },
+      { "label": "D4", "leagueId": 964 }, { "label": "D5", "leagueId": 965 }
+    ]
+  },
+  { "country": "Ouzbékistan", "code": "UZB", "flag": "🇺🇿", "divisions": [
+      { "label": "D1", "leagueId": 967 }, { "label": "D2", "leagueId": 968 }
+    ]
+  },
+  { "country": "Venezuela", "code": "VEN", "flag": "🇻🇪", "divisions": [
+      { "label": "D1", "leagueId": 970 }, { "label": "D2", "leagueId": 971 }
+    ]
+  },
+  { "country": "Vietnam", "code": "VNM", "flag": "🇻🇳", "divisions": [
+      { "label": "D1", "leagueId": 973 }, { "label": "D2", "leagueId": 974 }
+    ]
+  },
+  { "country": "Pays de Galles", "code": "WAL", "flag": "🏴", "divisions": [
+      { "label": "D1", "leagueId": 976 }, { "label": "D2", "leagueId": 977 }, { "label": "D3", "leagueId": 978 }
+    ]
+  },
+  { "country": "Yémen", "code": "YEM", "flag": "🇾🇪", "divisions": [ { "label": "D1", "leagueId": 980 } ] },
+  { "country": "Afrique du Sud", "code": "ZAF", "flag": "🇿🇦", "divisions": [
+      { "label": "D1", "leagueId": 899 }, { "label": "D2", "leagueId": 900 }
+    ]
+  },
+  { "country": "Zambie", "code": "ZMB", "flag": "🇿🇲", "divisions": [ { "label": "D1", "leagueId": 982 } ] },
+  { "country": "Zimbabwe", "code": "ZWE", "flag": "🇿🇼", "divisions": [ { "label": "D1", "leagueId": 984 } ] }
+]
