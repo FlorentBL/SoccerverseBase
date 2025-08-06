@@ -64,6 +64,7 @@ const T = {
 
 export default function LeagueRewardsCalculator({ lang = "fr" }) {
   const t = T[lang] || T.fr;
+  const [countryMapData, setCountryMapData] = useState({});
   const [countryMap, setCountryMap] = useState([]);
   const [clubMap, setClubMap] = useState({});
   const [countryInput, setCountryInput] = useState("");
@@ -92,9 +93,16 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
   }
 
   useEffect(() => {
-    fetch(COUNTRY_MAPPING_URL).then(r => r.json()).then(setCountryMap);
+    fetch(COUNTRY_MAPPING_URL)
+      .then(r => r.json())
+      .then(setCountryMapData);
     fetch(CLUB_MAPPING_URL).then(r => r.json()).then(setClubMap);
   }, []);
+
+  useEffect(() => {
+    const seasonKey = `S${season}`;
+    setCountryMap(countryMapData[seasonKey] || []);
+  }, [countryMapData, season]);
 
   useEffect(() => {
     const c = countryMap.find(
