@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { formatBigSVC } from "@/components/utils";
 
-const COUNTRY_MAPPING_URL = "/country_mapping.json";
+const COUNTRY_MAPPING_URL = "/country_mapping2.json";
 const CLUB_MAPPING_URL = "/club_mapping.json";
 
 const T = {
@@ -67,7 +67,7 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
   const [countryMap, setCountryMap] = useState([]);
   const [clubMap, setClubMap] = useState({});
   const [country, setCountry] = useState("");
-  const [division, setDivision] = useState("");
+  const [divisionIdx, setDivisionIdx] = useState("");
   const [season, setSeason] = useState("2");
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [standings, setStandings] = useState([]);
@@ -83,18 +83,36 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
   }, []);
 
   useEffect(() => {
-    const c = countryMap.find(c => c.code === country);
+    const c = countryMap.find((c) => c.code === country);
     setSelectedCountry(c || null);
+    setDivisionIdx("");
+    setStandings([]);
+    setLeagueInfo(null);
   }, [country, countryMap]);
 
+  const divisions = useMemo(() => {
+    if (!selectedCountry) return [];
+    const d = selectedCountry.divisions;
+    if (Array.isArray(d)) return d;
+    return d[season] || [];
+  }, [selectedCountry, season]);
+
+  useEffect(() => {
+    setDivisionIdx("");
+    setStandings([]);
+    setLeagueInfo(null);
+  }, [season]);
+
   async function fetchRewards() {
-    if (!division) return;
+    const div = divisions[Number(divisionIdx)];
+    const leagueId = div?.leagueId;
+    if (!leagueId) return;
     setLoading(true);
     setErr(null);
     try {
       const [leagueRes, tableRes] = await Promise.all([
-        fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}&season_id=${season}`),
-        fetch(`https://services.soccerverse.com/api/league_tables?league_id=${division}&season_id=${season}`)
+        fetch(`https://services.soccerverse.com/api/leagues?league_id=${leagueId}&season_id=${season}`),
+        fetch(`https://services.soccerverse.com/api/league_tables?league_id=${leagueId}&season_id=${season}`)
       ]);
       const leagueJson = await leagueRes.json();
       const tableJson = await tableRes.json();
@@ -164,10 +182,17 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
         </div>
         <div>
           <label className="block mb-1 font-medium">{t.divisionLabel}</label>
-          <select value={division} onChange={e => setDivision(e.target.value)} disabled={!selectedCountry} className="w-full p-2 rounded bg-gray-800 border border-gray-700">
+          <select
+            value={divisionIdx}
+            onChange={(e) => setDivisionIdx(e.target.value)}
+            disabled={!selectedCountry}
+            className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+          >
             <option value="">{t.divisionPlaceholder}</option>
-            {selectedCountry?.divisions.map(d => (
-              <option key={d.leagueId} value={d.leagueId}>{d.label} (ID {d.leagueId})</option>
+            {divisions.map((d, idx) => (
+              <option key={idx} value={idx}>
+                {d.label} (ID {d.leagueId})
+              </option>
             ))}
           </select>
         </div>
@@ -179,7 +204,11 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
             ))}
           </select>
         </div>
-        <button onClick={fetchRewards} disabled={!division || loading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded">
+        <button
+          onClick={fetchRewards}
+          disabled={divisionIdx === "" || loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded"
+        >
           {loading ? t.loading : t.showTable}
         </button>
         {err && <div className="text-red-500 font-medium">{err}</div>}
@@ -188,7 +217,7 @@ export default function LeagueRewardsCalculator({ lang = "fr" }) {
       {standingsWithRewards.length > 0 && (
         <div className="w-full max-w-3xl bg-gray-900 rounded-lg p-6 mt-8">
           <div className="mb-4 text-center">
-            {t.championshipLabel} {selectedCountry?.flag} {selectedCountry?.country} - {selectedCountry?.divisions.find(d=>d.leagueId==division)?.label} ({t.season} {season})
+            {t.championshipLabel} {selectedCountry?.flag} {selectedCountry?.country} - {divisions[Number(divisionIdx)]?.label} (ID {divisions[Number(divisionIdx)]?.leagueId}) ({t.season} {season})
             {leagueInfo && (
               <div className="text-sm text-gray-400">{t.prizePot} {formatBigSVC(prizePot, lang)}</div>
             )}
