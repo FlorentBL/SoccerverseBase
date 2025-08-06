@@ -118,11 +118,8 @@ export function aggregateBilan(weeks) {
   return sum;
 }
 
-// Projection : utilise moyennes séparées pour domicile et global
-export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
-  const nDom = Math.ceil(nbJoursTotal / 2);
-  const nExt = nbJoursTotal - nDom;
-
+// Projection : génère les semaines futures en séparant domicile et extérieur
+export function generateProjectionDetail(matchWeeksS2, nbJoursRestants) {
   // 1. Extraire les matchs à domicile
   const matchDom = matchWeeksS2.filter(w => (w.gate_receipts ?? 0) > 0);
 
@@ -143,15 +140,22 @@ export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
       : 0;
   });
 
+  // Dernier salaire joueurs connu
+  const lastPlayerWages = matchWeeksS2.length > 0
+    ? matchWeeksS2[matchWeeksS2.length - 1].player_wages || 0
+    : 0;
+
   // 4. Générer les projections alternant domicile / extérieur
   const proj = [];
-  for (let i = 0; i < nbJoursTotal; ++i) {
-    const isHome = i % 2 === 0;
+  for (let i = 0; i < nbJoursRestants; ++i) {
+    const isHome = (matchWeeksS2.length + i) % 2 === 0;
     const week = {};
 
     FIELD_ORDER.forEach(k => {
       if (NON_PROJECTED_FIELDS.includes(k)) {
         week[k] = 0;
+      } else if (k === "player_wages") {
+        week[k] = lastPlayerWages;
       } else if (["gate_receipts", "sponsor", "merchandise"].includes(k)) {
         week[k] = isHome ? moyDom[k] : 0;
       } else {
@@ -166,14 +170,16 @@ export function generateProjectionDetail(matchWeeksS2, moyS2, nbJoursTotal) {
 }
 
 
-// Simulation : applique la simulation sur les projections
-export function generateSimulatedDetail(projDetail, transfert, salaireHebdo) {
+// Simulation : applique la simulation sur les projections à partir d'un index donné
+export function generateSimulatedDetail(projDetail, startIndex, transfert, salaireHebdo) {
   const salaire = Number(salaireHebdo) || 0;
   const montantTransfert = Number(transfert) || 0;
   const detail = JSON.parse(JSON.stringify(projDetail));
-  for (let i = 0; i < detail.length; ++i) {
+  for (let i = startIndex; i < detail.length; ++i) {
     detail[i].player_wages = (detail[i].player_wages ?? 0) + salaire;
-    if (i === 0 && montantTransfert > 0) detail[i].transfers_out = (detail[i].transfers_out ?? 0) + montantTransfert;
+    if (i === startIndex && montantTransfert > 0) {
+      detail[i].transfers_out = (detail[i].transfers_out ?? 0) + montantTransfert;
+    }
   }
   return detail;
 }
