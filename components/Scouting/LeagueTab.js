@@ -5,6 +5,30 @@ const COUNTRY_MAPPING_URL = "/country_mapping2.json";
 
 const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
 
+const GROUP_LABELS = {
+  AFR: { fr: "Afrique", en: "Africa", it: "Africa" },
+  AME: { fr: "Amérique", en: "America", it: "America" },
+  ASI: { fr: "Asie", en: "Asia", it: "Asia" },
+  EUR: { fr: "Europe", en: "Europe", it: "Europa" },
+};
+
+const SPECIAL_COUNTRIES = {
+  ENG: { fr: "Angleterre", en: "England", it: "Inghilterra" },
+  SCO: { fr: "Écosse", en: "Scotland", it: "Scozia" },
+  WAL: { fr: "Pays de Galles", en: "Wales", it: "Galles" },
+  NIR: { fr: "Irlande du Nord", en: "Northern Ireland", it: "Irlanda del Nord" },
+};
+
+function codeFromFlag(flag) {
+  if (!flag) return null;
+  const codePoints = Array.from(flag).map(ch => ch.codePointAt(0));
+  if (codePoints.length === 2) {
+    return String.fromCharCode(codePoints[0] - 0x1F1A5) +
+      String.fromCharCode(codePoints[1] - 0x1F1A5);
+  }
+  return null;
+}
+
 const T = {
   fr: {
     countryLabel: "Pays :",
@@ -13,6 +37,7 @@ const T = {
     divisionPlaceholder: "Sélectionner une division",
     seasonLabel: "Saison :",
     seasonPlaceholder: "Sélectionner une saison",
+    seasonNames: { S1: "Saison 1", S2: "Saison 2" },
     showTable: "Afficher classement",
     searching: "Recherche...",
     loadingDetails: "Chargement stats clubs...",
@@ -53,6 +78,7 @@ const T = {
     divisionPlaceholder: "Select a division",
     seasonLabel: "Season:",
     seasonPlaceholder: "Select a season",
+    seasonNames: { S1: "Season 1", S2: "Season 2" },
     showTable: "Show standings",
     searching: "Searching...",
     loadingDetails: "Loading club stats...",
@@ -93,6 +119,7 @@ const T = {
     divisionPlaceholder: "Seleziona una divisione",
     seasonLabel: "Stagione:",
     seasonPlaceholder: "Seleziona una stagione",
+    seasonNames: { S1: "Stagione 1", S2: "Stagione 2" },
     showTable: "Mostra classifica",
     searching: "Ricerca...",
     loadingDetails: "Caricamento statistiche club...",
@@ -215,11 +242,24 @@ export default function LeagueTab({ lang = "fr" }) {
     setDivision("");
   }, [country]);
 
+  const getCountryLabel = (c) => {
+    if (GROUP_LABELS[c.code]) return GROUP_LABELS[c.code][lang];
+    if (SPECIAL_COUNTRIES[c.code]) return SPECIAL_COUNTRIES[c.code][lang];
+    const a2 = codeFromFlag(c.flag);
+    if (a2) {
+      try {
+        const disp = new Intl.DisplayNames([lang], { type: "region" }).of(a2);
+        if (disp) return disp;
+      } catch { /* ignore */ }
+    }
+    return c.country;
+  };
+
   const handleCountryChange = e => {
     const val = e.target.value;
     setCountryInput(val);
     const list = countryMap[season] || [];
-    const c = list.find(c => c.country.toLowerCase() === val.toLowerCase());
+    const c = list.find(c => getCountryLabel(c).toLowerCase() === val.toLowerCase());
     setCountry(c ? c.code : "");
   };
 
@@ -319,7 +359,7 @@ export default function LeagueTab({ lang = "fr" }) {
         >
           <option value="">{t.seasonPlaceholder}</option>
           {Object.keys(countryMap).map(s => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>{t.seasonNames?.[s] || s}</option>
           ))}
         </select>
 
@@ -337,9 +377,9 @@ export default function LeagueTab({ lang = "fr" }) {
         />
         <datalist id="countries">
           {(countryMap[season] || [])
-            .sort((a, b) => a.country.localeCompare(b.country, lang))
+            .sort((a, b) => getCountryLabel(a).localeCompare(getCountryLabel(b), lang))
             .map(c => (
-              <option key={c.code} value={c.country} label={`${c.flag} ${c.country}`} />
+              <option key={c.code} value={getCountryLabel(c)} label={`${c.flag} ${getCountryLabel(c)}`} />
             ))}
         </datalist>
 
@@ -372,8 +412,8 @@ export default function LeagueTab({ lang = "fr" }) {
       {standings.length > 0 && (
         <div style={{ width: "100%", maxWidth: 1200, background: "#181d23", borderRadius: 16, padding: 18, marginBottom: 30, boxShadow: "0 2px 8px #0003" }}>
           <div style={{ fontSize: 17, color: "#ffd700", fontWeight: 500, marginBottom: 12 }}>
-            {selectedCountry && selectedDivision
-              ? <>{t.championshipLabel} <span style={{ color: "#4f47ff" }}>{selectedCountry.flag} {selectedCountry.country} - {selectedDivision.label}</span></>
+          {selectedCountry && selectedDivision
+              ? <>{t.championshipLabel} <span style={{ color: "#4f47ff" }}>{selectedCountry.flag} {getCountryLabel(selectedCountry)} - {selectedDivision.label}</span></>
               : t.standingsTitle}
           </div>
           <div style={{ overflowX: "auto" }}>
