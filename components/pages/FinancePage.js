@@ -85,9 +85,10 @@ export default function FinancePage({ lang = "fr" }) {
       const bilanS2 = aggregateBilan(s2);
 
       // ---- PROJECTION PAR JOUR ----
-      // On garde les semaines déjà jouées et on génère les semaines restantes
+      // On garde toutes les semaines déjà jouées (transferts inclus)
+      // puis on génère les semaines restantes
       const projRest = generateProjectionDetail(matchWeeksS2, nbJoursRestantes);
-      const projDetail = [...matchWeeksS2.map(week => ({ ...week })), ...projRest];
+      const projDetail = [...s2.map(week => ({ ...week })), ...projRest];
 
       // Projection totale (somme de chaque champ)
       const projS2 = aggregateBilan(projDetail);
@@ -99,8 +100,11 @@ export default function FinancePage({ lang = "fr" }) {
         if (COST_FIELDS.includes(k)) totalCharges += Math.abs(projS2[k] ?? 0);
         else totalRecettes += projS2[k] ?? 0;
       });
+
+      // Bilan des semaines restantes uniquement pour le solde final
+      const projFuture = aggregateBilan(projDetail.slice(s2.length));
       const soldeFinS2 = Number.isFinite(solde)
-        ? solde + Object.entries(projS2).reduce((acc, [k, v]) => (
+        ? solde + Object.entries(projFuture).reduce((acc, [k, v]) => (
             COST_FIELDS.includes(k) ? acc - Math.abs(v || 0) : acc + (v || 0)
           ), 0)
         : 0;
@@ -140,14 +144,15 @@ export default function FinancePage({ lang = "fr" }) {
 
     const simDetail = generateSimulatedDetail(
       results.projDetail,
-      results.nbJoursS2,
+      results.s2.length,
       transfert,
       salaireHebdo
     );
 
     // Récap total simulé
     const simBilan = aggregateBilan(simDetail);
-    const simSoldeFin = results.solde + Object.entries(simBilan).reduce((acc, [k, v]) => (
+    const simFuture = aggregateBilan(simDetail.slice(results.s2.length));
+    const simSoldeFin = results.solde + Object.entries(simFuture).reduce((acc, [k, v]) => (
       COST_FIELDS.includes(k) ? acc - Math.abs(v) : acc + v
     ), 0);
     const simMasseSalariale = Math.abs(simBilan.player_wages ?? 0);
