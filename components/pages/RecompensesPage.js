@@ -55,6 +55,10 @@ function codeFromFlag(flag) {
 
 export default function RecompensesPage({ lang = "fr" }) {
   const t = LABELS[lang] || LABELS.fr;
+  const formatter = new Intl.NumberFormat(lang, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   const [season, setSeason] = useState("");
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
@@ -181,50 +185,64 @@ export default function RecompensesPage({ lang = "fr" }) {
   const selectedCountry = countries.find(c => c.code === country);
 
   return (
-    <div style={{ minHeight: "100vh", color: "#f6f6f7", paddingTop: 60 }}>
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700 }}>{t.title}</h1>
+    <div className="min-h-screen text-gray-100 pt-16">
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-bold">{t.title}</h1>
       </div>
-      <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, margin: "0 auto 32px" }}>
-        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.seasonLabel}</label>
-        <select value={season} onChange={e => setSeason(e.target.value)}
-          style={{ width: "100%", marginBottom: 18, padding: "12px 16px", borderRadius: 6, border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none" }}>
+
+      <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg mx-auto mb-8">
+        <label className="block font-semibold mb-2">{t.seasonLabel}</label>
+        <select
+          value={season}
+          onChange={e => setSeason(e.target.value)}
+          className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+        >
           <option value="">{t.seasonPlaceholder}</option>
           {Object.keys(countryMap).map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
 
-        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.countryLabel}</label>
-        <input list="countries" value={countryInput} onChange={handleCountryChange} placeholder={t.countryPlaceholder}
-          style={{ width: "100%", marginBottom: 14, padding: "12px 16px", borderRadius: 6, border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none" }} disabled={!season} />
+        <label className="block font-semibold mb-2">{t.countryLabel}</label>
+        <input
+          list="countries"
+          value={countryInput}
+          onChange={handleCountryChange}
+          placeholder={t.countryPlaceholder}
+          className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+          disabled={!season}
+        />
         <datalist id="countries">
           {countries.map(c => (
             <option key={c.code} value={getCountryLabel(c)} label={`${c.flag} ${getCountryLabel(c)}`} />
           ))}
         </datalist>
 
-        <label style={{ fontWeight: 600, fontSize: 17, marginBottom: 6, display: "block" }}>{t.divisionLabel}</label>
-        <select value={division} onChange={e => setDivision(e.target.value)}
-          style={{ width: "100%", marginBottom: 4, padding: "12px 16px", borderRadius: 6, border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none" }} disabled={!selectedCountry}>
+        <label className="block font-semibold mb-2">{t.divisionLabel}</label>
+        <select
+          value={division}
+          onChange={e => setDivision(e.target.value)}
+          className="w-full p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+          disabled={!selectedCountry}
+        >
           <option value="">{t.divisionPlaceholder}</option>
           {selectedCountry?.divisions.map(d => (
             <option key={d.leagueId} value={d.leagueId}>{d.label} (ID {d.leagueId})</option>
           ))}
         </select>
-        {loading && <div style={{ color: "#ffd700", marginTop: 10 }}>{t.loading}</div>}
-        {err && <div style={{ color: "#ff4e5e", marginTop: 10 }}>{err}</div>}
+        {loading && <div className="text-yellow-400 mt-3">{t.loading}</div>}
+        {err && <div className="text-red-500 mt-3">{err}</div>}
       </div>
 
       {rewards.length > 0 && (
-        <div style={{ width: "100%", maxWidth: 1000, margin: "0 auto", background: "#181d23", borderRadius: 16, padding: 18, boxShadow: "0 2px 8px #0003" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", color: "#eee", fontSize: 15 }}>
-            <thead>
-              <tr style={{ background: "#22252a" }}>
-                <th style={{ padding: 8 }}>{t.columns.rank}</th>
-                <th style={{ padding: 8 }}>{t.columns.club}</th>
-                <th style={{ padding: 8 }}>{t.columns.reward}</th>
-                <th style={{ padding: 8 }}>{t.columns.influencers}</th>
+        <div className="w-full max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-700">
+              <tr>
+                <th className="py-2 px-4">{t.columns.rank}</th>
+                <th className="py-2 px-4">{t.columns.club}</th>
+                <th className="py-2 px-4">{t.columns.reward}</th>
+                <th className="py-2 px-4 text-center">{t.columns.influencers}</th>
               </tr>
             </thead>
             <tbody>
@@ -232,22 +250,25 @@ export default function RecompensesPage({ lang = "fr" }) {
                 <React.Fragment key={r.club_id}>
                   <tr
                     onClick={() => setOpenClub(openClub === r.club_id ? null : r.club_id)}
-                    style={{ background: r.rank % 2 === 0 ? "#22252a" : "#181d23", cursor: "pointer" }}
+                    className={`cursor-pointer hover:bg-gray-700 ${openClub === r.club_id ? "bg-gray-700" : r.rank % 2 === 0 ? "bg-gray-900" : "bg-gray-800"}`}
                   >
-                    <td style={{ padding: 8 }}>{r.rank}</td>
-                    <td style={{ padding: 8 }}>{clubMap[r.club_id]?.name || r.club_id}</td>
-                    <td style={{ padding: 8 }}>{r.reward.toFixed(2)} SVC</td>
-                    <td style={{ padding: 8, textAlign: "center" }}>
-                      {openClub === r.club_id ? "▲" : "▼"}
-                    </td>
+                    <td className="py-2 px-4">{r.rank}</td>
+                    <td className="py-2 px-4">{clubMap[r.club_id]?.name || r.club_id}</td>
+                    <td className="py-2 px-4">{formatter.format(r.reward)} SVC</td>
+                    <td className="py-2 px-4 text-center">{openClub === r.club_id ? "▲" : "▼"}</td>
                   </tr>
                   {openClub === r.club_id && (
-                    <tr style={{ background: r.rank % 2 === 0 ? "#22252a" : "#181d23" }}>
-                      <td colSpan={4} style={{ padding: 8 }}>
-                        {r.influencers.length === 0 ? "-" : (
-                          <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    <tr className="bg-gray-700">
+                      <td colSpan={4} className="py-3 px-4">
+                        {r.influencers.length === 0 ? (
+                          "-"
+                        ) : (
+                          <ul className="space-y-1">
                             {r.influencers.map(i => (
-                              <li key={i.name}>{i.name}: {i.reward.toFixed(2)} SVC</li>
+                              <li key={i.name} className="flex justify-between">
+                                <span>{i.name}</span>
+                                <span>{formatter.format(i.reward)} SVC</span>
+                              </li>
                             ))}
                           </ul>
                         )}
