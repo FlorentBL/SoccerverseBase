@@ -67,6 +67,7 @@ export default function RecompensesPage({ lang = "fr" }) {
   const [rewards, setRewards] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [openClub, setOpenClub] = useState(null);
 
   useEffect(() => {
     fetchCountryMap();
@@ -133,7 +134,7 @@ export default function RecompensesPage({ lang = "fr" }) {
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
       if (!league) throw new Error("league not found");
-      const prize = league.prize_money_pot;
+      const prize = league.prize_money_pot / 10000;
       const teams = league.num_teams || league.total_clubs;
       const tableResp = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${season}`);
       const tableJson = await tableResp.json();
@@ -228,14 +229,32 @@ export default function RecompensesPage({ lang = "fr" }) {
             </thead>
             <tbody>
               {rewards.map(r => (
-                <tr key={r.club_id} style={{ background: r.rank % 2 === 0 ? "#22252a" : "#181d23" }}>
-                  <td style={{ padding: 8 }}>{r.rank}</td>
-                  <td style={{ padding: 8 }}>{clubMap[r.club_id]?.name || r.club_id}</td>
-                  <td style={{ padding: 8 }}>{r.reward.toFixed(2)} SVC</td>
-                  <td style={{ padding: 8 }}>
-                    {r.influencers.length === 0 ? "-" : r.influencers.map(i => `${i.name}: ${i.reward.toFixed(2)} SVC`).join(", ")}
-                  </td>
-                </tr>
+                <React.Fragment key={r.club_id}>
+                  <tr
+                    onClick={() => setOpenClub(openClub === r.club_id ? null : r.club_id)}
+                    style={{ background: r.rank % 2 === 0 ? "#22252a" : "#181d23", cursor: "pointer" }}
+                  >
+                    <td style={{ padding: 8 }}>{r.rank}</td>
+                    <td style={{ padding: 8 }}>{clubMap[r.club_id]?.name || r.club_id}</td>
+                    <td style={{ padding: 8 }}>{r.reward.toFixed(2)} SVC</td>
+                    <td style={{ padding: 8, textAlign: "center" }}>
+                      {openClub === r.club_id ? "▲" : "▼"}
+                    </td>
+                  </tr>
+                  {openClub === r.club_id && (
+                    <tr style={{ background: r.rank % 2 === 0 ? "#22252a" : "#181d23" }}>
+                      <td colSpan={4} style={{ padding: 8 }}>
+                        {r.influencers.length === 0 ? "-" : (
+                          <ul style={{ margin: 0, paddingLeft: 20 }}>
+                            {r.influencers.map(i => (
+                              <li key={i.name}>{i.name}: {i.reward.toFixed(2)} SVC</li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
