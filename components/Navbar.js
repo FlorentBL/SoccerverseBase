@@ -11,16 +11,19 @@ const MENU_LABELS = {
   fr: [
     { href: "/revenus", label: "Gains Joueurs" },
     { href: "/scouting", label: "Scouting" },
+    { href: "/recompenses", label: "Récompenses" },
     { href: "/finance", label: "Analyse financière" },
   ],
   en: [
     { href: "/revenus", label: "Player Earnings" },
     { href: "/scouting", label: "Scouting" },
+    { href: "/recompenses", label: "Rewards" },
     { href: "/finance", label: "Financial Analysis" },
   ],
   it: [
     { href: "/revenus", label: "Guadagni Giocatori" },
     { href: "/scouting", label: "Scouting" },
+    { href: "/recompenses", label: "Ricompense" },
     { href: "/finance", label: "Analisi finanziaria" },
   ],
 };
