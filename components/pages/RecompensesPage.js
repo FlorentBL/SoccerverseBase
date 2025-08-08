@@ -62,7 +62,7 @@ export default function RecompensesPage({ lang = "fr" }) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const [season, setSeason] = useState("2");
+  const [season] = useState("2");
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
@@ -195,17 +195,12 @@ export default function RecompensesPage({ lang = "fr" }) {
 
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg mx-auto mb-8">
         <label className="block font-semibold mb-2">{t.seasonLabel}</label>
-        <select
-          value={season}
-          onChange={e => setSeason(e.target.value)}
+        <input
+          type="text"
+          value={lang === "fr" ? "Saison 2" : lang === "it" ? "Stagione 2" : "Season 2"}
+          disabled
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
-        >
-          {Object.keys(countryMap)
-            .filter(s => s === "2")
-            .map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-        </select>
+        />
 
         <label className="block font-semibold mb-2">{t.countryLabel}</label>
         <input
