@@ -62,7 +62,7 @@ export default function SvcConverterPage() {
         Coût total d'influence (ex. pour 10 parts) en USDC :
         <input
           type="number"
-          className="w-full p-2 border mt-1"
+          className="w-full p-2 border mt-1 text-black"
           value={influenceCost}
           step="0.0001"
           onChange={(e) => setInfluenceCost(parseFloat(e.target.value))}
@@ -72,7 +72,7 @@ export default function SvcConverterPage() {
         Marge bénéficiaire (%) :
         <input
           type="number"
-          className="w-full p-2 border mt-1"
+          className="w-full p-2 border mt-1 text-black"
           value={margin}
           step="0.1"
           onChange={(e) => setMargin(parseFloat(e.target.value))}
@@ -95,7 +95,7 @@ export default function SvcConverterPage() {
         Prix du pack (en USDC) :
         <input
           type="number"
-          className="w-full p-2 border mt-1"
+          className="w-full p-2 border mt-1 text-black"
           value={packPrice}
           step="0.00001"
           onChange={(e) => setPackPrice(parseFloat(e.target.value))}
@@ -105,7 +105,7 @@ export default function SvcConverterPage() {
         Nombre de parts dans le pack :
         <input
           type="number"
-          className="w-full p-2 border mt-1"
+          className="w-full p-2 border mt-1 text-black"
           value={packParts}
           step="1"
           onChange={(e) => setPackParts(parseFloat(e.target.value))}
