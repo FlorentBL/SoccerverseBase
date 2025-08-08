@@ -16,7 +16,6 @@ const LABELS = {
     loading: "Calcul...",
     error: "Erreur réseau ou données manquantes",
     columns: { rank: "#", club: "Club", reward: "Gain", influencers: "Influenceurs" },
-    alertS1: "En Saison 1, les budgets de la Saison 2 sont utilisés.",
     alertDebt: "Les récompenses ne sont distribuées aux influenceurs que si le club n'est pas endetté.",
     },
     en: {
@@ -30,7 +29,6 @@ const LABELS = {
     loading: "Computing...",
     error: "Network error or missing data",
     columns: { rank: "#", club: "Club", reward: "Reward", influencers: "Influencers" },
-    alertS1: "Season 1 uses Season 2 budgets.",
     alertDebt: "Rewards are only distributed to influencers if the club is not in debt.",
     },
     it: {
@@ -44,7 +42,6 @@ const LABELS = {
     loading: "Calcolo...",
     error: "Errore di rete o dati mancanti",
     columns: { rank: "#", club: "Club", reward: "Premio", influencers: "Influencer" },
-    alertS1: "Nella Stagione 1 si utilizzano i budget della Stagione 2.",
     alertDebt: "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
     },
   };
@@ -140,8 +137,7 @@ export default function RecompensesPage({ lang = "fr" }) {
     setErr("");
     setRewards([]);
     try {
-      const leagueSeason = season === "1" ? 2 : season;
-      const leagueResp = await fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}&season=${leagueSeason}`);
+      const leagueResp = await fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}&season=${season}`);
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
       if (!league) throw new Error("league not found");
@@ -205,9 +201,11 @@ export default function RecompensesPage({ lang = "fr" }) {
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
         >
           <option value="">{t.seasonPlaceholder}</option>
-          {Object.keys(countryMap).map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {Object.keys(countryMap)
+            .filter(s => s === "2")
+            .map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
         </select>
 
         <label className="block font-semibold mb-2">{t.countryLabel}</label>
@@ -243,7 +241,6 @@ export default function RecompensesPage({ lang = "fr" }) {
 
       {season && (
         <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
-          {season === "1" && <p>{t.alertS1}</p>}
           <p>{t.alertDebt}</p>
         </div>
       )}
