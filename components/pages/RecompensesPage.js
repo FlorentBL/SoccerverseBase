@@ -63,6 +63,7 @@ export default function RecompensesPage({ lang = "fr" }) {
     maximumFractionDigits: 2,
   });
   const [season] = useState("2");
+  const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
   const [countryMap, setCountryMap] = useState({});
@@ -81,6 +82,7 @@ export default function RecompensesPage({ lang = "fr" }) {
   }, []);
 
   useEffect(() => {
+    setCountryInput("");
     setCountry("");
     setDivision("");
   }, [season]);
@@ -112,7 +114,11 @@ export default function RecompensesPage({ lang = "fr" }) {
   };
 
   const handleCountryChange = e => {
-    setCountry(e.target.value);
+    const val = e.target.value;
+    setCountryInput(val);
+    const list = countryMap[season] || [];
+    const c = list.find(c => getCountryLabel(c).toLowerCase() === val.toLowerCase());
+    setCountry(c ? c.code : "");
   };
 
   const getCountryLabel = c => {
@@ -197,17 +203,19 @@ export default function RecompensesPage({ lang = "fr" }) {
         />
 
         <label className="block font-semibold mb-2">{t.countryLabel}</label>
-        <select
-          value={country}
+        <input
+          list="countries"
+          value={countryInput}
           onChange={handleCountryChange}
+          placeholder={t.countryPlaceholder}
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
           disabled={!season}
-        >
-          <option value="">{t.countryPlaceholder}</option>
+        />
+        <datalist id="countries">
           {countries.map(c => (
-            <option key={c.code} value={c.code}>{c.flag ? `${c.flag} ${getCountryLabel(c)}` : getCountryLabel(c)}</option>
+            <option key={c.code} value={getCountryLabel(c)} label={`${c.flag ? c.flag + " " : ""}${getCountryLabel(c)}`} />
           ))}
-        </select>
+        </datalist>
 
         <label className="block font-semibold mb-2">{t.divisionLabel}</label>
         <select
