@@ -62,7 +62,7 @@ export default function RecompensesPage({ lang = "fr" }) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const [season, setSeason] = useState("");
+  const [season, setSeason] = useState("2");
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
@@ -200,7 +200,6 @@ export default function RecompensesPage({ lang = "fr" }) {
           onChange={e => setSeason(e.target.value)}
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
         >
-          <option value="">{t.seasonPlaceholder}</option>
           {Object.keys(countryMap)
             .filter(s => s === "2")
             .map(s => (
