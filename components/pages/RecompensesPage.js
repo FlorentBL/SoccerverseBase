@@ -16,8 +16,10 @@ const LABELS = {
     loading: "Calcul...",
     error: "Erreur réseau ou données manquantes",
     columns: { rank: "#", club: "Club", reward: "Gain", influencers: "Influenceurs" },
-  },
-  en: {
+    alertS1: "En Saison 1, les budgets de la Saison 2 sont utilisés.",
+    alertDebt: "Les récompenses ne sont distribuées aux influenceurs que si le club n'est pas endetté.",
+    },
+    en: {
     title: "League Rewards",
     seasonLabel: "Season:",
     seasonPlaceholder: "Select a season",
@@ -28,8 +30,10 @@ const LABELS = {
     loading: "Computing...",
     error: "Network error or missing data",
     columns: { rank: "#", club: "Club", reward: "Reward", influencers: "Influencers" },
-  },
-  it: {
+    alertS1: "Season 1 uses Season 2 budgets.",
+    alertDebt: "Rewards are only distributed to influencers if the club is not in debt.",
+    },
+    it: {
     title: "Ricompense di Lega",
     seasonLabel: "Stagione:",
     seasonPlaceholder: "Seleziona una stagione",
@@ -40,8 +44,10 @@ const LABELS = {
     loading: "Calcolo...",
     error: "Errore di rete o dati mancanti",
     columns: { rank: "#", club: "Club", reward: "Premio", influencers: "Influencer" },
-  },
-};
+    alertS1: "Nella Stagione 1 si utilizzano i budget della Stagione 2.",
+    alertDebt: "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
+    },
+  };
 
 function codeFromFlag(flag) {
   if (!flag) return null;
@@ -134,7 +140,8 @@ export default function RecompensesPage({ lang = "fr" }) {
     setErr("");
     setRewards([]);
     try {
-      const leagueResp = await fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}`);
+      const leagueSeason = season === "1" ? 2 : season;
+      const leagueResp = await fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}&season=${leagueSeason}`);
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
       if (!league) throw new Error("league not found");
@@ -233,6 +240,13 @@ export default function RecompensesPage({ lang = "fr" }) {
         {loading && <div className="text-yellow-400 mt-3">{t.loading}</div>}
         {err && <div className="text-red-500 mt-3">{err}</div>}
       </div>
+
+      {season && (
+        <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
+          {season === "1" && <p>{t.alertS1}</p>}
+          <p>{t.alertDebt}</p>
+        </div>
+      )}
 
       {rewards.length > 0 && (
         <div className="w-full max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden">
