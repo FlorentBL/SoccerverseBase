@@ -16,9 +16,10 @@ const LABELS = {
     loading: "Calcul...",
     error: "Erreur réseau ou données manquantes",
     columns: { rank: "#", club: "Club", reward: "Gain", influencers: "Influenceurs" },
+    alertS1: "En Saison 1, les budgets de la Saison 2 sont utilisés.",
     alertDebt: "Les récompenses ne sont distribuées aux influenceurs que si le club n'est pas endetté.",
-    },
-    en: {
+  },
+  en: {
     title: "League Rewards",
     seasonLabel: "Season:",
     seasonPlaceholder: "Select a season",
@@ -29,9 +30,10 @@ const LABELS = {
     loading: "Computing...",
     error: "Network error or missing data",
     columns: { rank: "#", club: "Club", reward: "Reward", influencers: "Influencers" },
+    alertS1: "Season 1 uses Season 2 budgets.",
     alertDebt: "Rewards are only distributed to influencers if the club is not in debt.",
-    },
-    it: {
+  },
+  it: {
     title: "Ricompense di Lega",
     seasonLabel: "Stagione:",
     seasonPlaceholder: "Seleziona una stagione",
@@ -42,16 +44,19 @@ const LABELS = {
     loading: "Calcolo...",
     error: "Errore di rete o dati mancanti",
     columns: { rank: "#", club: "Club", reward: "Premio", influencers: "Influencer" },
+    alertS1: "Nella Stagione 1 si utilizzano i budget della Stagione 2.",
     alertDebt: "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
-    },
-  };
+  },
+};
 
 function codeFromFlag(flag) {
   if (!flag) return null;
   const codePoints = Array.from(flag).map(ch => ch.codePointAt(0));
   if (codePoints.length === 2) {
-    return String.fromCharCode(codePoints[0] - 0x1F1A5) +
-      String.fromCharCode(codePoints[1] - 0x1F1A5);
+    return (
+      String.fromCharCode(codePoints[0] - 0x1f1a5) +
+      String.fromCharCode(codePoints[1] - 0x1f1a5)
+    );
   }
   return null;
 }
@@ -62,7 +67,7 @@ export default function RecompensesPage({ lang = "fr" }) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const [season] = useState("2");
+  const [season, setSeason] = useState("");
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
@@ -117,7 +122,9 @@ export default function RecompensesPage({ lang = "fr" }) {
     const val = e.target.value;
     setCountryInput(val);
     const list = countryMap[season] || [];
-    const c = list.find(c => getCountryLabel(c).toLowerCase() === val.toLowerCase());
+    const c = list.find(
+      c => getCountryLabel(c).toLowerCase() === val.toLowerCase()
+    );
     setCountry(c ? c.code : "");
   };
 
@@ -127,7 +134,9 @@ export default function RecompensesPage({ lang = "fr" }) {
       try {
         const disp = new Intl.DisplayNames([lang], { type: "region" }).of(a2);
         if (disp) return disp;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     return c.country;
   };
@@ -137,13 +146,18 @@ export default function RecompensesPage({ lang = "fr" }) {
     setErr("");
     setRewards([]);
     try {
-      const leagueResp = await fetch(`https://services.soccerverse.com/api/leagues?league_id=${division}&season=${season}`);
+      const leagueSeason = season === "1" ? 2 : season;
+      const leagueResp = await fetch(
+        `https://services.soccerverse.com/api/leagues?league_id=${division}&season=${leagueSeason}`
+      );
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
       if (!league) throw new Error("league not found");
       const prize = league.prize_money_pot / 10000;
       const teams = league.num_teams || league.total_clubs;
-      const tableResp = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${season}`);
+      const tableResp = await fetch(
+        `https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${season}`
+      );
       const tableJson = await tableResp.json();
       const standings = Array.isArray(tableJson) ? tableJson : [];
       const sorted = standings.sort((a, b) => (a.rank || 0) - (b.rank || 0));
@@ -152,8 +166,8 @@ export default function RecompensesPage({ lang = "fr" }) {
       for (let i = 0; i < sorted.length; i++) {
         const club = sorted[i];
         const rank = club.rank || i + 1;
-        const base = prize * 0.5 / teams;
-        const linear = prize * 0.5 * (teams - rank + 1) / sum;
+        const base = (prize * 0.5) / teams;
+        const linear = (prize * 0.5 * (teams - rank + 1)) / sum;
         const clubReward = base + linear;
         let influencers = [];
         try {
@@ -173,7 +187,9 @@ export default function RecompensesPage({ lang = "fr" }) {
             name: o.name,
             reward: clubReward * 0.1 * (o.num / 1_000_000),
           }));
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
         result.push({ rank, club_id: club.club_id, reward: clubReward, influencers });
       }
       setRewards(result);
@@ -195,12 +211,18 @@ export default function RecompensesPage({ lang = "fr" }) {
 
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg mx-auto mb-8">
         <label className="block font-semibold mb-2">{t.seasonLabel}</label>
-        <input
-          type="text"
-          value={lang === "fr" ? "Saison 2" : lang === "it" ? "Stagione 2" : "Season 2"}
-          disabled
+        <select
+          value={season}
+          onChange={e => setSeason(e.target.value)}
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
-        />
+        >
+          <option value="">{t.seasonPlaceholder}</option>
+          {Object.keys(countryMap).map(s => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
 
         <label className="block font-semibold mb-2">{t.countryLabel}</label>
         <input
@@ -213,7 +235,11 @@ export default function RecompensesPage({ lang = "fr" }) {
         />
         <datalist id="countries">
           {countries.map(c => (
-            <option key={c.code} value={getCountryLabel(c)} label={`${c.flag ? c.flag + " " : ""}${getCountryLabel(c)}`} />
+            <option
+              key={c.code}
+              value={getCountryLabel(c)}
+              label={`${c.flag} ${getCountryLabel(c)}`}
+            />
           ))}
         </datalist>
 
@@ -226,7 +252,9 @@ export default function RecompensesPage({ lang = "fr" }) {
         >
           <option value="">{t.divisionPlaceholder}</option>
           {selectedCountry?.divisions.map(d => (
-            <option key={d.leagueId} value={d.leagueId}>{d.label} (ID {d.leagueId})</option>
+            <option key={d.leagueId} value={d.leagueId}>
+              {d.label} (ID {d.leagueId})
+            </option>
           ))}
         </select>
         {loading && <div className="text-yellow-400 mt-3">{t.loading}</div>}
@@ -235,6 +263,7 @@ export default function RecompensesPage({ lang = "fr" }) {
 
       {season && (
         <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
+          {season === "1" && <p>{t.alertS1}</p>}
           <p>{t.alertDebt}</p>
         </div>
       )}
@@ -254,13 +283,27 @@ export default function RecompensesPage({ lang = "fr" }) {
               {rewards.map(r => (
                 <React.Fragment key={r.club_id}>
                   <tr
-                    onClick={() => setOpenClub(openClub === r.club_id ? null : r.club_id)}
-                    className={`cursor-pointer hover:bg-gray-700 ${openClub === r.club_id ? "bg-gray-700" : r.rank % 2 === 0 ? "bg-gray-900" : "bg-gray-800"}`}
+                    onClick={() =>
+                      setOpenClub(openClub === r.club_id ? null : r.club_id)
+                    }
+                    className={`cursor-pointer hover:bg-gray-700 ${
+                      openClub === r.club_id
+                        ? "bg-gray-700"
+                        : r.rank % 2 === 0
+                        ? "bg-gray-900"
+                        : "bg-gray-800"
+                    }`}
                   >
                     <td className="py-2 px-4">{r.rank}</td>
-                    <td className="py-2 px-4">{clubMap[r.club_id]?.name || r.club_id}</td>
-                    <td className="py-2 px-4">{formatter.format(r.reward)} SVC</td>
-                    <td className="py-2 px-4 text-center">{openClub === r.club_id ? "▲" : "▼"}</td>
+                    <td className="py-2 px-4">
+                      {clubMap[r.club_id]?.name || r.club_id}
+                    </td>
+                    <td className="py-2 px-4">
+                      {formatter.format(r.reward)} SVC
+                    </td>
+                    <td className="py-2 px-4 text-center">
+                      {openClub === r.club_id ? "▲" : "▼"}
+                    </td>
                   </tr>
                   {openClub === r.club_id && (
                     <tr className="bg-gray-700">
