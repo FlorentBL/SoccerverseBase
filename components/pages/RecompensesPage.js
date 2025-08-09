@@ -7,8 +7,6 @@ const COUNTRY_MAPPING_URL = "/country_mapping2.json";
 const LABELS = {
   fr: {
     title: "Récompenses de Ligue",
-    seasonLabel: "Saison :",
-    seasonPlaceholder: "Sélectionner une saison",
     countryLabel: "Pays :",
     countryPlaceholder: "Sélectionner un pays",
     divisionLabel: "Division :",
@@ -16,13 +14,10 @@ const LABELS = {
     loading: "Calcul...",
     error: "Erreur réseau ou données manquantes",
     columns: { rank: "#", club: "Club", reward: "Gain", influencers: "Influenceurs" },
-    alertS1: "En Saison 1, les budgets de la Saison 2 sont utilisés.",
     alertDebt: "Les récompenses ne sont distribuées aux influenceurs que si le club n'est pas endetté.",
   },
   en: {
     title: "League Rewards",
-    seasonLabel: "Season:",
-    seasonPlaceholder: "Select a season",
     countryLabel: "Country:",
     countryPlaceholder: "Select a country",
     divisionLabel: "Division:",
@@ -30,13 +25,10 @@ const LABELS = {
     loading: "Computing...",
     error: "Network error or missing data",
     columns: { rank: "#", club: "Club", reward: "Reward", influencers: "Influencers" },
-    alertS1: "Season 1 uses Season 2 budgets.",
     alertDebt: "Rewards are only distributed to influencers if the club is not in debt.",
   },
   it: {
     title: "Ricompense di Lega",
-    seasonLabel: "Stagione:",
-    seasonPlaceholder: "Seleziona una stagione",
     countryLabel: "Paese:",
     countryPlaceholder: "Seleziona un paese",
     divisionLabel: "Divisione:",
@@ -44,7 +36,6 @@ const LABELS = {
     loading: "Calcolo...",
     error: "Errore di rete o dati mancanti",
     columns: { rank: "#", club: "Club", reward: "Premio", influencers: "Influencer" },
-    alertS1: "Nella Stagione 1 si utilizzano i budget della Stagione 2.",
     alertDebt: "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
   },
 };
@@ -67,7 +58,7 @@ export default function RecompensesPage({ lang = "fr" }) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const [season, setSeason] = useState("");
+  const season = "2";
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
@@ -87,20 +78,14 @@ export default function RecompensesPage({ lang = "fr" }) {
   }, []);
 
   useEffect(() => {
-    setCountryInput("");
-    setCountry("");
-    setDivision("");
-  }, [season]);
-
-  useEffect(() => {
     setDivision("");
   }, [country]);
 
   useEffect(() => {
-    if (season && country && division) {
+    if (country && division) {
       fetchRewards();
     }
-  }, [season, country, division]);
+  }, [country, division]);
 
   const fetchClubMap = async () => {
     if (loadedClubMap.current) return;
@@ -146,9 +131,8 @@ export default function RecompensesPage({ lang = "fr" }) {
     setErr("");
     setRewards([]);
     try {
-      const leagueSeason = season === "1" ? 2 : season;
       const leagueResp = await fetch(
-        `https://services.soccerverse.com/api/leagues?league_id=${division}&season=${leagueSeason}`
+        `https://services.soccerverse.com/api/leagues?league_id=${division}&season=${season}`
       );
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
@@ -210,20 +194,6 @@ export default function RecompensesPage({ lang = "fr" }) {
       </div>
 
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg mx-auto mb-8">
-        <label className="block font-semibold mb-2">{t.seasonLabel}</label>
-        <select
-          value={season}
-          onChange={e => setSeason(e.target.value)}
-          className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
-        >
-          <option value="">{t.seasonPlaceholder}</option>
-          {Object.keys(countryMap).map(s => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
         <label className="block font-semibold mb-2">{t.countryLabel}</label>
         <input
           list="countries"
@@ -231,7 +201,6 @@ export default function RecompensesPage({ lang = "fr" }) {
           onChange={handleCountryChange}
           placeholder={t.countryPlaceholder}
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
-          disabled={!season}
         />
         <datalist id="countries">
           {countries.map(c => (
@@ -261,12 +230,9 @@ export default function RecompensesPage({ lang = "fr" }) {
         {err && <div className="text-red-500 mt-3">{err}</div>}
       </div>
 
-      {season && (
-        <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
-          {season === "1" && <p>{t.alertS1}</p>}
-          <p>{t.alertDebt}</p>
-        </div>
-      )}
+      <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
+        <p>{t.alertDebt}</p>
+      </div>
 
       {rewards.length > 0 && (
         <div className="w-full max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden">
