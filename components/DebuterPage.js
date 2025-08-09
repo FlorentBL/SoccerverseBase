@@ -6,8 +6,6 @@ import {
 } from "react-icons/fa";
 import { useState } from "react";
 
-const LOGO_MASCOTTE = "/logo.png";
-
 // Map icônes pour injection dynamique depuis le mapping de chaque langue
 const ICONS = {
   book: <FaBookOpen className="text-sky-400 text-2xl mr-2" />,
@@ -389,12 +387,6 @@ export default function DebuterPage({ lang = "fr" }) {
 
       {/* Hero section */}
       <section className="relative flex flex-col items-center justify-center text-center py-32">
-        <img
-          src={LOGO_MASCOTTE}
-          alt="Logo"
-          className="absolute right-6 top-10 w-28 md:w-40 opacity-20 pointer-events-none select-none hidden md:block"
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-sky-300">
             {t.hero1}
