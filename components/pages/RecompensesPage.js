@@ -3,11 +3,11 @@ import React, { useState, useEffect, useRef } from "react";
 
 const CLUB_MAPPING_URL = "/club_mapping.json";
 const COUNTRY_MAPPING_URL = "/country_mapping2.json";
-const SEASON = "2"; // Saison figée
+const SEASON = "2";
 
 const LABELS = {
   fr: {
-    title: "Récompenses de Ligue",
+    title: "Récompenses de Ligue — Saison 2",
     countryLabel: "Pays :",
     countryPlaceholder: "Sélectionner un pays",
     divisionLabel: "Division :",
@@ -18,7 +18,7 @@ const LABELS = {
     alertDebt: "Les récompenses ne sont distribuées aux influenceurs que si le club n'est pas endetté.",
   },
   en: {
-    title: "League Rewards",
+    title: "League Rewards — Season 2",
     countryLabel: "Country:",
     countryPlaceholder: "Select a country",
     divisionLabel: "Division:",
@@ -29,7 +29,7 @@ const LABELS = {
     alertDebt: "Rewards are only distributed to influencers if the club is not in debt.",
   },
   it: {
-    title: "Ricompense di Lega",
+    title: "Ricompense di Lega — Stagione 2",
     countryLabel: "Paese:",
     countryPlaceholder: "Seleziona un paese",
     divisionLabel: "Divisione:",
@@ -55,10 +55,7 @@ function codeFromFlag(flag) {
 
 export default function RecompensesPage({ lang = "fr" }) {
   const t = LABELS[lang] || LABELS.fr;
-  const formatter = new Intl.NumberFormat(lang, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const formatter = new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
@@ -80,10 +77,7 @@ export default function RecompensesPage({ lang = "fr" }) {
   }, []);
 
   useEffect(() => {
-    setDivision("");
-  }, [country]);
-
-  useEffect(() => {
+    // dès qu’on a un pays et une division, on calcule
     if (country && division) {
       fetchRewards();
     }
@@ -92,35 +86,51 @@ export default function RecompensesPage({ lang = "fr" }) {
 
   const fetchClubMap = async () => {
     if (loadedClubMap.current) return;
-    const resp = await fetch(CLUB_MAPPING_URL);
-    const data = await resp.json();
-    setClubMap(data);
-    loadedClubMap.current = true;
+    try {
+      const resp = await fetch(CLUB_MAPPING_URL);
+      const data = await resp.json();
+      setClubMap(data || {});
+      loadedClubMap.current = true;
+    } catch (e) {
+      console.error("Club map load error:", e);
+    }
   };
 
   const getCountryLabel = c => {
+    if (!c) return "";
     const a2 = codeFromFlag(c.flag);
     if (a2) {
       try {
         const disp = new Intl.DisplayNames([lang], { type: "region" }).of(a2);
         if (disp) return disp;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     return c.country;
   };
 
   const fetchCountryMap = async () => {
     if (loadedCountryMap.current) return;
-    const resp = await fetch(COUNTRY_MAPPING_URL);
-    const data = await resp.json();
-    setCountryMap(data);
-    loadedCountryMap.current = true;
+    try {
+      const resp = await fetch(COUNTRY_MAPPING_URL);
+      const data = await resp.json();
+      setCountryMap(data || {});
+      loadedCountryMap.current = true;
 
-    // ✅ Pré-sélection automatique du 1er pays disponible en Saison 2
-    const list = (data && data[SEASON]) || [];
-    if (list.length > 0) {
-      setCountryInput(getCountryLabel(list[0]));
-      setCountry(list[0].code);
+      // ✅ Pré-sélection auto du 1er pays + 1re division de la saison 2
+      const list = (data && data[SEASON]) || [];
+      if (list.length > 0) {
+        const first = list[0];
+        setCountryInput(getCountryLabel(first));
+        setCountry(first.code);
+        if (Array.isArray(first.divisions) && first.divisions.length > 0) {
+          setDivision(first.divisions[0].leagueId.toString());
+        }
+      }
+    } catch (e) {
+      console.error("Country map load error:", e);
+      setErr(t.error);
     }
   };
 
@@ -130,6 +140,12 @@ export default function RecompensesPage({ lang = "fr" }) {
     const list = countryMap[SEASON] || [];
     const c = list.find(c => getCountryLabel(c).toLowerCase() === val.toLowerCase());
     setCountry(c ? c.code : "");
+    // si on change de pays, on reset/auto-pick la 1re division disponible
+    if (c && Array.isArray(c.divisions) && c.divisions.length > 0) {
+      setDivision(c.divisions[0].leagueId.toString());
+    } else {
+      setDivision("");
+    }
   };
 
   const fetchRewards = async () => {
@@ -137,13 +153,14 @@ export default function RecompensesPage({ lang = "fr" }) {
     setErr("");
     setRewards([]);
     try {
-      const leagueSeason = 2; // Saison 2 pour /leagues
+      const leagueSeason = 2; // /leagues sur Saison 2
       const leagueResp = await fetch(
         `https://services.soccerverse.com/api/leagues?league_id=${division}&season=${leagueSeason}`
       );
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
       if (!league) throw new Error("league not found");
+
       const prize = league.prize_money_pot / 10000; // SVC
       const teams = league.num_teams || league.total_clubs;
 
@@ -183,12 +200,16 @@ export default function RecompensesPage({ lang = "fr" }) {
             name: o.name,
             reward: clubReward * 0.1 * (o.num / 1_000_000),
           }));
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
 
         result.push({ rank, club_id: club.club_id, reward: clubReward, influencers });
       }
+
       setRewards(result);
     } catch (e) {
+      console.error(e);
       setErr(t.error);
     } finally {
       setLoading(false);
@@ -201,7 +222,7 @@ export default function RecompensesPage({ lang = "fr" }) {
   return (
     <div className="min-h-screen text-gray-100 pt-16">
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold">{t.title} — Saison 2</h1>
+        <h1 className="text-3xl font-bold">{t.title}</h1>
       </div>
 
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg mx-auto mb-8">
@@ -212,7 +233,7 @@ export default function RecompensesPage({ lang = "fr" }) {
           onChange={handleCountryChange}
           placeholder={t.countryPlaceholder}
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
-          disabled={!countries.length}
+          // ⛔ plus de disabled ici
         />
         <datalist id="countries">
           {countries.map(c => (
@@ -240,7 +261,7 @@ export default function RecompensesPage({ lang = "fr" }) {
         </select>
 
         {loading && <div className="text-yellow-400 mt-3">{t.loading}</div>}
-        {err && <div className="text-red-500 mt-3">{t.error}</div>}
+        {err && <div className="text-red-500 mt-3">{err}</div>}
       </div>
 
       <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
