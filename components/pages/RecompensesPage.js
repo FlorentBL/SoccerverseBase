@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 
 const CLUB_MAPPING_URL = "/club_mapping.json";
 const COUNTRY_MAPPING_URL = "/country_mapping2.json";
+const SEASON = "2"; // ✅ Saison figée à 2
 
 const LABELS = {
   fr: {
@@ -58,7 +59,7 @@ export default function RecompensesPage({ lang = "fr" }) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const season = "2";
+  // plus de saison dans l'UI : tout est forcé à SEASON=2
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
@@ -81,10 +82,12 @@ export default function RecompensesPage({ lang = "fr" }) {
     setDivision("");
   }, [country]);
 
+  // déclenche le calcul quand on a pays + division (saison fixée)
   useEffect(() => {
     if (country && division) {
       fetchRewards();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [country, division]);
 
   const fetchClubMap = async () => {
@@ -106,7 +109,7 @@ export default function RecompensesPage({ lang = "fr" }) {
   const handleCountryChange = e => {
     const val = e.target.value;
     setCountryInput(val);
-    const list = countryMap[season] || [];
+      const list = countryMap[SEASON] || [];
     const c = list.find(
       c => getCountryLabel(c).toLowerCase() === val.toLowerCase()
     );
@@ -131,17 +134,20 @@ export default function RecompensesPage({ lang = "fr" }) {
     setErr("");
     setRewards([]);
     try {
-      const leagueResp = await fetch(
-        `https://services.soccerverse.com/api/leagues?league_id=${division}&season=${season}`
-      );
+    // SEASON = "2" -> leagueSeason = 2 et table season = "2"
+    const leagueSeason = 2;
+
+    const leagueResp = await fetch(
+      `https://services.soccerverse.com/api/leagues?league_id=${division}&season=${leagueSeason}`
+    );
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
       if (!league) throw new Error("league not found");
       const prize = league.prize_money_pot / 10000;
       const teams = league.num_teams || league.total_clubs;
-      const tableResp = await fetch(
-        `https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${season}`
-      );
+    const tableResp = await fetch(
+      `https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${SEASON}`
+    );
       const tableJson = await tableResp.json();
       const standings = Array.isArray(tableJson) ? tableJson : [];
       const sorted = standings.sort((a, b) => (a.rank || 0) - (b.rank || 0));
@@ -184,24 +190,25 @@ export default function RecompensesPage({ lang = "fr" }) {
     }
   };
 
-  const countries = countryMap[season] || [];
+  const countries = countryMap[SEASON] || [];
   const selectedCountry = countries.find(c => c.code === country);
 
   return (
     <div className="min-h-screen text-gray-100 pt-16">
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold">{t.title}</h1>
+          <h1 className="text-3xl font-bold">{t.title} — Saison 2</h1>
       </div>
 
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg mx-auto mb-8">
         <label className="block font-semibold mb-2">{t.countryLabel}</label>
-        <input
-          list="countries"
-          value={countryInput}
-          onChange={handleCountryChange}
-          placeholder={t.countryPlaceholder}
-          className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
-        />
+          <input
+            list="countries"
+            value={countryInput}
+            onChange={handleCountryChange}
+            placeholder={t.countryPlaceholder}
+            className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+            disabled={!countries.length}
+          />
         <datalist id="countries">
           {countries.map(c => (
             <option
