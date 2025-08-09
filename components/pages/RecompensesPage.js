@@ -3,11 +3,12 @@ import React, { useState, useEffect, useRef } from "react";
 
 const CLUB_MAPPING_URL = "/club_mapping.json";
 const COUNTRY_MAPPING_URL = "/country_mapping2.json";
-const SEASON = "2";
 
 const LABELS = {
   fr: {
-    title: "Récompenses de Ligue — Saison 2",
+    title: "Récompenses de Ligue",
+    seasonLabel: "Saison :",
+    seasonPlaceholder: "Sélectionner une saison",
     countryLabel: "Pays :",
     countryPlaceholder: "Sélectionner un pays",
     divisionLabel: "Division :",
@@ -15,10 +16,14 @@ const LABELS = {
     loading: "Calcul...",
     error: "Erreur réseau ou données manquantes",
     columns: { rank: "#", club: "Club", reward: "Gain", influencers: "Influenceurs" },
-    alertDebt: "Les récompenses ne sont distribuées aux influenceurs que si le club n'est pas endetté.",
+    alertS1: "En Saison 1, les budgets de la Saison 2 sont utilisés.",
+    alertDebt:
+      "Les récompenses ne sont distribuées aux influenceurs que si le club n'est pas endetté.",
   },
   en: {
-    title: "League Rewards — Season 2",
+    title: "League Rewards",
+    seasonLabel: "Season:",
+    seasonPlaceholder: "Select a season",
     countryLabel: "Country:",
     countryPlaceholder: "Select a country",
     divisionLabel: "Division:",
@@ -26,10 +31,14 @@ const LABELS = {
     loading: "Computing...",
     error: "Network error or missing data",
     columns: { rank: "#", club: "Club", reward: "Reward", influencers: "Influencers" },
-    alertDebt: "Rewards are only distributed to influencers if the club is not in debt.",
+    alertS1: "Season 1 uses Season 2 budgets.",
+    alertDebt:
+      "Rewards are only distributed to influencers if the club is not in debt.",
   },
   it: {
-    title: "Ricompense di Lega — Stagione 2",
+    title: "Ricompense di Lega",
+    seasonLabel: "Stagione:",
+    seasonPlaceholder: "Seleziona una stagione",
     countryLabel: "Paese:",
     countryPlaceholder: "Seleziona un paese",
     divisionLabel: "Divisione:",
@@ -37,7 +46,9 @@ const LABELS = {
     loading: "Calcolo...",
     error: "Errore di rete o dati mancanti",
     columns: { rank: "#", club: "Club", reward: "Premio", influencers: "Influencer" },
-    alertDebt: "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
+    alertS1: "Nella Stagione 1 si utilizzano i budget della Stagione 2.",
+    alertDebt:
+      "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
   },
 };
 
@@ -46,8 +57,8 @@ function codeFromFlag(flag) {
   const codePoints = Array.from(flag).map(ch => ch.codePointAt(0));
   if (codePoints.length === 2) {
     return (
-      String.fromCharCode(codePoints[0] - 0x1F1A5) +
-      String.fromCharCode(codePoints[1] - 0x1F1A5)
+      String.fromCharCode(codePoints[0] - 0x1f1a5) +
+      String.fromCharCode(codePoints[1] - 0x1f1a5)
     );
   }
   return null;
@@ -55,14 +66,19 @@ function codeFromFlag(flag) {
 
 export default function RecompensesPage({ lang = "fr" }) {
   const t = LABELS[lang] || LABELS.fr;
-  const formatter = new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatter = new Intl.NumberFormat(lang, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
+  const [season, setSeason] = useState("");
   const [countryInput, setCountryInput] = useState("");
   const [country, setCountry] = useState("");
   const [division, setDivision] = useState("");
 
   const [countryMap, setCountryMap] = useState({});
   const [clubMap, setClubMap] = useState({});
+
   const loadedCountryMap = useRef(false);
   const loadedClubMap = useRef(false);
 
@@ -77,27 +93,48 @@ export default function RecompensesPage({ lang = "fr" }) {
   }, []);
 
   useEffect(() => {
-    // dès qu’on a un pays et une division, on calcule
-    if (country && division) {
+    setCountryInput("");
+    setCountry("");
+    setDivision("");
+  }, [season]);
+
+  useEffect(() => {
+    setDivision("");
+  }, [country]);
+
+  useEffect(() => {
+    if (season && country && division) {
       fetchRewards();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [country, division]);
+  }, [season, country, division]);
 
   const fetchClubMap = async () => {
     if (loadedClubMap.current) return;
-    try {
-      const resp = await fetch(CLUB_MAPPING_URL);
-      const data = await resp.json();
-      setClubMap(data || {});
-      loadedClubMap.current = true;
-    } catch (e) {
-      console.error("Club map load error:", e);
-    }
+    const resp = await fetch(CLUB_MAPPING_URL);
+    const data = await resp.json();
+    setClubMap(data);
+    loadedClubMap.current = true;
+  };
+
+  const fetchCountryMap = async () => {
+    if (loadedCountryMap.current) return;
+    const resp = await fetch(COUNTRY_MAPPING_URL);
+    const data = await resp.json();
+    setCountryMap(data);
+    loadedCountryMap.current = true;
+  };
+
+  const handleCountryChange = e => {
+    const val = e.target.value;
+    setCountryInput(val);
+    const list = countryMap[season] || [];
+    const c = list.find(
+      c => getCountryLabel(c).toLowerCase() === val.toLowerCase()
+    );
+    setCountry(c ? c.code : "");
   };
 
   const getCountryLabel = c => {
-    if (!c) return "";
     const a2 = codeFromFlag(c.flag);
     if (a2) {
       try {
@@ -110,78 +147,34 @@ export default function RecompensesPage({ lang = "fr" }) {
     return c.country;
   };
 
-  const fetchCountryMap = async () => {
-    if (loadedCountryMap.current) return;
-    try {
-      const resp = await fetch(COUNTRY_MAPPING_URL);
-      const data = await resp.json();
-      setCountryMap(data || {});
-      loadedCountryMap.current = true;
-
-      // ✅ Pré-sélection auto du 1er pays + 1re division de la saison 2
-      const list = (data && data[SEASON]) || [];
-      if (list.length > 0) {
-        const first = list[0];
-        setCountryInput(getCountryLabel(first));
-        setCountry(first.code);
-        if (Array.isArray(first.divisions) && first.divisions.length > 0) {
-          setDivision(first.divisions[0].leagueId.toString());
-        }
-      }
-    } catch (e) {
-      console.error("Country map load error:", e);
-      setErr(t.error);
-    }
-  };
-
-  const handleCountryChange = e => {
-    const val = e.target.value;
-    setCountryInput(val);
-    const list = countryMap[SEASON] || [];
-    const c = list.find(c => getCountryLabel(c).toLowerCase() === val.toLowerCase());
-    setCountry(c ? c.code : "");
-    // si on change de pays, on reset/auto-pick la 1re division disponible
-    if (c && Array.isArray(c.divisions) && c.divisions.length > 0) {
-      setDivision(c.divisions[0].leagueId.toString());
-    } else {
-      setDivision("");
-    }
-  };
-
   const fetchRewards = async () => {
     setLoading(true);
     setErr("");
     setRewards([]);
     try {
-      const leagueSeason = 2; // /leagues sur Saison 2
+      const leagueSeason = season === "1" ? 2 : season;
       const leagueResp = await fetch(
         `https://services.soccerverse.com/api/leagues?league_id=${division}&season=${leagueSeason}`
       );
       const leagueJson = await leagueResp.json();
       const league = leagueJson.items && leagueJson.items[0];
       if (!league) throw new Error("league not found");
-
-      const prize = league.prize_money_pot / 10000; // SVC
+      const prize = league.prize_money_pot / 10000;
       const teams = league.num_teams || league.total_clubs;
-
       const tableResp = await fetch(
-        `https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${SEASON}`
+        `https://services.soccerverse.com/api/league_tables?league_id=${division}&season=${season}`
       );
       const tableJson = await tableResp.json();
       const standings = Array.isArray(tableJson) ? tableJson : [];
       const sorted = standings.sort((a, b) => (a.rank || 0) - (b.rank || 0));
-
       const sum = (teams * (teams + 1)) / 2;
       const result = [];
-
       for (let i = 0; i < sorted.length; i++) {
         const club = sorted[i];
         const rank = club.rank || i + 1;
-
         const base = (prize * 0.5) / teams;
         const linear = (prize * 0.5 * (teams - rank + 1)) / sum;
         const clubReward = base + linear;
-
         let influencers = [];
         try {
           const ownersResp = await fetch("https://gsppub.soccerverse.io/", {
@@ -203,20 +196,17 @@ export default function RecompensesPage({ lang = "fr" }) {
         } catch {
           /* ignore */
         }
-
         result.push({ rank, club_id: club.club_id, reward: clubReward, influencers });
       }
-
       setRewards(result);
     } catch (e) {
-      console.error(e);
       setErr(t.error);
     } finally {
       setLoading(false);
     }
   };
 
-  const countries = countryMap[SEASON] || [];
+  const countries = countryMap[season] || [];
   const selectedCountry = countries.find(c => c.code === country);
 
   return (
@@ -226,6 +216,20 @@ export default function RecompensesPage({ lang = "fr" }) {
       </div>
 
       <div className="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg mx-auto mb-8">
+        <label className="block font-semibold mb-2">{t.seasonLabel}</label>
+        <select
+          value={season}
+          onChange={e => setSeason(e.target.value)}
+          className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+        >
+          <option value="">{t.seasonPlaceholder}</option>
+          {Object.keys(countryMap).map(s => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
         <label className="block font-semibold mb-2">{t.countryLabel}</label>
         <input
           list="countries"
@@ -233,7 +237,7 @@ export default function RecompensesPage({ lang = "fr" }) {
           onChange={handleCountryChange}
           placeholder={t.countryPlaceholder}
           className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
-          // ⛔ plus de disabled ici
+          disabled={!season}
         />
         <datalist id="countries">
           {countries.map(c => (
@@ -259,14 +263,16 @@ export default function RecompensesPage({ lang = "fr" }) {
             </option>
           ))}
         </select>
-
         {loading && <div className="text-yellow-400 mt-3">{t.loading}</div>}
         {err && <div className="text-red-500 mt-3">{err}</div>}
       </div>
 
-      <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
-        <p>{t.alertDebt}</p>
-      </div>
+      {season && (
+        <div className="bg-yellow-900 text-yellow-200 p-4 rounded-md w-full max-w-lg mx-auto mb-8">
+          {season === "1" && <p>{t.alertS1}</p>}
+          <p>{t.alertDebt}</p>
+        </div>
+      )}
 
       {rewards.length > 0 && (
         <div className="w-full max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden">
@@ -281,9 +287,11 @@ export default function RecompensesPage({ lang = "fr" }) {
             </thead>
             <tbody>
               {rewards.map(r => (
-                <React.Fragment key={`s2-${r.club_id}`}>
+                <React.Fragment key={r.club_id}>
                   <tr
-                    onClick={() => setOpenClub(openClub === r.club_id ? null : r.club_id)}
+                    onClick={() =>
+                      setOpenClub(openClub === r.club_id ? null : r.club_id)
+                    }
                     className={`cursor-pointer hover:bg-gray-700 ${
                       openClub === r.club_id
                         ? "bg-gray-700"
@@ -293,9 +301,15 @@ export default function RecompensesPage({ lang = "fr" }) {
                     }`}
                   >
                     <td className="py-2 px-4">{r.rank}</td>
-                    <td className="py-2 px-4">{clubMap[r.club_id]?.name || r.club_id}</td>
-                    <td className="py-2 px-4">{formatter.format(r.reward)} SVC</td>
-                    <td className="py-2 px-4 text-center">{openClub === r.club_id ? "▲" : "▼"}</td>
+                    <td className="py-2 px-4">
+                      {clubMap[r.club_id]?.name || r.club_id}
+                    </td>
+                    <td className="py-2 px-4">
+                      {formatter.format(r.reward)} SVC
+                    </td>
+                    <td className="py-2 px-4 text-center">
+                      {openClub === r.club_id ? "▲" : "▼"}
+                    </td>
                   </tr>
                   {openClub === r.club_id && (
                     <tr className="bg-gray-700">
@@ -307,7 +321,9 @@ export default function RecompensesPage({ lang = "fr" }) {
                             {r.influencers.map(i => (
                               <li key={i.name} className="flex justify-between">
                                 <span>{i.name}</span>
-                                <span>{formatter.format(i.reward)} SVC</span>
+                                <span>
+                                  {formatter.format(i.reward)} SVC
+                                </span>
                               </li>
                             ))}
                           </ul>
