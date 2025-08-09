@@ -275,39 +275,47 @@ export default function RecompensesPage({ lang = "fr" }) {
       )}
 
       {rewards.length > 0 && (
-        <div className="w-full max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-700">
+        <div className="w-full max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-700">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead className="bg-gray-700 text-gray-200">
               <tr>
-                <th className="py-2 px-4">{t.columns.rank}</th>
-                <th className="py-2 px-4">{t.columns.club}</th>
-                <th className="py-2 px-4">{t.columns.reward}</th>
-                <th className="py-2 px-4 text-center">{t.columns.influencers}</th>
+                <th className="py-3 px-4 font-semibold">{t.columns.rank}</th>
+                <th className="py-3 px-4 font-semibold">{t.columns.club}</th>
+                <th className="py-3 px-4 font-semibold">{t.columns.reward}</th>
+                <th className="py-3 px-4 text-center font-semibold">{t.columns.influencers}</th>
               </tr>
             </thead>
-            <tbody>
-              {rewards.map(r => (
+            <tbody className="divide-y divide-gray-700">
+              {rewards.map((r, idx) => (
                 <React.Fragment key={r.club_id}>
                   <tr
                     onClick={() =>
                       setOpenClub(openClub === r.club_id ? null : r.club_id)
                     }
-                    className={`cursor-pointer hover:bg-gray-700 ${
+                    className={`cursor-pointer transition-colors duration-200 hover:bg-gray-700 ${
                       openClub === r.club_id
                         ? "bg-gray-700"
-                        : r.rank % 2 === 0
-                        ? "bg-gray-900"
-                        : "bg-gray-800"
+                        : idx % 2 === 0
+                        ? "bg-gray-800"
+                        : "bg-gray-900"
                     }`}
                   >
-                    <td className="py-2 px-4">{r.rank}</td>
-                    <td className="py-2 px-4">
-                      {clubMap[r.club_id]?.name || r.club_id}
+                    <td className="py-3 px-4">{r.rank}</td>
+                    <td className="py-3 px-4">
+                      <a
+                        href={`https://play.soccerverse.com/club/${r.club_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="text-indigo-400 hover:text-indigo-300 underline"
+                      >
+                        {clubMap[r.club_id]?.name || r.club_id}
+                      </a>
                     </td>
-                    <td className="py-2 px-4">
+                    <td className="py-3 px-4">
                       {formatter.format(r.reward)} SVC
                     </td>
-                    <td className="py-2 px-4 text-center">
+                    <td className="py-3 px-4 text-center">
                       {openClub === r.club_id ? "▲" : "▼"}
                     </td>
                   </tr>
@@ -320,7 +328,14 @@ export default function RecompensesPage({ lang = "fr" }) {
                           <ul className="space-y-1">
                             {r.influencers.map(i => (
                               <li key={i.name} className="flex justify-between">
-                                <span>{i.name}</span>
+                                <a
+                                  href={`https://play.soccerverse.com/profile/${i.name}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-400 hover:text-indigo-300 underline"
+                                >
+                                  {i.name}
+                                </a>
                                 <span>
                                   {formatter.format(i.reward)} SVC
                                 </span>
