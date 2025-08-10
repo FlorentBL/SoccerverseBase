@@ -100,13 +100,11 @@ export default function DashboardPage({ lang = "fr" }) {
       const results = await Promise.all(
         Array.from(clubMap.entries()).map(async ([clubId, { leagueId, shares }]) => {
           let lastFixture = null;
-          let lastFixtureRaw = null;
           let position = null;
           try {
             const fRes = await fetch(`/api/last-fixture?clubId=${clubId}`);
             if (fRes.ok) {
               const fData = await fRes.json();
-              lastFixtureRaw = fData;
               const r = fData.result;
               lastFixture = r && r.data ? r.data : r || null;
             }
@@ -121,7 +119,7 @@ export default function DashboardPage({ lang = "fr" }) {
               position = entry?.new_position ?? null;
             }
           } catch (e) {}
-          return { clubId, shares, lastFixture, lastFixtureRaw, position };
+          return { clubId, shares, lastFixture, position };
         })
       );
       setClubs(results);
@@ -259,18 +257,6 @@ export default function DashboardPage({ lang = "fr" }) {
                   ))}
                 </tbody>
               </table>
-            </div>
-            <div className="mt-8 space-y-4 text-xs text-gray-400">
-              {sortedClubs.map((c) => (
-                <div key={c.clubId}>
-                  <div className="font-semibold mb-1">
-                    {clubNames[c.clubId]?.name || c.clubId}
-                  </div>
-                  <pre className="bg-gray-800 p-3 rounded-lg overflow-x-auto">
-                    {JSON.stringify(c.lastFixtureRaw, null, 2)}
-                  </pre>
-                </div>
-              ))}
             </div>
           </>
         )}
