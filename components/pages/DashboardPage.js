@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const LABELS = {
   fr: {
@@ -40,6 +40,8 @@ const LABELS = {
   }
 };
 
+const CLUB_MAPPING_URL = "/club_mapping.json";
+
 async function fetchShareBalances(name) {
   let page = 1;
   let totalPages = 1;
@@ -61,6 +63,14 @@ export default function DashboardPage({ lang = "fr" }) {
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [clubNames, setClubNames] = useState({});
+
+  useEffect(() => {
+    fetch(CLUB_MAPPING_URL)
+      .then((r) => r.json())
+      .then((d) => setClubNames(d))
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -69,11 +79,11 @@ export default function DashboardPage({ lang = "fr" }) {
     setLoading(true);
     try {
       const balances = await fetchShareBalances(name);
-      const clubMap = new Map();
+      const clubToLeague = new Map();
       balances.forEach((it) => {
-        if (it.club_id) clubMap.set(it.club_id, it.league_id);
+        if (it.club_id) clubToLeague.set(it.club_id, it.league_id);
       });
-      const entries = Array.from(clubMap.entries());
+      const entries = Array.from(clubToLeague.entries());
       const results = await Promise.all(
         entries.map(async ([clubId, leagueId]) => {
           let lastFixture = null;
@@ -113,14 +123,24 @@ export default function DashboardPage({ lang = "fr" }) {
     }
   };
 
-  function renderMatch(f, clubId) {
+  const renderMatch = (f, clubId) => {
     if (!f) return "-";
     const isHome = f.home_club === Number(clubId);
     const goalsFor = isHome ? f.home_goals : f.away_goals;
     const goalsAgainst = isHome ? f.away_goals : f.home_goals;
-    const opponent = isHome ? f.away_club : f.home_club;
-    return `${goalsFor}-${goalsAgainst} vs ${opponent}`;
-  }
+    const opponentId = isHome ? f.away_club : f.home_club;
+    const opponentName = clubNames[opponentId]?.name || opponentId;
+    return (
+      <a
+        href={`https://play.soccerverse.com/match/${f.fixture_id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-indigo-400 hover:text-indigo-300 underline"
+      >
+        {goalsFor}-{goalsAgainst} vs {opponentName}
+      </a>
+    );
+  };
 
   return (
     <div className="min-h-screen py-8 px-4 flex flex-col items-center">
@@ -159,7 +179,16 @@ export default function DashboardPage({ lang = "fr" }) {
             <tbody>
               {clubs.map((c) => (
                 <tr key={c.clubId} className="border-b border-gray-700">
-                  <td className="px-3 py-2">{c.clubId}</td>
+                  <td className="px-3 py-2">
+                    <a
+                      href={`https://play.soccerverse.com/club/${c.clubId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-400 hover:text-indigo-300 underline"
+                    >
+                      {clubNames[c.clubId]?.name || c.clubId}
+                    </a>
+                  </td>
                   <td className="px-3 py-2">{renderMatch(c.lastFixture, c.clubId)}</td>
                   <td className="px-3 py-2">{c.position ?? "-"}</td>
                 </tr>
