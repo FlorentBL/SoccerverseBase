@@ -275,14 +275,14 @@ export default function RecompensesPage({ lang = "fr" }) {
       )}
 
       {rewards.length > 0 && (
-        <div className="w-full max-w-5xl mx-auto bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-700">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-gray-700 text-gray-200">
+        <div className="w-full max-w-5xl mx-auto overflow-x-auto rounded-lg shadow ring-1 ring-gray-700">
+          <table className="min-w-full text-sm text-left text-gray-300 divide-y divide-gray-700">
+            <thead className="text-xs uppercase bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
               <tr>
-                <th className="py-3 px-4 font-semibold">{t.columns.rank}</th>
-                <th className="py-3 px-4 font-semibold">{t.columns.club}</th>
-                <th className="py-3 px-4 font-semibold">{t.columns.reward}</th>
-                <th className="py-3 px-4 text-center font-semibold">{t.columns.influencers}</th>
+                <th className="px-4 py-3 tracking-wider select-none">{t.columns.rank}</th>
+                <th className="px-4 py-3 tracking-wider select-none">{t.columns.club}</th>
+                <th className="px-4 py-3 tracking-wider select-none">{t.columns.reward}</th>
+                <th className="px-4 py-3 text-center tracking-wider select-none">{t.columns.influencers}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -292,16 +292,16 @@ export default function RecompensesPage({ lang = "fr" }) {
                     onClick={() =>
                       setOpenClub(openClub === r.club_id ? null : r.club_id)
                     }
-                    className={`cursor-pointer transition-colors duration-200 hover:bg-gray-700 ${
+                    className={`cursor-pointer hover:bg-gray-700 transition-colors ${
                       openClub === r.club_id
-                        ? "bg-gray-700"
+                        ? 'bg-gray-700'
                         : idx % 2 === 0
-                        ? "bg-gray-800"
-                        : "bg-gray-900"
+                        ? 'bg-gray-800'
+                        : 'bg-gray-900'
                     }`}
                   >
-                    <td className="py-3 px-4">{r.rank}</td>
-                    <td className="py-3 px-4">
+                    <td className="px-4 py-3">{r.rank}</td>
+                    <td className="px-4 py-3">
                       <a
                         href={`https://play.soccerverse.com/club/${r.club_id}`}
                         target="_blank"
@@ -312,18 +312,18 @@ export default function RecompensesPage({ lang = "fr" }) {
                         {clubMap[r.club_id]?.name || r.club_id}
                       </a>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="px-4 py-3">
                       {formatter.format(r.reward)} SVC
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      {openClub === r.club_id ? "▲" : "▼"}
+                    <td className="px-4 py-3 text-center">
+                      {openClub === r.club_id ? '▲' : '▼'}
                     </td>
                   </tr>
                   {openClub === r.club_id && (
                     <tr className="bg-gray-700">
-                      <td colSpan={4} className="py-3 px-4">
+                      <td colSpan={4} className="px-4 py-3">
                         {r.influencers.length === 0 ? (
-                          "-"
+                          '-'
                         ) : (
                           <ul className="space-y-1">
                             {r.influencers.map(i => (
