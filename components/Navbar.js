@@ -14,6 +14,7 @@ const MENU_LABELS = {
     { href: "/scouting", label: "Scouting" },
     { href: "/recompenses", label: "Récompenses" },
     { href: "/finance", label: "Analyse financière" },
+      { href: "/analyse-tactique", label: "Analyse tactique" },
   ],
   en: [
     { href: "/dashboard", label: "Dashboard" },
@@ -21,6 +22,7 @@ const MENU_LABELS = {
     { href: "/scouting", label: "Scouting" },
     { href: "/recompenses", label: "Rewards" },
     { href: "/finance", label: "Financial Analysis" },
+      { href: "/analyse-tactique", label: "Tactical Analysis" },
   ],
   it: [
     { href: "/dashboard", label: "Dashboard" },
@@ -28,6 +30,7 @@ const MENU_LABELS = {
     { href: "/scouting", label: "Scouting" },
     { href: "/recompenses", label: "Ricompense" },
     { href: "/finance", label: "Analisi finanziaria" },
+      { href: "/analyse-tactique", label: "Analisi tattica" },
   ],
 };
 
