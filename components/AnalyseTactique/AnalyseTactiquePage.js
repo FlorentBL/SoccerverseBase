@@ -6,11 +6,16 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [debugData, setDebugData] = useState([]);
+
+  const addDebug = (label, data) =>
+    setDebugData(prev => [...prev, { label, data }]);
 
   const RPC_URL = "https://gsppub.soccerverse.io/";
 
   const fetchSchedule = async () => {
     setError("");
+    setDebugData([]);
     setLoading(true);
     try {
       const scheduleRes = await fetch(RPC_URL, {
@@ -25,6 +30,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       });
       if (!scheduleRes.ok) throw new Error("schedule_failed");
       const scheduleJson = await scheduleRes.json();
+      addDebug("schedule", scheduleJson);
       const upcoming = (scheduleJson.result?.data || [])
         .filter(m => m.played === 0)
         .sort((a, b) => a.date - b.date)
@@ -51,6 +57,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
           });
             if (!oppScheduleRes.ok) throw new Error("opp_schedule_failed");
             const oppScheduleJson = await oppScheduleRes.json();
+            addDebug(`oppSchedule ${opponentId}`, oppScheduleJson);
             const lastFive = (oppScheduleJson.result?.data || [])
             .filter(m => m.played === 1)
             .sort((a, b) => b.date - a.date)
@@ -70,6 +77,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   });
                   if (!fixtureRes.ok) throw new Error("fixture_failed");
                   const fixtureJson = await fixtureRes.json();
+                  addDebug(`fixture ${gm.fixture_id}`, fixtureJson);
                   const fixture = fixtureJson.result || {};
 
                   const tacticRes = await fetch(
@@ -77,6 +85,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   );
                   if (!tacticRes.ok) throw new Error("tactic_failed");
                   const tacticJson = await tacticRes.json();
+                  addDebug(`tactic ${gm.fixture_id}`, tacticJson);
                   const clubTactic = tacticJson.find(t => t.club_id === opponentId);
                   if (!clubTactic || !clubTactic.tactic_actions?.length) return null;
                   const action = clubTactic.tactic_actions[0];
@@ -115,6 +124,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       setMatches(enriched);
     } catch (err) {
       console.error(err);
+      addDebug("error", String(err));
       setError("Erreur lors des appels API");
     } finally {
       setLoading(false);
@@ -165,6 +175,30 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
           </ul>
         </div>
       ))}
+      {debugData.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <h4 style={{ fontWeight: 700, marginBottom: 8 }}>
+            Debug API Responses
+          </h4>
+          {debugData.map((d, i) => (
+            <details key={i} style={{ marginBottom: 8 }}>
+              <summary>{d.label}</summary>
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  fontSize: "0.75rem",
+                  background: "#1e1e1e",
+                  padding: 8,
+                  borderRadius: 4,
+                }}
+              >
+                {JSON.stringify(d.data, null, 2)}
+              </pre>
+            </details>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
