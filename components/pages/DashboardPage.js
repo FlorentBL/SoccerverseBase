@@ -211,57 +211,62 @@ export default function DashboardPage({ lang = "fr" }) {
         )}
         {sortedClubs.length > 0 && (
           <>
-            <table className="w-full text-sm text-left text-gray-300">
-              <thead className="text-xs uppercase bg-gray-700 text-gray-300">
-                <tr>
-                  <th
-                    onClick={() => handleSort("club")}
-                    className="px-3 py-2 cursor-pointer"
-                  >
-                    {t.club} {sortField === "club" && (sortAsc ? "↑" : "↓")}
-                  </th>
-                  <th
-                    onClick={() => handleSort("shares")}
-                    className="px-3 py-2 cursor-pointer"
-                  >
-                    {t.shares} {sortField === "shares" && (sortAsc ? "↑" : "↓")}
-                  </th>
-                  <th className="px-3 py-2">{t.lastMatch}</th>
-                  <th
-                    onClick={() => handleSort("position")}
-                    className="px-3 py-2 cursor-pointer"
-                  >
-                    {t.position} {sortField === "position" && (sortAsc ? "↑" : "↓")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedClubs.map((c) => (
-                  <tr key={c.clubId} className="border-b border-gray-700">
-                    <td className="px-3 py-2">
-                      <a
-                        href={`https://play.soccerverse.com/club/${c.clubId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-400 hover:text-indigo-300 underline"
-                      >
-                        {clubNames[c.clubId]?.name || c.clubId}
-                      </a>
-                    </td>
-                    <td className="px-3 py-2">{c.shares.toLocaleString()}</td>
-                    <td className="px-3 py-2">{renderMatch(c.lastFixture, c.clubId)}</td>
-                    <td className="px-3 py-2">{c.position ?? "-"}</td>
+            <div className="overflow-x-auto rounded-lg shadow ring-1 ring-gray-700">
+              <table className="min-w-full text-sm text-left text-gray-300 divide-y divide-gray-700">
+                <thead className="text-xs uppercase bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                  <tr>
+                    <th
+                      onClick={() => handleSort("club")}
+                      className="px-4 py-3 cursor-pointer tracking-wider select-none"
+                    >
+                      {t.club} {sortField === "club" && (sortAsc ? "↑" : "↓")}
+                    </th>
+                    <th
+                      onClick={() => handleSort("shares")}
+                      className="px-4 py-3 cursor-pointer tracking-wider select-none"
+                    >
+                      {t.shares} {sortField === "shares" && (sortAsc ? "↑" : "↓")}
+                    </th>
+                    <th className="px-4 py-3 tracking-wider select-none">{t.lastMatch}</th>
+                    <th
+                      onClick={() => handleSort("position")}
+                      className="px-4 py-3 cursor-pointer tracking-wider select-none"
+                    >
+                      {t.position} {sortField === "position" && (sortAsc ? "↑" : "↓")}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="mt-6 space-y-4 text-xs text-gray-400">
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {sortedClubs.map((c) => (
+                    <tr
+                      key={c.clubId}
+                      className="odd:bg-gray-800 even:bg-gray-900 hover:bg-gray-700 transition-colors"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <a
+                          href={`https://play.soccerverse.com/club/${c.clubId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-400 hover:text-indigo-300 underline"
+                        >
+                          {clubNames[c.clubId]?.name || c.clubId}
+                        </a>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{c.shares.toLocaleString()}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{renderMatch(c.lastFixture, c.clubId)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{c.position ?? "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-8 space-y-4 text-xs text-gray-400">
               {sortedClubs.map((c) => (
                 <div key={c.clubId}>
                   <div className="font-semibold mb-1">
                     {clubNames[c.clubId]?.name || c.clubId}
                   </div>
-                  <pre className="bg-gray-800 p-2 overflow-x-auto">
+                  <pre className="bg-gray-800 p-3 rounded-lg overflow-x-auto">
                     {JSON.stringify(c.lastFixtureRaw, null, 2)}
                   </pre>
                 </div>
