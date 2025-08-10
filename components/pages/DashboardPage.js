@@ -10,6 +10,7 @@ const LABELS = {
     loading: "Chargement…",
     error: "Erreur de chargement",
     club: "Club",
+    shares: "Parts",
     lastMatch: "Dernier match",
     position: "Position",
     noClub: "Aucun club trouvé",
@@ -22,6 +23,7 @@ const LABELS = {
     loading: "Loading…",
     error: "Loading error",
     club: "Club",
+    shares: "Shares",
     lastMatch: "Last match",
     position: "Position",
     noClub: "No club found",
@@ -34,10 +36,11 @@ const LABELS = {
     loading: "Caricamento…",
     error: "Errore di caricamento",
     club: "Club",
+    shares: "Quote",
     lastMatch: "Ultima partita",
     position: "Posizione",
     noClub: "Nessun club trovato",
-  }
+  },
 };
 
 const CLUB_MAPPING_URL = "/club_mapping.json";
@@ -47,7 +50,11 @@ async function fetchShareBalances(name) {
   let totalPages = 1;
   const items = [];
   while (page <= totalPages) {
-    const res = await fetch(`https://services.soccerverse.com/api/share_balances?page=${page}&per_page=100&sort_order=asc&name=${encodeURIComponent(name)}&countries=false&leagues=false`);
+    const res = await fetch(
+      `https://services.soccerverse.com/api/share_balances?page=${page}&per_page=100&sort_order=asc&name=${encodeURIComponent(
+        name
+      )}&countries=false&leagues=false`
+    );
     if (!res.ok) throw new Error("share");
     const data = await res.json();
     totalPages = data.total_pages || 1;
@@ -64,6 +71,8 @@ export default function DashboardPage({ lang = "fr" }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [clubNames, setClubNames] = useState({});
+  const [sortField, setSortField] = useState("shares");
+  const [sortAsc, setSortAsc] = useState(false);
 
   useEffect(() => {
     fetch(CLUB_MAPPING_URL)
@@ -79,13 +88,17 @@ export default function DashboardPage({ lang = "fr" }) {
     setLoading(true);
     try {
       const balances = await fetchShareBalances(name);
-      const clubToLeague = new Map();
+      const clubMap = new Map();
       balances.forEach((it) => {
-        if (it.club_id) clubToLeague.set(it.club_id, it.league_id);
+        if (!it.club_id) return;
+        const entry =
+          clubMap.get(it.club_id) || { leagueId: it.league_id, shares: 0 };
+        entry.shares += it.num;
+        if (!entry.leagueId && it.league_id) entry.leagueId = it.league_id;
+        clubMap.set(it.club_id, entry);
       });
-      const entries = Array.from(clubToLeague.entries());
       const results = await Promise.all(
-        entries.map(async ([clubId, leagueId]) => {
+        Array.from(clubMap.entries()).map(async ([clubId, { leagueId, shares }]) => {
           let lastFixture = null;
           let position = null;
           try {
@@ -105,14 +118,16 @@ export default function DashboardPage({ lang = "fr" }) {
             }
           } catch (e) {}
           try {
-            const lRes = await fetch(`https://services.soccerverse.com/api/league_tables?league_id=${leagueId}`);
+            const lRes = await fetch(
+              `https://services.soccerverse.com/api/league_tables?league_id=${leagueId}`
+            );
             if (lRes.ok) {
               const lData = await lRes.json();
               const entry = lData.find((c) => c.club_id === Number(clubId));
               position = entry?.new_position ?? null;
             }
           } catch (e) {}
-          return { clubId, lastFixture, position };
+          return { clubId, shares, lastFixture, position };
         })
       );
       setClubs(results);
@@ -122,6 +137,32 @@ export default function DashboardPage({ lang = "fr" }) {
       setLoading(false);
     }
   };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  };
+
+  const sortedClubs = [...clubs].sort((a, b) => {
+    if (sortField === "club") {
+      const nameA = clubNames[a.clubId]?.name || String(a.clubId);
+      const nameB = clubNames[b.clubId]?.name || String(b.clubId);
+      return nameA.localeCompare(nameB) * (sortAsc ? 1 : -1);
+    }
+    if (sortField === "shares") {
+      return (a.shares - b.shares) * (sortAsc ? 1 : -1);
+    }
+    if (sortField === "position") {
+      const posA = a.position ?? Infinity;
+      const posB = b.position ?? Infinity;
+      return (posA - posB) * (sortAsc ? 1 : -1);
+    }
+    return 0;
+  });
 
   const renderMatch = (f, clubId) => {
     if (!f) return "-";
@@ -145,10 +186,14 @@ export default function DashboardPage({ lang = "fr" }) {
   return (
     <div className="min-h-screen py-8 px-4 flex flex-col items-center">
       <div className="w-full max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8 text-center text-white tracking-tight">{t.title}</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center text-white tracking-tight">
+          {t.title}
+        </h1>
         <form className="flex gap-2 mb-8 justify-center" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-xs font-semibold mb-1 text-gray-300">{t.name}</label>
+            <label className="block text-xs font-semibold mb-1 text-gray-300">
+              {t.name}
+            </label>
             <input
               type="text"
               value={name}
@@ -158,26 +203,45 @@ export default function DashboardPage({ lang = "fr" }) {
               required
             />
           </div>
-          <button type="submit" className="bg-green-500 text-black font-bold rounded px-5 py-2 shadow hover:bg-green-400 transition">
+          <button
+            type="submit"
+            className="bg-green-500 text-black font-bold rounded px-5 py-2 shadow hover:bg-green-400 transition"
+          >
             {t.submit}
           </button>
         </form>
         {loading && <div className="text-white text-center my-8">{t.loading}</div>}
         {err && <div className="text-red-400 text-center my-8">{err}</div>}
-        {!loading && !err && clubs.length === 0 && (
+        {!loading && !err && sortedClubs.length === 0 && (
           <div className="text-gray-300 text-center">{t.noClub}</div>
         )}
-        {clubs.length > 0 && (
+        {sortedClubs.length > 0 && (
           <table className="w-full text-sm text-left text-gray-300">
             <thead className="text-xs uppercase bg-gray-700 text-gray-300">
               <tr>
-                <th className="px-3 py-2">{t.club}</th>
+                <th
+                  onClick={() => handleSort("club")}
+                  className="px-3 py-2 cursor-pointer"
+                >
+                  {t.club} {sortField === "club" && (sortAsc ? "↑" : "↓")}
+                </th>
+                <th
+                  onClick={() => handleSort("shares")}
+                  className="px-3 py-2 cursor-pointer"
+                >
+                  {t.shares} {sortField === "shares" && (sortAsc ? "↑" : "↓")}
+                </th>
                 <th className="px-3 py-2">{t.lastMatch}</th>
-                <th className="px-3 py-2">{t.position}</th>
+                <th
+                  onClick={() => handleSort("position")}
+                  className="px-3 py-2 cursor-pointer"
+                >
+                  {t.position} {sortField === "position" && (sortAsc ? "↑" : "↓")}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {clubs.map((c) => (
+              {sortedClubs.map((c) => (
                 <tr key={c.clubId} className="border-b border-gray-700">
                   <td className="px-3 py-2">
                     <a
@@ -189,6 +253,7 @@ export default function DashboardPage({ lang = "fr" }) {
                       {clubNames[c.clubId]?.name || c.clubId}
                     </a>
                   </td>
+                  <td className="px-3 py-2">{c.shares.toLocaleString()}</td>
                   <td className="px-3 py-2">{renderMatch(c.lastFixture, c.clubId)}</td>
                   <td className="px-3 py-2">{c.position ?? "-"}</td>
                 </tr>
