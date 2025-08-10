@@ -5,11 +5,15 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   const [clubId, setClubId] = useState("");
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const RPC_URL = "https://gsppub.soccerverse.io/";
 
   const fetchSchedule = async () => {
+    setError("");
     setLoading(true);
     try {
-      const scheduleRes = await fetch("https://gsppub.soccerverse.io/", {
+      const scheduleRes = await fetch(RPC_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -19,6 +23,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
           id: 1,
         }),
       });
+      if (!scheduleRes.ok) throw new Error("schedule_failed");
       const scheduleJson = await scheduleRes.json();
       const upcoming = (scheduleJson.result?.data || [])
         .filter(m => m.played === 0)
@@ -33,7 +38,8 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               : match.home_club;
 
           // Opponent last 5 played matches
-          const oppScheduleRes = await fetch("https://gsppub.soccerverse.io/", {
+          try {
+            const oppScheduleRes = await fetch(RPC_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -43,65 +49,73 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               id: 1,
             }),
           });
-          const oppScheduleJson = await oppScheduleRes.json();
-          const lastFive = (oppScheduleJson.result?.data || [])
+            if (!oppScheduleRes.ok) throw new Error("opp_schedule_failed");
+            const oppScheduleJson = await oppScheduleRes.json();
+            const lastFive = (oppScheduleJson.result?.data || [])
             .filter(m => m.played === 1)
             .sort((a, b) => b.date - a.date)
             .slice(0, 5);
+            const details = await Promise.all(
+              lastFive.map(async gm => {
+                try {
+                  const fixtureRes = await fetch(RPC_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      jsonrpc: "2.0",
+                      method: "get_fixture",
+                      params: { fixture_id: gm.fixture_id },
+                      id: 1,
+                    }),
+                  });
+                  if (!fixtureRes.ok) throw new Error("fixture_failed");
+                  const fixtureJson = await fixtureRes.json();
+                  const fixture = fixtureJson.result || {};
 
-          const details = await Promise.all(
-            lastFive.map(async gm => {
-              // Fixture details
-              const fixtureRes = await fetch("https://gsppub.soccerverse.io/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  jsonrpc: "2.0",
-                  method: "get_fixture",
-                  params: { fixture_id: gm.fixture_id },
-                  id: 1,
-                }),
-              });
-              const fixtureJson = await fixtureRes.json();
-              const fixture = fixtureJson.result || {};
+                  const tacticRes = await fetch(
+                    `https://services.soccerverse.com/api/fixture_history/tactics/${gm.fixture_id}`
+                  );
+                  if (!tacticRes.ok) throw new Error("tactic_failed");
+                  const tacticJson = await tacticRes.json();
+                  const clubTactic = tacticJson.find(t => t.club_id === opponentId);
+                  if (!clubTactic || !clubTactic.tactic_actions?.length) return null;
+                  const action = clubTactic.tactic_actions[0];
+                  const lineup = action.lineup || [];
+                  const avgTempo =
+                    lineup.reduce((sum, p) => sum + (p.tempo || 0), 0) /
+                    (lineup.length || 1);
+                  const avgTackle =
+                    lineup.reduce((sum, p) => sum + (p.tackling_style || 0), 0) /
+                    (lineup.length || 1);
 
-              // Tactics
-              const tacticRes = await fetch(
-                `https://services.soccerverse.com/api/fixture_history/tactics/${gm.fixture_id}`
-              );
-              const tacticJson = await tacticRes.json();
-              const clubTactic = tacticJson.find(t => t.club_id === opponentId);
-              if (!clubTactic || !clubTactic.tactic_actions?.length) return null;
-              const action = clubTactic.tactic_actions[0];
-              const lineup = action.lineup || [];
-              const avgTempo =
-                lineup.reduce((sum, p) => sum + (p.tempo || 0), 0) /
-                (lineup.length || 1);
-              const avgTackle =
-                lineup.reduce((sum, p) => sum + (p.tackling_style || 0), 0) /
-                (lineup.length || 1);
+                  return {
+                    fixture_id: gm.fixture_id,
+                    home_club: fixture.home_club,
+                    away_club: fixture.away_club,
+                    home_goals: fixture.home_goals,
+                    away_goals: fixture.away_goals,
+                    formation_id: action.formation_id,
+                    play_style: action.play_style,
+                    avg_tempo: avgTempo,
+                    avg_tackling: avgTackle,
+                  };
+                } catch {
+                  return null;
+                }
+              })
+            );
 
-              return {
-                fixture_id: gm.fixture_id,
-                home_club: fixture.home_club,
-                away_club: fixture.away_club,
-                home_goals: fixture.home_goals,
-                away_goals: fixture.away_goals,
-                formation_id: action.formation_id,
-                play_style: action.play_style,
-                avg_tempo: avgTempo,
-                avg_tackling: avgTackle,
-              };
-            })
-          );
-
-          return { ...match, opponentId, lastFive: details.filter(Boolean) };
+            return { ...match, opponentId, lastFive: details.filter(Boolean) };
+          } catch {
+            return { ...match, opponentId, lastFive: [] };
+          }
         })
       );
 
       setMatches(enriched);
     } catch (err) {
       console.error(err);
+      setError("Erreur lors des appels API");
     } finally {
       setLoading(false);
     }
@@ -132,6 +146,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
         </button>
       </div>
       {loading && <p>Chargement...</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
       {matches.map(m => (
         <div key={m.fixture_id} style={{ marginBottom: 32 }}>
           <h3 style={{ fontWeight: 700, marginBottom: 8 }}>
