@@ -12,6 +12,8 @@ const LABELS = {
     club: "Club",
     shares: "Parts",
     lastMatch: "Dernier match",
+    matchDate: "Date",
+    coach: "Coach",
     position: "Position",
     noClub: "Aucun club trouvé",
   },
@@ -25,6 +27,8 @@ const LABELS = {
     club: "Club",
     shares: "Shares",
     lastMatch: "Last match",
+    matchDate: "Date",
+    coach: "Coach",
     position: "Position",
     noClub: "No club found",
   },
@@ -38,6 +42,8 @@ const LABELS = {
     club: "Club",
     shares: "Quote",
     lastMatch: "Ultima partita",
+    matchDate: "Data",
+    coach: "Allenatore",
     position: "Posizione",
     noClub: "Nessun club trovato",
   },
@@ -101,6 +107,7 @@ export default function DashboardPage({ lang = "fr" }) {
         Array.from(clubMap.entries()).map(async ([clubId, { leagueId, shares }]) => {
           let lastFixture = null;
           let position = null;
+          let coach = null;
           try {
             const fRes = await fetch(`/api/last-fixture?clubId=${clubId}`);
             if (fRes.ok) {
@@ -119,7 +126,16 @@ export default function DashboardPage({ lang = "fr" }) {
               position = entry?.new_position ?? null;
             }
           } catch (e) {}
-          return { clubId, shares, lastFixture, position };
+          try {
+            const cRes = await fetch(
+              `https://services.soccerverse.com/api/clubs/detailed?club_id=${clubId}`
+            );
+            if (cRes.ok) {
+              const cData = await cRes.json();
+              coach = cData.items?.[0]?.manager_name ?? null;
+            }
+          } catch (e) {}
+          return { clubId, shares, lastFixture, position, coach };
         })
       );
       setClubs(results);
@@ -180,6 +196,19 @@ export default function DashboardPage({ lang = "fr" }) {
         {goalsFor}-{goalsAgainst} vs {opponentName}
       </a>
     );
+  };
+
+  const renderDate = (f) => {
+    if (!f) return "-";
+    const ts =
+      f.fixture_timestamp ||
+      f.kickoff_timestamp ||
+      f.timestamp ||
+      f.date ||
+      f.time;
+    if (!ts) return "-";
+    const d = new Date(Number(ts) * 1000);
+    return d.toLocaleDateString(lang);
   };
 
   return (
@@ -258,7 +287,13 @@ export default function DashboardPage({ lang = "fr" }) {
                         </a>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{c.shares.toLocaleString()}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{renderMatch(c.lastFixture, c.clubId)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {renderMatch(c.lastFixture, c.clubId)}
+                        <div className="text-xs text-gray-400 leading-tight mt-1">
+                          {t.matchDate}: {renderDate(c.lastFixture)}<br />
+                          {t.coach}: {c.coach || "-"}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">{c.position ?? "-"}</td>
                     </tr>
                   ))}
