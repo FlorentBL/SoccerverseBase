@@ -103,17 +103,7 @@ export default function DashboardPage({ lang = "fr" }) {
           let lastFixtureRaw = null;
           let position = null;
           try {
-            const fRes = await fetch("https://gsppub.soccerverse.io/", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              cache: "no-store",
-              body: JSON.stringify({
-                jsonrpc: "2.0",
-                method: "get_clubs_last_fixture",
-                params: { club_id: Number(clubId) },
-                id: 1,
-              }),
-            });
+            const fRes = await fetch(`/api/last-fixture?clubId=${clubId}`);
             if (fRes.ok) {
               const fData = await fRes.json();
               lastFixtureRaw = fData;
