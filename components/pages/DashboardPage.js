@@ -115,7 +115,8 @@ export default function DashboardPage({ lang = "fr" }) {
             });
             if (fRes.ok) {
               const fData = await fRes.json();
-              lastFixture = fData.result?.data || null;
+              const r = fData.result;
+              lastFixture = (r && r.data) ? r.data : r || null;
             }
           } catch (e) {}
           try {
