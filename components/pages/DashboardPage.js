@@ -163,12 +163,19 @@ export default function DashboardPage({ lang = "fr" }) {
     const goalsAgainst = isHome ? f.away_goals : f.home_goals;
     const opponentId = isHome ? f.away_club : f.home_club;
     const opponentName = clubNames[opponentId]?.name || opponentId;
+    let colorClass = "text-indigo-400 hover:text-indigo-300";
+    if (goalsFor !== goalsAgainst) {
+      colorClass =
+        goalsFor > goalsAgainst
+          ? "text-green-400 hover:text-green-300"
+          : "text-red-400 hover:text-red-300";
+    }
     return (
       <a
         href={`https://play.soccerverse.com/match/${f.fixture_id}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-indigo-400 hover:text-indigo-300 underline"
+        className={`${colorClass} underline`}
       >
         {goalsFor}-{goalsAgainst} vs {opponentName}
       </a>
