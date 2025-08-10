@@ -262,8 +262,6 @@ export default function DashboardPage({ lang = "fr" }) {
                       {t.shares} {sortField === "shares" && (sortAsc ? "↑" : "↓")}
                     </th>
                     <th className="px-4 py-3 tracking-wider select-none">{t.lastMatch}</th>
-                    <th className="px-4 py-3 tracking-wider select-none">{t.matchDate}</th>
-                    <th className="px-4 py-3 tracking-wider select-none">{t.coach}</th>
                     <th
                       onClick={() => handleSort("position")}
                       className="px-4 py-3 cursor-pointer tracking-wider select-none"
@@ -289,9 +287,13 @@ export default function DashboardPage({ lang = "fr" }) {
                         </a>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{c.shares.toLocaleString()}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{renderMatch(c.lastFixture, c.clubId)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{renderDate(c.lastFixture)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{c.coach || "-"}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-xs text-gray-400 leading-tight mb-1">
+                          {t.matchDate}: {renderDate(c.lastFixture)}<br />
+                          {t.coach}: {c.coach || "-"}
+                        </div>
+                        {renderMatch(c.lastFixture, c.clubId)}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">{c.position ?? "-"}</td>
                     </tr>
                   ))}
