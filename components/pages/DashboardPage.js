@@ -90,7 +90,7 @@ export default function DashboardPage({ lang = "fr" }) {
       const balances = await fetchShareBalances(name);
       const clubMap = new Map();
       balances.forEach((it) => {
-        if (!it.club_id) return;
+        if (it.share_type !== "club" || !it.club_id) return;
         const entry =
           clubMap.get(it.club_id) || { leagueId: it.league_id, shares: 0 };
         entry.shares += it.num;
@@ -105,6 +105,7 @@ export default function DashboardPage({ lang = "fr" }) {
             const fRes = await fetch("https://gsppub.soccerverse.io/", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
+              cache: "no-store",
               body: JSON.stringify({
                 jsonrpc: "2.0",
                 method: "get_clubs_last_fixture",
