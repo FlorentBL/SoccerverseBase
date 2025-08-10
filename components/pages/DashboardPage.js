@@ -100,6 +100,7 @@ export default function DashboardPage({ lang = "fr" }) {
       const results = await Promise.all(
         Array.from(clubMap.entries()).map(async ([clubId, { leagueId, shares }]) => {
           let lastFixture = null;
+          let lastFixtureRaw = null;
           let position = null;
           try {
             const fRes = await fetch("https://gsppub.soccerverse.io/", {
@@ -115,8 +116,9 @@ export default function DashboardPage({ lang = "fr" }) {
             });
             if (fRes.ok) {
               const fData = await fRes.json();
+              lastFixtureRaw = fData;
               const r = fData.result;
-              lastFixture = (r && r.data) ? r.data : r || null;
+              lastFixture = r && r.data ? r.data : r || null;
             }
           } catch (e) {}
           try {
@@ -129,7 +131,7 @@ export default function DashboardPage({ lang = "fr" }) {
               position = entry?.new_position ?? null;
             }
           } catch (e) {}
-          return { clubId, shares, lastFixture, position };
+          return { clubId, shares, lastFixture, lastFixtureRaw, position };
         })
       );
       setClubs(results);
@@ -218,50 +220,64 @@ export default function DashboardPage({ lang = "fr" }) {
           <div className="text-gray-300 text-center">{t.noClub}</div>
         )}
         {sortedClubs.length > 0 && (
-          <table className="w-full text-sm text-left text-gray-300">
-            <thead className="text-xs uppercase bg-gray-700 text-gray-300">
-              <tr>
-                <th
-                  onClick={() => handleSort("club")}
-                  className="px-3 py-2 cursor-pointer"
-                >
-                  {t.club} {sortField === "club" && (sortAsc ? "↑" : "↓")}
-                </th>
-                <th
-                  onClick={() => handleSort("shares")}
-                  className="px-3 py-2 cursor-pointer"
-                >
-                  {t.shares} {sortField === "shares" && (sortAsc ? "↑" : "↓")}
-                </th>
-                <th className="px-3 py-2">{t.lastMatch}</th>
-                <th
-                  onClick={() => handleSort("position")}
-                  className="px-3 py-2 cursor-pointer"
-                >
-                  {t.position} {sortField === "position" && (sortAsc ? "↑" : "↓")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedClubs.map((c) => (
-                <tr key={c.clubId} className="border-b border-gray-700">
-                  <td className="px-3 py-2">
-                    <a
-                      href={`https://play.soccerverse.com/club/${c.clubId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-indigo-400 hover:text-indigo-300 underline"
-                    >
-                      {clubNames[c.clubId]?.name || c.clubId}
-                    </a>
-                  </td>
-                  <td className="px-3 py-2">{c.shares.toLocaleString()}</td>
-                  <td className="px-3 py-2">{renderMatch(c.lastFixture, c.clubId)}</td>
-                  <td className="px-3 py-2">{c.position ?? "-"}</td>
+          <>
+            <table className="w-full text-sm text-left text-gray-300">
+              <thead className="text-xs uppercase bg-gray-700 text-gray-300">
+                <tr>
+                  <th
+                    onClick={() => handleSort("club")}
+                    className="px-3 py-2 cursor-pointer"
+                  >
+                    {t.club} {sortField === "club" && (sortAsc ? "↑" : "↓")}
+                  </th>
+                  <th
+                    onClick={() => handleSort("shares")}
+                    className="px-3 py-2 cursor-pointer"
+                  >
+                    {t.shares} {sortField === "shares" && (sortAsc ? "↑" : "↓")}
+                  </th>
+                  <th className="px-3 py-2">{t.lastMatch}</th>
+                  <th
+                    onClick={() => handleSort("position")}
+                    className="px-3 py-2 cursor-pointer"
+                  >
+                    {t.position} {sortField === "position" && (sortAsc ? "↑" : "↓")}
+                  </th>
                 </tr>
+              </thead>
+              <tbody>
+                {sortedClubs.map((c) => (
+                  <tr key={c.clubId} className="border-b border-gray-700">
+                    <td className="px-3 py-2">
+                      <a
+                        href={`https://play.soccerverse.com/club/${c.clubId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-400 hover:text-indigo-300 underline"
+                      >
+                        {clubNames[c.clubId]?.name || c.clubId}
+                      </a>
+                    </td>
+                    <td className="px-3 py-2">{c.shares.toLocaleString()}</td>
+                    <td className="px-3 py-2">{renderMatch(c.lastFixture, c.clubId)}</td>
+                    <td className="px-3 py-2">{c.position ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-6 space-y-4 text-xs text-gray-400">
+              {sortedClubs.map((c) => (
+                <div key={c.clubId}>
+                  <div className="font-semibold mb-1">
+                    {clubNames[c.clubId]?.name || c.clubId}
+                  </div>
+                  <pre className="bg-gray-800 p-2 overflow-x-auto">
+                    {JSON.stringify(c.lastFixtureRaw, null, 2)}
+                  </pre>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>
