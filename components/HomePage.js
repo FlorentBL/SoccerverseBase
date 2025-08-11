@@ -20,13 +20,42 @@ const LABELS = {
     discordBtn: "Rejoindre le Discord K-SOCIOS",
     sectionsTitle: "Sections du site",
     sections: [
-      { href: "/dashboard", title: "Dashboard", desc: "Aperçu général" },
-      { href: "/revenus", title: "Gains Joueurs", desc: "Salaires et revenus" },
-      { href: "/scouting", title: "Scouting", desc: "Prospection de joueurs" },
-      { href: "/recompenses", title: "Récompenses", desc: "Suivi des primes" },
-      { href: "/finance", title: "Analyse financière", desc: "Données éco du jeu" },
-      { href: "/analyse-tactique", title: "Analyse tactique", desc: "Outils de tactique" },
-      { href: "/comment-debuter", title: "Comment débuter ?", desc: "Guide pour bien commencer" },
+      {
+        href: "/comment-debuter",
+        title: "Comment débuter ?",
+        desc: "Guide pour bien commencer",
+        featured: true,
+      },
+      {
+        href: "/dashboard",
+        title: "Dashboard",
+        desc: "Viens découvrir en un coup d'oeil les résultats des clubs que tu soutiens",
+      },
+      {
+        href: "/revenus",
+        title: "Gains Joueurs",
+        desc: "La grille qui détaille les salaires et gains liés aux joueurs",
+      },
+      {
+        href: "/scouting",
+        title: "Scouting",
+        desc: "Détail d'un joueur, d'un club ou d'un championnat ? C'est ici que ca se passe",
+      },
+      {
+        href: "/recompenses",
+        title: "Récompenses",
+        desc: "Tu peux ici simuler les récompenses de fin de saison que ce soit pour le club ou pour ses influenceurs",
+      },
+      {
+        href: "/finance",
+        title: "Analyse financière",
+        desc: "Tu veux voir la situation financière d'un club ? Savoir quelle sera la situation à la fin de la saison ? Tu peux même simuler un recrutement",
+      },
+      {
+        href: "/analyse-tactique",
+        title: "Analyse tactique",
+        desc: "Analyse tes 3 prochains adversaires",
+      },
     ],
   },
   en: {
@@ -43,13 +72,42 @@ const LABELS = {
     discordBtn: "Join K-SOCIOS Discord",
     sectionsTitle: "Site sections",
     sections: [
-      { href: "/dashboard", title: "Dashboard", desc: "Global overview" },
-      { href: "/revenus", title: "Player Earnings", desc: "Salaries and rewards" },
-      { href: "/scouting", title: "Scouting", desc: "Prospecting tools" },
-      { href: "/recompenses", title: "Rewards", desc: "Weekly prizes" },
-      { href: "/finance", title: "Financial Analysis", desc: "Economy data" },
-      { href: "/analyse-tactique", title: "Tactical Analysis", desc: "Tactical tools" },
-      { href: "/getting-started", title: "Getting started", desc: "Guide to begin" },
+      {
+        href: "/getting-started",
+        title: "Getting started",
+        desc: "Guide to start well",
+        featured: true,
+      },
+      {
+        href: "/dashboard",
+        title: "Dashboard",
+        desc: "Discover at a glance the results of clubs you support",
+      },
+      {
+        href: "/revenus",
+        title: "Player Earnings",
+        desc: "Table detailing player salaries and earnings",
+      },
+      {
+        href: "/scouting",
+        title: "Scouting",
+        desc: "Details about a player, club or league? It's all here",
+      },
+      {
+        href: "/recompenses",
+        title: "Rewards",
+        desc: "Simulate end-of-season rewards for clubs or influencers",
+      },
+      {
+        href: "/finance",
+        title: "Financial Analysis",
+        desc: "View a club's finances, forecast season end, even simulate a signing",
+      },
+      {
+        href: "/analyse-tactique",
+        title: "Tactical Analysis",
+        desc: "Analyze your next 3 opponents",
+      },
     ],
   },
   it: {
@@ -66,13 +124,42 @@ const LABELS = {
     discordBtn: "Unisciti al Discord K-SOCIOS",
     sectionsTitle: "Sezioni del sito",
     sections: [
-      { href: "/dashboard", title: "Dashboard", desc: "Panoramica" },
-      { href: "/revenus", title: "Guadagni Giocatori", desc: "Stipendi e ricavi" },
-      { href: "/scouting", title: "Scouting", desc: "Ricerca giocatori" },
-      { href: "/recompenses", title: "Ricompense", desc: "Premi settimanali" },
-      { href: "/finance", title: "Analisi finanziaria", desc: "Dati economici" },
-      { href: "/analyse-tactique", title: "Analisi tattica", desc: "Strumenti tattici" },
-      { href: "/come-iniziare", title: "Come iniziare?", desc: "Guida per cominciare" },
+      {
+        href: "/come-iniziare",
+        title: "Come iniziare?",
+        desc: "Guida per iniziare bene",
+        featured: true,
+      },
+      {
+        href: "/dashboard",
+        title: "Dashboard",
+        desc: "Scopri in un colpo d'occhio i risultati dei club che sostieni",
+      },
+      {
+        href: "/revenus",
+        title: "Guadagni Giocatori",
+        desc: "Tabella che dettaglia stipendi e guadagni dei giocatori",
+      },
+      {
+        href: "/scouting",
+        title: "Scouting",
+        desc: "Dettagli di un giocatore, club o campionato? È qui che succede",
+      },
+      {
+        href: "/recompenses",
+        title: "Ricompense",
+        desc: "Simula i premi di fine stagione per il club o i suoi influencer",
+      },
+      {
+        href: "/finance",
+        title: "Analisi finanziaria",
+        desc: "Vuoi vedere la situazione finanziaria di un club? Prevedi fine stagione o simula un acquisto",
+      },
+      {
+        href: "/analyse-tactique",
+        title: "Analisi tattica",
+        desc: "Analizza i tuoi prossimi 3 avversari",
+      },
     ],
   },
 };
@@ -145,10 +232,14 @@ export default function HomePage({ lang = "fr" }) {
             <Link
               key={s.href}
               href={`/${lang}${s.href}`}
-              className="block p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+              className={`block p-6 rounded-xl border border-white/10 transition-colors ${
+                s.featured
+                  ? 'sm:col-span-2 lg:col-span-3 bg-gradient-to-r from-fuchsia-500 to-sky-500 hover:from-fuchsia-400 hover:to-sky-400 text-gray-900'
+                  : 'bg-white/5 hover:bg-white/10'
+              }`}
             >
-              <h3 className="text-xl font-semibold mb-2">{s.title}</h3>
-              <p className="text-sm text-gray-300">{s.desc}</p>
+              <h3 className={`${s.featured ? 'text-2xl' : 'text-xl'} font-semibold mb-2`}>{s.title}</h3>
+              <p className={`text-sm ${s.featured ? 'text-gray-800' : 'text-gray-300'}`}>{s.desc}</p>
             </Link>
           ))}
         </div>
