@@ -57,6 +57,7 @@ const T = {
       goals_for: "BP",
       goals_against: "BC",
       fanbase: "Fanbase",
+      stadium_size_current: "Stade",
       avg_player_rating: "Rating",
       avg_wages: "💸Avg",
       total_wages: "💸Total",
@@ -98,6 +99,7 @@ const T = {
       goals_for: "GF",
       goals_against: "GA",
       fanbase: "Fanbase",
+      stadium_size_current: "Stadium",
       avg_player_rating: "Rating",
       avg_wages: "💸Avg",
       total_wages: "💸Total",
@@ -139,6 +141,7 @@ const T = {
       goals_for: "GF",
       goals_against: "GS",
       fanbase: "Tifosi",
+      stadium_size_current: "Stadio",
       avg_player_rating: "Rating",
       avg_wages: "💸Medio",
       total_wages: "💸Totale",
@@ -174,6 +177,7 @@ const BASE_COLUMNS = [
   { key: "goals_for", sortable: true },
   { key: "goals_against", sortable: true },
   { key: "fanbase", sortable: true },
+  { key: "stadium_size_current", sortable: true, details: true },
   { key: "avg_player_rating", sortable: true },
   { key: "avg_wages", sortable: true, details: true },
   { key: "total_wages", sortable: true, details: true },
@@ -462,6 +466,7 @@ export default function LeagueTab({ lang = "fr" }) {
                       <td>{club.goals_for}</td>
                       <td>{club.goals_against}</td>
                       <td>{club.fanbase || "-"}</td>
+                      <td>{d.stadium_size_current ? d.stadium_size_current.toLocaleString(LOCALES[lang] || LOCALES.fr) : "-"}</td>
                       <td style={{ fontWeight: 700 }}>{club.avg_player_rating || "-"}</td>
                       <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.avg_wages, lang)}</td>
                       <td style={{ color: "#8fff6f", fontWeight: 700 }}>{formatSVC(d.total_wages, lang)}</td>
