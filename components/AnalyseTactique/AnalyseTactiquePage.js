@@ -19,6 +19,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       error: "Erreur lors des appels API",
       nextMatchAgainst: "Prochain match contre",
       recentForm: "Forme récente",
+      date: "Date",
       match: "Match",
       score: "Score",
       formation: "Formation",
@@ -38,6 +39,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       error: "Error during API calls",
       nextMatchAgainst: "Next match against",
       recentForm: "Recent form",
+      date: "Date",
       match: "Match",
       score: "Score",
       formation: "Formation",
@@ -57,6 +59,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       error: "Errore durante le chiamate API",
       nextMatchAgainst: "Prossima partita contro",
       recentForm: "Forma recente",
+      date: "Data",
       match: "Partita",
       score: "Punteggio",
       formation: "Formazione",
@@ -312,6 +315,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                     away_club: fixture.away_club ?? gm.away_club,
                     home_goals: fixture.home_goals ?? gm.home_goals,
                     away_goals: fixture.away_goals ?? gm.away_goals,
+                    date: fixture.date ?? gm.date,
                     formation_id: action.formation_id,
                     play_style: action.play_style,
                     avg_tempo: avgTempo,
@@ -379,31 +383,52 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               key={m.fixture_id}
               className="rounded-xl bg-gray-900 p-6 border border-gray-700 text-gray-100 shadow-lg hover:border-indigo-500 transition-colors"
             >
+              <h3 className="text-xl font-semibold mb-2">
+                {t.nextMatchAgainst}{" "}
+                <a
+                  href={`https://play.soccerverse.com/club/${m.opponentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-400 hover:underline"
+                >
+                  {getClubName(m.opponentId)}
+                </a>
+              </h3>
               <div className="flex items-center gap-3 mb-4">
-                {clubId && (
+                <span className="inline-flex items-center gap-1">
                   <img
-                    src={getClubLogo(Number(clubId))}
-                    alt={getClubName(Number(clubId))}
+                    src={getClubLogo(m.home_club)}
+                    alt={getClubName(m.home_club)}
                     className="w-10 h-10 rounded-md"
                   />
-                )}
-                <span className="text-gray-400">vs</span>
-                <img
-                  src={getClubLogo(m.opponentId)}
-                  alt={getClubName(m.opponentId)}
-                  className="w-10 h-10 rounded-md"
-                />
-                <h3 className="text-xl font-semibold">
-                  {t.nextMatchAgainst}{" "}
                   <a
-                    href={`https://play.soccerverse.com/club/${m.opponentId}`}
+                    href={`https://play.soccerverse.com/club/${m.home_club}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-indigo-400 hover:underline"
                   >
-                    {getClubName(m.opponentId)}
+                    {getClubName(m.home_club)}
                   </a>
-                </h3>
+                </span>
+                <span className="text-gray-400">vs</span>
+                <span className="inline-flex items-center gap-1">
+                  <img
+                    src={getClubLogo(m.away_club)}
+                    alt={getClubName(m.away_club)}
+                    className="w-10 h-10 rounded-md"
+                  />
+                  <a
+                    href={`https://play.soccerverse.com/club/${m.away_club}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-400 hover:underline"
+                  >
+                    {getClubName(m.away_club)}
+                  </a>
+                </span>
+                <span className="ml-auto text-sm text-gray-400">
+                  {new Date(m.date * 1000).toLocaleDateString()}
+                </span>
               </div>
               {m.form && (
                 <p className="mb-4 text-sm text-gray-300">
@@ -415,6 +440,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   <table className="w-full text-sm text-left">
                     <thead className="text-gray-400 border-b border-white/10">
                       <tr>
+                        <th className="py-2 pr-4 font-medium">{t.date}</th>
                         <th className="py-2 pr-4 font-medium">{t.match}</th>
                         <th className="py-2 pr-4 font-medium">{t.score}</th>
                         <th className="py-2 pr-4 font-medium">{t.formation}</th>
@@ -430,6 +456,9 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                             className="hover:bg-white/5 cursor-pointer"
                             onClick={() => toggleExpand(l.fixture_id)}
                           >
+                            <td className="py-2 pr-4">
+                              {new Date(l.date * 1000).toLocaleDateString()}
+                            </td>
                             <td className="py-2 pr-4">
                               <span className="inline-flex items-center gap-1">
                                 <img
@@ -484,7 +513,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                           </tr>
                           {expanded[l.fixture_id] && l.lineup && l.lineup.length > 0 && (
                             <tr>
-                              <td colSpan={6} className="py-2">
+                              <td colSpan={7} className="py-2">
                                 <div className="overflow-x-auto">
                                   <table className="w-full text-xs text-left">
                                     <thead className="text-gray-400">
