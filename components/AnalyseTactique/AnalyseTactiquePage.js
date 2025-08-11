@@ -8,6 +8,58 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   const [error, setError] = useState("");
   const [clubMap, setClubMap] = useState({});
 
+  const TEXTS = {
+    fr: {
+      title: "Analyse tactique",
+      placeholder: "ID du club",
+      analyze: "Analyser",
+      loading: "Chargement...",
+      error: "Erreur lors des appels API",
+      nextMatchAgainst: "Prochain match contre",
+      recentForm: "Forme récente",
+      match: "Match",
+      score: "Score",
+      formation: "Formation",
+      style: "Style",
+      avgTempo: "Tempo moyen",
+      avgTackles: "Tacles moyens",
+      noData: "Aucune donnée disponible",
+    },
+    en: {
+      title: "Tactical analysis",
+      placeholder: "Club ID",
+      analyze: "Analyze",
+      loading: "Loading...",
+      error: "Error during API calls",
+      nextMatchAgainst: "Next match against",
+      recentForm: "Recent form",
+      match: "Match",
+      score: "Score",
+      formation: "Formation",
+      style: "Style",
+      avgTempo: "Avg tempo",
+      avgTackles: "Avg tackles",
+      noData: "No data available",
+    },
+    it: {
+      title: "Analisi tattica",
+      placeholder: "ID club",
+      analyze: "Analizza",
+      loading: "Caricamento...",
+      error: "Errore durante le chiamate API",
+      nextMatchAgainst: "Prossima partita contro",
+      recentForm: "Forma recente",
+      match: "Partita",
+      score: "Punteggio",
+      formation: "Formazione",
+      style: "Stile",
+      avgTempo: "Tempo medio",
+      avgTackles: "Contrasti medi",
+      noData: "Nessun dato disponibile",
+    },
+  };
+  const t = TEXTS[lang] || TEXTS.fr;
+
   useEffect(() => {
     fetch("/club_mapping.json")
       .then(res => res.json())
@@ -165,121 +217,120 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       );
     } catch (err) {
       console.error(err);
-      setError("Erreur lors des appels API");
+      setError(t.error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", color: "#f6f6f7", paddingTop: 60 }}>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
-        <input
-          type="number"
-          value={clubId}
-          onChange={e => setClubId(e.target.value)}
-          placeholder="ID du club"
-          style={{ color: "#000", padding: 8, borderRadius: 4 }}
-        />
-        <button
-          onClick={fetchSchedule}
-          style={{
-            padding: "8px 16px",
-            background: "#23272e",
-            color: "#3fcf60",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-          }}
-        >
-          Analyser
-        </button>
-      </div>
-      {loading && <p>Chargement...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {matches.map(m => (
-        <div key={m.fixture_id} style={{ marginBottom: 32 }}>
-          <h3 style={{ fontWeight: 700, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-            {getClubLogo(m.opponentId) && (
-              <img
-                src={getClubLogo(m.opponentId)}
-                alt={getClubName(m.opponentId)}
-                style={{ width: 32, height: 32 }}
-              />
-            )}
-            Prochain match contre{" "}
-            <a
-              href={`https://play.soccerverse.com/club/${m.opponentId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#4f47ff", textDecoration: "underline" }}
-            >
-              {getClubName(m.opponentId)}
-            </a>
-          </h3>
-          {m.form && <p style={{ marginBottom: 8 }}>Forme récente : {m.form}</p>}
-          {m.lastFive.length > 0 ? (
-            <table
-              style={{
-                width: "100%",
-                fontSize: "0.9rem",
-                borderCollapse: "collapse",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left", padding: 4 }}>Match</th>
-                  <th style={{ textAlign: "left", padding: 4 }}>Score</th>
-                  <th style={{ textAlign: "left", padding: 4 }}>Formation</th>
-                  <th style={{ textAlign: "left", padding: 4 }}>Style</th>
-                  <th style={{ textAlign: "left", padding: 4 }}>Tempo moyen</th>
-                  <th style={{ textAlign: "left", padding: 4 }}>Tacles moyens</th>
-                </tr>
-              </thead>
-              <tbody>
-                {m.lastFive.map(l => (
-                  <tr key={l.fixture_id} style={{ borderTop: "1px solid #555" }}>
-                    <td style={{ padding: 4 }}>
-                      <a
-                        href={`https://play.soccerverse.com/club/${l.home_club}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: "#4f47ff",
-                          textDecoration: "underline",
-                        }}
-                      >
-                        {getClubName(l.home_club)}
-                      </a>{" "}
-                      vs{" "}
-                      <a
-                        href={`https://play.soccerverse.com/club/${l.away_club}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: "#4f47ff",
-                          textDecoration: "underline",
-                        }}
-                      >
-                        {getClubName(l.away_club)}
-                      </a>
-                    </td>
-                    <td style={{ padding: 4 }}>
-                      {l.home_goals}-{l.away_goals}
-                    </td>
-                    <td style={{ padding: 4 }}>{l.formation_id}</td>
-                    <td style={{ padding: 4 }}>{l.play_style}</td>
-                    <td style={{ padding: 4 }}>{l.avg_tempo.toFixed(2)}</td>
-                    <td style={{ padding: 4 }}>{l.avg_tackling.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>Aucune donnée disponible</p>
-          )}
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-black text-gray-100 pt-24 px-4">
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-8">{t.title}</h1>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+          <input
+            type="number"
+            value={clubId}
+            onChange={e => setClubId(e.target.value)}
+            placeholder={t.placeholder}
+            className="w-full sm:w-64 px-4 py-2 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            onClick={fetchSchedule}
+            className="px-6 py-2 rounded-md bg-indigo-500 text-gray-900 font-semibold hover:bg-indigo-400 transition-colors"
+          >
+            {t.analyze}
+          </button>
         </div>
-      ))}
+        {loading && (
+          <p className="text-center text-sm text-gray-300 mb-4">{t.loading}</p>
+        )}
+        {error && <p className="text-center text-red-400 mb-4">{error}</p>}
+        <div className="space-y-8">
+          {matches.map(m => (
+            <div
+              key={m.fixture_id}
+              className="bg-white/5 backdrop-blur rounded-xl p-6 border border-white/10"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                {getClubLogo(m.opponentId) && (
+                  <img
+                    src={getClubLogo(m.opponentId)}
+                    alt={getClubName(m.opponentId)}
+                    className="w-10 h-10 rounded-md"
+                  />
+                )}
+                <h3 className="text-xl font-semibold">
+                  {t.nextMatchAgainst}{" "}
+                  <a
+                    href={`https://play.soccerverse.com/club/${m.opponentId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-400 hover:underline"
+                  >
+                    {getClubName(m.opponentId)}
+                  </a>
+                </h3>
+              </div>
+              {m.form && (
+                <p className="mb-4 text-sm text-gray-300">
+                  {t.recentForm} : <span className="font-mono">{m.form}</span>
+                </p>
+              )}
+              {m.lastFive.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-gray-400 border-b border-white/10">
+                      <tr>
+                        <th className="py-2 pr-4 font-medium">{t.match}</th>
+                        <th className="py-2 pr-4 font-medium">{t.score}</th>
+                        <th className="py-2 pr-4 font-medium">{t.formation}</th>
+                        <th className="py-2 pr-4 font-medium">{t.style}</th>
+                        <th className="py-2 pr-4 font-medium">{t.avgTempo}</th>
+                        <th className="py-2 pr-4 font-medium">{t.avgTackles}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {m.lastFive.map(l => (
+                        <tr key={l.fixture_id} className="hover:bg-white/5">
+                          <td className="py-2 pr-4">
+                            <a
+                              href={`https://play.soccerverse.com/club/${l.home_club}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-indigo-400 hover:underline"
+                            >
+                              {getClubName(l.home_club)}
+                            </a>
+                            <span className="text-gray-400"> vs </span>
+                            <a
+                              href={`https://play.soccerverse.com/club/${l.away_club}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-indigo-400 hover:underline"
+                            >
+                              {getClubName(l.away_club)}
+                            </a>
+                          </td>
+                          <td className="py-2 pr-4">
+                            {l.home_goals}-{l.away_goals}
+                          </td>
+                          <td className="py-2 pr-4">{l.formation_id}</td>
+                          <td className="py-2 pr-4">{l.play_style}</td>
+                          <td className="py-2 pr-4">{l.avg_tempo.toFixed(2)}</td>
+                          <td className="py-2 pr-4">{l.avg_tackling.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-400">{t.noData}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
