@@ -233,7 +233,7 @@ export default function DashboardPage({ lang = "fr" }) {
           </div>
           <button
             type="submit"
-            className="bg-indigo-500 text-gray-900 font-medium rounded px-4 py-2 shadow hover:bg-indigo-400 transition"
+            className="bg-indigo-500 text-gray-900 font-medium rounded px-3 py-2 text-sm shadow hover:bg-indigo-400 transition"
           >
             {t.submit}
           </button>

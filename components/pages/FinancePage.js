@@ -206,7 +206,10 @@ export default function FinancePage({ lang = "fr" }) {
               required
             />
           </div>
-          <button type="submit" className="bg-green-500 text-black font-bold rounded px-5 py-2 shadow hover:bg-green-400 transition">
+          <button
+            type="submit"
+            className="bg-indigo-500 text-gray-900 font-medium rounded px-3 py-2 text-sm shadow hover:bg-indigo-400 transition"
+          >
             {t.launch}
           </button>
         </form>
