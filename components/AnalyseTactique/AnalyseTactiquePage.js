@@ -368,7 +368,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
           />
           <button
             onClick={fetchSchedule}
-            className="px-6 py-2 rounded-md bg-indigo-500 text-white font-semibold hover:bg-indigo-400 transition-colors"
+            className="bg-indigo-500 text-gray-900 font-medium rounded px-3 py-2 text-sm shadow hover:bg-indigo-400 transition"
           >
             {t.analyze}
           </button>
