@@ -25,7 +25,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "get_club_schedule",
-          params: { club_id: Number(clubId), season_id: 1 },
+          params: { club_id: Number(clubId), season_id: 2 },
           id: 1,
         }),
       });
@@ -54,7 +54,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               body: JSON.stringify({
                 jsonrpc: "2.0",
                 method: "get_club_schedule",
-                params: { club_id: match.opponentId, season_id: 1 },
+                params: { club_id: match.opponentId, season_id: 2 },
                 id: 1,
               }),
             });
