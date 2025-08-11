@@ -7,6 +7,8 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [clubMap, setClubMap] = useState({});
+  const [playerMap, setPlayerMap] = useState({});
+  const [expanded, setExpanded] = useState({});
 
   const TEXTS = {
     fr: {
@@ -23,6 +25,9 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       style: "Style",
       avgTempo: "Tempo moyen",
       avgTackles: "Tacles moyens",
+      player: "Joueur",
+      tempo: "Tempo",
+      tackles: "Tacles",
       noData: "Aucune donnée disponible",
     },
     en: {
@@ -39,6 +44,9 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       style: "Style",
       avgTempo: "Avg tempo",
       avgTackles: "Avg tackles",
+      player: "Player",
+      tempo: "Tempo",
+      tackles: "Tackles",
       noData: "No data available",
     },
     it: {
@@ -55,6 +63,9 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       style: "Stile",
       avgTempo: "Tempo medio",
       avgTackles: "Contrasti medi",
+      player: "Giocatore",
+      tempo: "Tempo",
+      tackles: "Contrasti",
       noData: "Nessun dato disponibile",
     },
   };
@@ -170,10 +181,19 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       .then(res => res.json())
       .then(data => setClubMap(data))
       .catch(() => {});
+    fetch("/player_mapping.json")
+      .then(res => res.json())
+      .then(data => setPlayerMap(data))
+      .catch(() => {});
   }, []);
 
   const getClubName = id => clubMap[id]?.name || clubMap[id]?.n || String(id);
-  const getClubLogo = id => clubMap[id]?.logo || null;
+  const getClubLogo = id =>
+    clubMap[id]?.logo || `https://elrincondeldt.com/sv/photos/teams/${id}.png`;
+  const getPlayerName = id => playerMap[id]?.name || String(id);
+
+  const toggleExpand = id =>
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
   const RPC_URL = "https://gsppub.soccerverse.io/";
 
@@ -200,6 +220,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   const fetchSchedule = async () => {
     setError("");
     setMatches([]);
+    setExpanded({});
     setLoading(true);
     try {
       const scheduleRes = await fetch(RPC_URL, {
@@ -295,6 +316,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                     play_style: action.play_style,
                     avg_tempo: avgTempo,
                     avg_tackling: avgTackle,
+                    lineup,
                   };
                 } catch {
                   return null;
@@ -358,13 +380,19 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               className="rounded-xl bg-gray-900 p-6 border border-gray-700 text-gray-100 shadow-lg hover:border-indigo-500 transition-colors"
             >
               <div className="flex items-center gap-3 mb-4">
-                {getClubLogo(m.opponentId) && (
+                {clubId && (
                   <img
-                    src={getClubLogo(m.opponentId)}
-                    alt={getClubName(m.opponentId)}
+                    src={getClubLogo(Number(clubId))}
+                    alt={getClubName(Number(clubId))}
                     className="w-10 h-10 rounded-md"
                   />
                 )}
+                <span className="text-gray-400">vs</span>
+                <img
+                  src={getClubLogo(m.opponentId)}
+                  alt={getClubName(m.opponentId)}
+                  className="w-10 h-10 rounded-md"
+                />
                 <h3 className="text-xl font-semibold">
                   {t.nextMatchAgainst}{" "}
                   <a
@@ -397,45 +425,92 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {m.lastFive.map(l => (
-                        <tr key={l.fixture_id} className="hover:bg-white/5">
-                          <td className="py-2 pr-4">
-                            <a
-                              href={`https://play.soccerverse.com/club/${l.home_club}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-400 hover:underline"
-                            >
-                              {getClubName(l.home_club)}
-                            </a>
-                            <span className="text-gray-400"> vs </span>
-                            <a
-                              href={`https://play.soccerverse.com/club/${l.away_club}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-400 hover:underline"
-                            >
-                              {getClubName(l.away_club)}
-                            </a>
-                          </td>
-                          <td className="py-2 pr-4">
-                            <a
-                              href={`https://play.soccerverse.com/match/${l.fixture_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-400 hover:underline"
-                            >
-                              {l.home_goals}-{l.away_goals}
-                            </a>
-                          </td>
-                          <td className="py-2 pr-4">
-                            {FORMATION_MAP[lang]?.[l.formation_id] ?? l.formation_id}
-                          </td>
-                          <td className="py-2 pr-4">
-                            {STYLE_MAP[lang]?.[l.play_style] ?? l.play_style}
-                          </td>
-                          <td className="py-2 pr-4">{l.avg_tempo.toFixed(2)}</td>
-                          <td className="py-2 pr-4">{l.avg_tackling.toFixed(2)}</td>
-                        </tr>
+                        <React.Fragment key={l.fixture_id}>
+                          <tr
+                            className="hover:bg-white/5 cursor-pointer"
+                            onClick={() => toggleExpand(l.fixture_id)}
+                          >
+                            <td className="py-2 pr-4">
+                              <span className="inline-flex items-center gap-1">
+                                <img
+                                  src={getClubLogo(l.home_club)}
+                                  alt={getClubName(l.home_club)}
+                                  className="w-5 h-5 rounded-sm"
+                                />
+                                <a
+                                  href={`https://play.soccerverse.com/club/${l.home_club}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-400 hover:underline"
+                                >
+                                  {getClubName(l.home_club)}
+                                </a>
+                              </span>
+                              <span className="text-gray-400 mx-1">vs</span>
+                              <span className="inline-flex items-center gap-1">
+                                <img
+                                  src={getClubLogo(l.away_club)}
+                                  alt={getClubName(l.away_club)}
+                                  className="w-5 h-5 rounded-sm"
+                                />
+                                <a
+                                  href={`https://play.soccerverse.com/club/${l.away_club}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-400 hover:underline"
+                                >
+                                  {getClubName(l.away_club)}
+                                </a>
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <a
+                                href={`https://play.soccerverse.com/match/${l.fixture_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-400 hover:underline"
+                              >
+                                {l.home_goals}-{l.away_goals}
+                              </a>
+                            </td>
+                            <td className="py-2 pr-4">
+                              {FORMATION_MAP[lang]?.[l.formation_id] ?? l.formation_id}
+                            </td>
+                            <td className="py-2 pr-4">
+                              {STYLE_MAP[lang]?.[l.play_style] ?? l.play_style}
+                            </td>
+                            <td className="py-2 pr-4">{l.avg_tempo.toFixed(2)}</td>
+                            <td className="py-2 pr-4">{l.avg_tackling.toFixed(2)}</td>
+                          </tr>
+                          {expanded[l.fixture_id] && l.lineup && l.lineup.length > 0 && (
+                            <tr>
+                              <td colSpan={6} className="py-2">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs text-left">
+                                    <thead className="text-gray-400">
+                                      <tr>
+                                        <th className="py-1 pr-4 font-medium">{t.player}</th>
+                                        <th className="py-1 pr-4 font-medium">{t.tempo}</th>
+                                        <th className="py-1 pr-4 font-medium">{t.tackles}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                      {l.lineup.map(p => (
+                                        <tr key={p.player_id}>
+                                          <td className="py-1 pr-4">
+                                            {getPlayerName(p.player_id)}
+                                          </td>
+                                          <td className="py-1 pr-4">{p.tempo}</td>
+                                          <td className="py-1 pr-4">{p.tackling_style}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
