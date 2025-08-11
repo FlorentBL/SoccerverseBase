@@ -16,6 +16,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   const fetchSchedule = async () => {
     setError("");
     setDebugData([]);
+    setMatches([]);
     setLoading(true);
     try {
       const scheduleRes = await fetch(RPC_URL, {
@@ -34,34 +35,36 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       const upcoming = (scheduleJson.result?.data || [])
         .filter(m => m.played === 0)
         .sort((a, b) => a.date - b.date)
-        .slice(0, 3);
+        .slice(0, 3)
+        .map(match => ({
+          ...match,
+          opponentId:
+            match.home_club === Number(clubId) ? match.away_club : match.home_club,
+          lastFive: [],
+        }));
 
-      const enriched = await Promise.all(
-        upcoming.map(async match => {
-          const opponentId =
-            match.home_club === Number(clubId)
-              ? match.away_club
-              : match.home_club;
+      setMatches(upcoming);
 
-          // Opponent last 5 played matches
+      await Promise.all(
+        upcoming.map(async (match, idx) => {
           try {
             const oppScheduleRes = await fetch(RPC_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              jsonrpc: "2.0",
-              method: "get_club_schedule",
-              params: { club_id: opponentId, season_id: 1 },
-              id: 1,
-            }),
-          });
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                jsonrpc: "2.0",
+                method: "get_club_schedule",
+                params: { club_id: match.opponentId, season_id: 1 },
+                id: 1,
+              }),
+            });
             if (!oppScheduleRes.ok) throw new Error("opp_schedule_failed");
             const oppScheduleJson = await oppScheduleRes.json();
-            addDebug(`oppSchedule ${opponentId}`, oppScheduleJson);
+            addDebug(`oppSchedule ${match.opponentId}`, oppScheduleJson);
             const lastFive = (oppScheduleJson.result?.data || [])
-            .filter(m => m.played === 1)
-            .sort((a, b) => b.date - a.date)
-            .slice(0, 5);
+              .filter(m => m.played === 1)
+              .sort((a, b) => b.date - a.date)
+              .slice(0, 5);
             const details = await Promise.all(
               lastFive.map(async gm => {
                 try {
@@ -86,8 +89,11 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   if (!tacticRes.ok) throw new Error("tactic_failed");
                   const tacticJson = await tacticRes.json();
                   addDebug(`tactic ${gm.fixture_id}`, tacticJson);
-                  const clubTactic = tacticJson.find(t => t.club_id === opponentId);
-                  if (!clubTactic || !clubTactic.tactic_actions?.length) return null;
+                  const clubTactic = tacticJson.find(
+                    t => t.club_id === match.opponentId
+                  );
+                  if (!clubTactic || !clubTactic.tactic_actions?.length)
+                    return null;
                   const action = clubTactic.tactic_actions[0];
                   const lineup = action.lineup || [];
                   const avgTempo =
@@ -114,14 +120,19 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               })
             );
 
-            return { ...match, opponentId, lastFive: details.filter(Boolean) };
+            setMatches(prev => {
+              const updated = [...prev];
+              updated[idx] = {
+                ...prev[idx],
+                lastFive: details.filter(Boolean),
+              };
+              return updated;
+            });
           } catch {
-            return { ...match, opponentId, lastFive: [] };
+            // ignore opponent errors
           }
         })
       );
-
-      setMatches(enriched);
     } catch (err) {
       console.error(err);
       addDebug("error", String(err));
