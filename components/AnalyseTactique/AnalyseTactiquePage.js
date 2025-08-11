@@ -60,6 +60,111 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   };
   const t = TEXTS[lang] || TEXTS.fr;
 
+  const FORMATION_MAP = {
+    fr: {
+      0: "4-4-2",
+      1: "4-3-3",
+      2: "4-5-1",
+      3: "3-4-3",
+      4: "3-5-2",
+      5: "3-3-4",
+      6: "5-4-1",
+      7: "5-3-2",
+      8: "5-2-3",
+      9: "4-4-2 (Losange)",
+      10: "4-3-3 Ailiers",
+      11: "4-5-1 Défensif",
+      12: "4-2-3-1",
+      13: "4-4-1-1",
+      14: "4-3-1-2",
+      15: "3-4-1-2",
+      16: "5-3-2 Libéro",
+      17: "5-3-2 Défensif",
+      18: "4-2-4",
+      19: "4-2-2-2",
+      20: "3-4-2-1",
+      21: "4-1-3-2",
+      22: "3-2-2-2-1",
+    },
+    en: {
+      0: "4-4-2",
+      1: "4-3-3",
+      2: "4-5-1",
+      3: "3-4-3",
+      4: "3-5-2",
+      5: "3-3-4",
+      6: "5-4-1",
+      7: "5-3-2",
+      8: "5-2-3",
+      9: "4-4-2 (Diamond)",
+      10: "4-3-3 Wingers",
+      11: "4-5-1 Defensive",
+      12: "4-2-3-1",
+      13: "4-4-1-1",
+      14: "4-3-1-2",
+      15: "3-4-1-2",
+      16: "5-3-2 Libero",
+      17: "5-3-2 Defensive",
+      18: "4-2-4",
+      19: "4-2-2-2",
+      20: "3-4-2-1",
+      21: "4-1-3-2",
+      22: "3-2-2-2-1",
+    },
+    it: {
+      0: "4-4-2",
+      1: "4-3-3",
+      2: "4-5-1",
+      3: "3-4-3",
+      4: "3-5-2",
+      5: "3-3-4",
+      6: "5-4-1",
+      7: "5-3-2",
+      8: "5-2-3",
+      9: "4-4-2 (a rombo)",
+      10: "4-3-3 Ali",
+      11: "4-5-1 Difensivo",
+      12: "4-2-3-1",
+      13: "4-4-1-1",
+      14: "4-3-1-2",
+      15: "3-4-1-2",
+      16: "5-3-2 Libero",
+      17: "5-3-2 Difensivo",
+      18: "4-2-4",
+      19: "4-2-2-2",
+      20: "3-4-2-1",
+      21: "4-1-3-2",
+      22: "3-2-2-2-1",
+    },
+  };
+
+  const STYLE_MAP = {
+    fr: {
+      0: "Normale (N)",
+      1: "Défensive (D)",
+      2: "Offensive (O)",
+      3: "Passes (P)",
+      4: "Contre-attaque (C)",
+      5: "Ballons longs (L)",
+    },
+    en: {
+      0: "Normal (N)",
+      1: "Defensive (D)",
+      2: "Offensive (O)",
+      3: "Passing (P)",
+      4: "Counter-attack (C)",
+      5: "Long balls (L)",
+    },
+    it: {
+      0: "Normale (N)",
+      1: "Difensiva (D)",
+      2: "Offensiva (O)",
+      3: "Passaggi (P)",
+      4: "Contropiede (C)",
+      5: "Palle lunghe (L)",
+    },
+  };
+
   useEffect(() => {
     fetch("/club_mapping.json")
       .then(res => res.json())
@@ -313,10 +418,21 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                             </a>
                           </td>
                           <td className="py-2 pr-4">
-                            {l.home_goals}-{l.away_goals}
+                            <a
+                              href={`https://play.soccerverse.com/match/${l.fixture_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-indigo-400 hover:underline"
+                            >
+                              {l.home_goals}-{l.away_goals}
+                            </a>
                           </td>
-                          <td className="py-2 pr-4">{l.formation_id}</td>
-                          <td className="py-2 pr-4">{l.play_style}</td>
+                          <td className="py-2 pr-4">
+                            {FORMATION_MAP[lang]?.[l.formation_id] ?? l.formation_id}
+                          </td>
+                          <td className="py-2 pr-4">
+                            {STYLE_MAP[lang]?.[l.play_style] ?? l.play_style}
+                          </td>
                           <td className="py-2 pr-4">{l.avg_tempo.toFixed(2)}</td>
                           <td className="py-2 pr-4">{l.avg_tackling.toFixed(2)}</td>
                         </tr>
