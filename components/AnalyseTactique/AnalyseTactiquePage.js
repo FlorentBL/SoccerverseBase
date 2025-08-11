@@ -130,10 +130,10 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
 
                   return {
                     fixture_id: gm.fixture_id,
-                    home_club: fixture.home_club,
-                    away_club: fixture.away_club,
-                    home_goals: fixture.home_goals,
-                    away_goals: fixture.away_goals,
+                    home_club: fixture.home_club ?? gm.home_club,
+                    away_club: fixture.away_club ?? gm.away_club,
+                    home_goals: fixture.home_goals ?? gm.home_goals,
+                    away_goals: fixture.away_goals ?? gm.away_goals,
                     formation_id: action.formation_id,
                     play_style: action.play_style,
                     avg_tempo: avgTempo,
