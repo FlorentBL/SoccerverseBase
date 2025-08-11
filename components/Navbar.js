@@ -104,7 +104,7 @@ export default function Navbar() {
                     <span className="px-2 py-1 cursor-pointer transition-colors group-hover:text-indigo-400">
                       {item.label}
                     </span>
-                    <ul className="absolute left-0 mt-2 hidden group-hover:block bg-black/80 backdrop-blur-md rounded-md shadow-lg py-2">
+                    <ul className="absolute left-0 top-full hidden group-hover:block bg-black/80 backdrop-blur-md rounded-md shadow-lg py-2">
                       {item.children.map((child) => (
                         <li key={child.href}>
                           <Link
