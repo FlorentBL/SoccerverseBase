@@ -60,7 +60,7 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 w-full z-50">
       <div className="max-w-7xl mx-auto px-6 mt-4">
-        <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/40 backdrop-blur-md px-5 py-3">
+        <div className="flex items-center justify-between rounded-full border border-white/10 bg-black/40 backdrop-blur-md px-5 py-3 text-gray-100">
           <div className="flex items-center gap-3">
             <Link
               href={`/${currentLang}`}
@@ -132,7 +132,7 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="md:hidden fixed inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-6 text-2xl">
+        <div className="md:hidden fixed inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-6 text-2xl text-gray-100">
           {menuItems.map(({ href, label }) => (
             <Link
               key={href}

@@ -224,7 +224,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   };
 
   return (
-    <div className="min-h-screen bg-black text-gray-100 pt-24 px-4">
+    <div className="min-h-screen pt-24 px-4">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold text-center mb-8">{t.title}</h1>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
@@ -250,7 +250,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
           {matches.map(m => (
             <div
               key={m.fixture_id}
-              className="rounded-xl bg-gray-900/80 p-6 border border-gray-700 shadow-lg hover:border-indigo-500 transition-colors"
+              className="rounded-xl bg-gray-900 p-6 border border-gray-700 text-gray-100 shadow-lg hover:border-indigo-500 transition-colors"
             >
               <div className="flex items-center gap-3 mb-4">
                 {getClubLogo(m.opponentId) && (
