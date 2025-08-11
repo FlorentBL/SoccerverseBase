@@ -226,15 +226,12 @@ export default function DashboardPage({ lang = "fr" }) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border border-gray-600 rounded p-2 w-40 bg-[#202330] text-white"
+              className="input-field w-40"
               placeholder={t.placeholder}
               required
             />
           </div>
-          <button
-            type="submit"
-            className="bg-indigo-500 text-gray-900 font-medium rounded px-3 py-2 text-sm shadow hover:bg-indigo-400 transition"
-          >
+          <button type="submit" className="btn-primary">
             {t.submit}
           </button>
         </form>

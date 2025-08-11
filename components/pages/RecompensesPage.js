@@ -220,7 +220,7 @@ export default function RecompensesPage({ lang = "fr" }) {
         <select
           value={season}
           onChange={e => setSeason(e.target.value)}
-          className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+          className="input-field w-full mb-4"
         >
           <option value="">{t.seasonPlaceholder}</option>
           {Object.keys(countryMap).map(s => (
@@ -236,7 +236,7 @@ export default function RecompensesPage({ lang = "fr" }) {
           value={countryInput}
           onChange={handleCountryChange}
           placeholder={t.countryPlaceholder}
-          className="w-full mb-4 p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+          className="input-field w-full mb-4"
           disabled={!season}
         />
         <datalist id="countries">
@@ -253,7 +253,7 @@ export default function RecompensesPage({ lang = "fr" }) {
         <select
           value={division}
           onChange={e => setDivision(e.target.value)}
-          className="w-full p-3 rounded-md bg-gray-900 border border-gray-700 focus:outline-none"
+          className="input-field w-full"
           disabled={!selectedCountry}
         >
           <option value="">{t.divisionPlaceholder}</option>

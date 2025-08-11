@@ -62,7 +62,7 @@ export default function SvcConverterPage() {
         Coût total d'influence (ex. pour 10 parts) en USDC :
         <input
           type="number"
-          className="w-full p-2 border mt-1 text-black"
+          className="input-field w-full mt-1"
           value={influenceCost}
           step="0.0001"
           onChange={(e) => setInfluenceCost(parseFloat(e.target.value))}
@@ -72,16 +72,13 @@ export default function SvcConverterPage() {
         Marge bénéficiaire (%) :
         <input
           type="number"
-          className="w-full p-2 border mt-1 text-black"
+          className="input-field w-full mt-1"
           value={margin}
           step="0.1"
           onChange={(e) => setMargin(parseFloat(e.target.value))}
         />
       </label>
-      <button
-        onClick={calculateSellPrice}
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
-      >
+      <button onClick={calculateSellPrice} className="btn-primary mt-4">
         Calculer le prix de revente
       </button>
       {sellResult && (
@@ -95,7 +92,7 @@ export default function SvcConverterPage() {
         Prix du pack (en USDC) :
         <input
           type="number"
-          className="w-full p-2 border mt-1 text-black"
+          className="input-field w-full mt-1"
           value={packPrice}
           step="0.00001"
           onChange={(e) => setPackPrice(parseFloat(e.target.value))}
@@ -105,16 +102,13 @@ export default function SvcConverterPage() {
         Nombre de parts dans le pack :
         <input
           type="number"
-          className="w-full p-2 border mt-1 text-black"
+          className="input-field w-full mt-1"
           value={packParts}
           step="1"
           onChange={(e) => setPackParts(parseFloat(e.target.value))}
         />
       </label>
-      <button
-        onClick={comparePack}
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
-      >
+      <button onClick={comparePack} className="btn-primary mt-4">
         Calculer le prix max par part
       </button>
       {packResult && (

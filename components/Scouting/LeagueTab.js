@@ -356,10 +356,7 @@ export default function LeagueTab({ lang = "fr" }) {
         <select
           value={season}
           onChange={e => setSeason(e.target.value)}
-          style={{
-            width: "100%", marginBottom: 18, padding: "12px 16px", borderRadius: 6,
-            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-          }}
+          className="input-field w-full mb-4"
         >
           <option value="">{t.seasonPlaceholder}</option>
           {Object.keys(countryMap).map(s => (
@@ -373,10 +370,7 @@ export default function LeagueTab({ lang = "fr" }) {
           value={countryInput}
           onChange={handleCountryChange}
           placeholder={t.countryPlaceholder}
-          style={{
-            width: "100%", marginBottom: 14, padding: "12px 16px", borderRadius: 6,
-            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-          }}
+          className="input-field w-full mb-4"
           disabled={!season}
         />
         <datalist id="countries">
@@ -391,10 +385,7 @@ export default function LeagueTab({ lang = "fr" }) {
         <select
           value={division}
           onChange={e => setDivision(e.target.value)}
-          style={{
-            width: "100%", marginBottom: 18, padding: "12px 16px", borderRadius: 6,
-            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-          }}
+          className="input-field w-full mb-4"
           disabled={!selectedCountry}
         >
           <option value="">{t.divisionPlaceholder}</option>
@@ -403,13 +394,13 @@ export default function LeagueTab({ lang = "fr" }) {
           ))}
         </select>
 
-        <button onClick={fetchTable} disabled={loading || !season || !country || !division}
-          style={{
-            background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
-            border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
-            cursor: loading || !season || !country || !division ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
-          }}
-        >{loading ? t.searching : detailsLoading ? t.loadingDetails : t.showTable}</button>
+        <button
+          onClick={fetchTable}
+          disabled={loading || !season || !country || !division}
+          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? t.searching : detailsLoading ? t.loadingDetails : t.showTable}
+        </button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
 

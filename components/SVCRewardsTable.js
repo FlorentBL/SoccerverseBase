@@ -106,7 +106,7 @@ export default function SVCRewardsTable({ data, lang = "fr" }) {
             max={99}
             value={minRating}
             onChange={e => setMinRating(Math.min(99, Math.max(50, +e.target.value)))}
-            className="bg-[#101217] text-white rounded-md px-3 py-2 w-20 mt-1 text-center border border-gray-700 font-bold focus:ring-2 focus:ring-indigo-400 outline-none transition"
+            className="input-field w-20 mt-1 text-center font-bold"
           />
         </label>
         <label className="flex flex-col items-center text-base text-gray-200 font-semibold">
@@ -117,7 +117,7 @@ export default function SVCRewardsTable({ data, lang = "fr" }) {
             max={99}
             value={maxRating}
             onChange={e => setMaxRating(Math.max(50, Math.min(99, +e.target.value)))}
-            className="bg-[#101217] text-white rounded-md px-3 py-2 w-20 mt-1 text-center border border-gray-700 font-bold focus:ring-2 focus:ring-indigo-400 outline-none transition"
+            className="input-field w-20 mt-1 text-center font-bold"
           />
         </label>
       </div>

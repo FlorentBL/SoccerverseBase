@@ -58,7 +58,7 @@ export default function SimulationFinS2({
             type="number"
             value={transfertSim}
             onChange={e => setTransfertSim(e.target.value)}
-            className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+            className="input-field w-32"
             placeholder={t.placeholderTransfert}
             min="0"
           />
@@ -69,7 +69,7 @@ export default function SimulationFinS2({
             type="number"
             value={salaireSim}
             onChange={e => setSalaireSim(e.target.value)}
-            className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+            className="input-field w-32"
             placeholder={t.placeholderSalaire}
             min="0"
           />

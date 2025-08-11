@@ -680,20 +680,21 @@ export default function ClubTab({ lang = "fr" }) {
         marginBottom: 32
       }}>
         <label style={{ fontWeight: 600, fontSize: 17 }}>{t.idLabel}</label>
-        <input type="number" value={clubId} onChange={e => setClubId(e.target.value)}
-          style={{
-            width: "100%", margin: "12px 0 14px 0", padding: "11px 16px", borderRadius: 6,
-            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-          }}
-          placeholder={t.idPlaceholder} min={1}
+        <input
+          type="number"
+          value={clubId}
+          onChange={e => setClubId(e.target.value)}
+          className="input-field w-full my-3"
+          placeholder={t.idPlaceholder}
+          min={1}
         />
-        <button onClick={fetchClub} disabled={loading || !clubId}
-          style={{
-            background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
-            border: "none", borderRadius: 6, padding: "10px 26px", fontWeight: 700, fontSize: 16,
-            cursor: loading || !clubId ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
-          }}
-        >{loading ? t.searching : t.showInfo}</button>
+        <button
+          onClick={fetchClub}
+          disabled={loading || !clubId}
+          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? t.searching : t.showInfo}
+        </button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 13, fontWeight: 600 }}>{err}</div>}
       </div>
       {clubInfo && renderClubCard()}

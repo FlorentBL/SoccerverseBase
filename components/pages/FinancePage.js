@@ -201,15 +201,12 @@ export default function FinancePage({ lang = "fr" }) {
               type="number"
               value={clubId}
               onChange={e => setClubId(e.target.value)}
-              className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+              className="input-field w-32"
               placeholder={t.placeholder}
               required
             />
           </div>
-          <button
-            type="submit"
-            className="bg-indigo-500 text-gray-900 font-medium rounded px-3 py-2 text-sm shadow hover:bg-indigo-400 transition"
-          >
+          <button type="submit" className="btn-primary">
             {t.launch}
           </button>
         </form>

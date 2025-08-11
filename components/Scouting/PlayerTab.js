@@ -271,20 +271,21 @@ export default function PlayerTab({ lang = "fr" }) {
       {/* Saisie ID joueur */}
       <div style={{ background: "#23272e", padding: 24, borderRadius: 14, boxShadow: "0 2px 12px #0008", width: "100%", maxWidth: 520, marginBottom: 34 }}>
         <label style={{ fontWeight: 600, fontSize: 17 }}>{t.idLabel}</label>
-        <input type="number" value={playerId} onChange={e => setPlayerId(e.target.value)}
-          style={{
-            width: "100%", margin: "12px 0 16px 0", padding: "12px 16px", borderRadius: 6,
-            border: "1px solid #363a42", background: "#191d22", color: "#f8f8f8", fontSize: 17, outline: "none"
-          }}
-          placeholder={t.idPlaceholder} min={1}
+        <input
+          type="number"
+          value={playerId}
+          onChange={e => setPlayerId(e.target.value)}
+          className="input-field w-full my-3"
+          placeholder={t.idPlaceholder}
+          min={1}
         />
-        <button onClick={fetchPlayer} disabled={loading || !playerId}
-          style={{
-            background: "linear-gradient(90deg, #4f47ff, #0d8bff)", color: "#fff",
-            border: "none", borderRadius: 6, padding: "11px 28px", fontWeight: 700, fontSize: 17,
-            cursor: loading || !playerId ? "not-allowed" : "pointer", boxShadow: "0 1px 5px #0004"
-          }}
-        >{loading ? t.searching : t.showInfo}</button>
+        <button
+          onClick={fetchPlayer}
+          disabled={loading || !playerId}
+          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? t.searching : t.showInfo}
+        </button>
         {err && <div style={{ color: "#ff4e5e", marginTop: 15, fontWeight: 600 }}>{err}</div>}
       </div>
       {/* Carte détaillée + iframe/bouton */}
