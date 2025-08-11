@@ -6,16 +6,29 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [debugData, setDebugData] = useState([]);
+  const [clubNames, setClubNames] = useState({});
 
-  const addDebug = (label, data) =>
-    setDebugData(prev => [...prev, { label, data }]);
+  const getClubName = async id => {
+    if (clubNames[id]) return clubNames[id];
+    try {
+      const res = await fetch(
+        `https://services.soccerverse.com/api/clubs/detailed?club_id=${id}`
+      );
+      if (!res.ok) throw new Error("club_failed");
+      const json = await res.json();
+      const name = json.items?.[0]?.name || String(id);
+      setClubNames(prev => ({ ...prev, [id]: name }));
+      return name;
+    } catch {
+      setClubNames(prev => ({ ...prev, [id]: String(id) }));
+      return String(id);
+    }
+  };
 
   const RPC_URL = "https://gsppub.soccerverse.io/";
 
   const fetchSchedule = async () => {
     setError("");
-    setDebugData([]);
     setMatches([]);
     setLoading(true);
     try {
@@ -31,7 +44,6 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       });
       if (!scheduleRes.ok) throw new Error("schedule_failed");
       const scheduleJson = await scheduleRes.json();
-      addDebug("schedule", scheduleJson);
       const upcoming = (scheduleJson.result?.data || [])
         .filter(m => m.played === 0)
         .sort((a, b) => a.date - b.date)
@@ -42,6 +54,8 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
             match.home_club === Number(clubId) ? match.away_club : match.home_club,
           lastFive: [],
         }));
+
+      await Promise.all(upcoming.map(m => getClubName(m.opponentId)));
 
       setMatches(upcoming);
 
@@ -60,7 +74,6 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
             });
             if (!oppScheduleRes.ok) throw new Error("opp_schedule_failed");
             const oppScheduleJson = await oppScheduleRes.json();
-            addDebug(`oppSchedule ${match.opponentId}`, oppScheduleJson);
             const lastFive = (oppScheduleJson.result?.data || [])
               .filter(m => m.played === 1)
               .sort((a, b) => b.date - a.date)
@@ -80,7 +93,6 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   });
                   if (!fixtureRes.ok) throw new Error("fixture_failed");
                   const fixtureJson = await fixtureRes.json();
-                  addDebug(`fixture ${gm.fixture_id}`, fixtureJson);
                   const fixture = fixtureJson.result || {};
 
                   const tacticRes = await fetch(
@@ -88,7 +100,6 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   );
                   if (!tacticRes.ok) throw new Error("tactic_failed");
                   const tacticJson = await tacticRes.json();
-                  addDebug(`tactic ${gm.fixture_id}`, tacticJson);
                   const clubTactic = tacticJson.find(
                     t => t.club_id === match.opponentId
                   );
@@ -102,6 +113,11 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   const avgTackle =
                     lineup.reduce((sum, p) => sum + (p.tackling_style || 0), 0) /
                     (lineup.length || 1);
+
+                  await Promise.all([
+                    getClubName(fixture.home_club),
+                    getClubName(fixture.away_club),
+                  ]);
 
                   return {
                     fixture_id: gm.fixture_id,
@@ -135,7 +151,6 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       );
     } catch (err) {
       console.error(err);
-      addDebug("error", String(err));
       setError("Erreur lors des appels API");
     } finally {
       setLoading(false);
@@ -171,45 +186,78 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       {matches.map(m => (
         <div key={m.fixture_id} style={{ marginBottom: 32 }}>
           <h3 style={{ fontWeight: 700, marginBottom: 8 }}>
-            Prochain match contre club {m.opponentId}
+            Prochain match contre{" "}
+            <a
+              href={`https://play.soccerverse.com/club/${m.opponentId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#4f47ff", textDecoration: "underline" }}
+            >
+              {clubNames[m.opponentId] || m.opponentId}
+            </a>
           </h3>
-          <ul style={{ paddingLeft: 20 }}>
-            {m.lastFive.map(l => (
-              <li key={l.fixture_id} style={{ marginBottom: 4 }}>
-                {l.home_club} {l.home_goals}-{l.away_goals} {l.away_club} |
-                formation {l.formation_id}, style {l.play_style}, tempo moyen
-                {" "}
-                {l.avg_tempo.toFixed(2)}, tacles moyens {" "}
-                {l.avg_tackling.toFixed(2)}
-              </li>
-            ))}
-          </ul>
+          {m.lastFive.length > 0 ? (
+            <table
+              style={{
+                width: "100%",
+                fontSize: "0.9rem",
+                borderCollapse: "collapse",
+              }}
+            >
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: 4 }}>Match</th>
+                  <th style={{ textAlign: "left", padding: 4 }}>Score</th>
+                  <th style={{ textAlign: "left", padding: 4 }}>Formation</th>
+                  <th style={{ textAlign: "left", padding: 4 }}>Style</th>
+                  <th style={{ textAlign: "left", padding: 4 }}>Tempo moyen</th>
+                  <th style={{ textAlign: "left", padding: 4 }}>Tacles moyens</th>
+                </tr>
+              </thead>
+              <tbody>
+                {m.lastFive.map(l => (
+                  <tr key={l.fixture_id} style={{ borderTop: "1px solid #555" }}>
+                    <td style={{ padding: 4 }}>
+                      <a
+                        href={`https://play.soccerverse.com/club/${l.home_club}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: "#4f47ff",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        {clubNames[l.home_club] || l.home_club}
+                      </a>{" "}
+                      vs{" "}
+                      <a
+                        href={`https://play.soccerverse.com/club/${l.away_club}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: "#4f47ff",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        {clubNames[l.away_club] || l.away_club}
+                      </a>
+                    </td>
+                    <td style={{ padding: 4 }}>
+                      {l.home_goals}-{l.away_goals}
+                    </td>
+                    <td style={{ padding: 4 }}>{l.formation_id}</td>
+                    <td style={{ padding: 4 }}>{l.play_style}</td>
+                    <td style={{ padding: 4 }}>{l.avg_tempo.toFixed(2)}</td>
+                    <td style={{ padding: 4 }}>{l.avg_tackling.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p>Aucune donnée disponible</p>
+          )}
         </div>
       ))}
-      {debugData.length > 0 && (
-        <div style={{ marginTop: 40 }}>
-          <h4 style={{ fontWeight: 700, marginBottom: 8 }}>
-            Debug API Responses
-          </h4>
-          {debugData.map((d, i) => (
-            <details key={i} style={{ marginBottom: 8 }}>
-              <summary>{d.label}</summary>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  fontSize: "0.75rem",
-                  background: "#1e1e1e",
-                  padding: 8,
-                  borderRadius: 4,
-                }}
-              >
-                {JSON.stringify(d.data, null, 2)}
-              </pre>
-            </details>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
