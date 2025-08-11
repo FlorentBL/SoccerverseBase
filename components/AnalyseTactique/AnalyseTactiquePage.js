@@ -1,31 +1,44 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function AnalyseTactiquePage({ lang = "fr" }) {
   const [clubId, setClubId] = useState("");
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [clubNames, setClubNames] = useState({});
+  const [clubMap, setClubMap] = useState({});
 
-  const getClubName = async id => {
-    if (clubNames[id]) return clubNames[id];
-    try {
-      const res = await fetch(
-        `https://services.soccerverse.com/api/clubs/detailed?club_id=${id}`
-      );
-      if (!res.ok) throw new Error("club_failed");
-      const json = await res.json();
-      const name = json.items?.[0]?.name || String(id);
-      setClubNames(prev => ({ ...prev, [id]: name }));
-      return name;
-    } catch {
-      setClubNames(prev => ({ ...prev, [id]: String(id) }));
-      return String(id);
-    }
-  };
+  useEffect(() => {
+    fetch("/club_mapping.json")
+      .then(res => res.json())
+      .then(data => setClubMap(data))
+      .catch(() => {});
+  }, []);
+
+  const getClubName = id => clubMap[id]?.name || clubMap[id]?.n || String(id);
+  const getClubLogo = id => clubMap[id]?.logo || null;
 
   const RPC_URL = "https://gsppub.soccerverse.io/";
+
+  const getClubForm = async id => {
+    try {
+      const res = await fetch(RPC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "get_club",
+          params: { club_id: id },
+          id: 1,
+        }),
+      });
+      if (!res.ok) throw new Error("club_form_failed");
+      const json = await res.json();
+      return json.result?.form || null;
+    } catch {
+      return null;
+    }
+  };
 
   const fetchSchedule = async () => {
     setError("");
@@ -53,15 +66,16 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
           opponentId:
             match.home_club === Number(clubId) ? match.away_club : match.home_club,
           lastFive: [],
+          form: null,
         }));
-
-      await Promise.all(upcoming.map(m => getClubName(m.opponentId)));
 
       setMatches(upcoming);
 
       await Promise.all(
         upcoming.map(async (match, idx) => {
+          let form = null;
           try {
+            form = await getClubForm(match.opponentId);
             const oppScheduleRes = await fetch(RPC_URL, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -114,11 +128,6 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                     lineup.reduce((sum, p) => sum + (p.tackling_style || 0), 0) /
                     (lineup.length || 1);
 
-                  await Promise.all([
-                    getClubName(fixture.home_club),
-                    getClubName(fixture.away_club),
-                  ]);
-
                   return {
                     fixture_id: gm.fixture_id,
                     home_club: fixture.home_club,
@@ -140,12 +149,17 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               const updated = [...prev];
               updated[idx] = {
                 ...prev[idx],
+                form,
                 lastFive: details.filter(Boolean),
               };
               return updated;
             });
           } catch {
-            // ignore opponent errors
+            setMatches(prev => {
+              const updated = [...prev];
+              updated[idx] = { ...prev[idx], form };
+              return updated;
+            });
           }
         })
       );
@@ -185,7 +199,14 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       {error && <p style={{ color: "red" }}>{error}</p>}
       {matches.map(m => (
         <div key={m.fixture_id} style={{ marginBottom: 32 }}>
-          <h3 style={{ fontWeight: 700, marginBottom: 8 }}>
+          <h3 style={{ fontWeight: 700, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            {getClubLogo(m.opponentId) && (
+              <img
+                src={getClubLogo(m.opponentId)}
+                alt={getClubName(m.opponentId)}
+                style={{ width: 32, height: 32 }}
+              />
+            )}
             Prochain match contre{" "}
             <a
               href={`https://play.soccerverse.com/club/${m.opponentId}`}
@@ -193,9 +214,10 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               rel="noopener noreferrer"
               style={{ color: "#4f47ff", textDecoration: "underline" }}
             >
-              {clubNames[m.opponentId] || m.opponentId}
+              {getClubName(m.opponentId)}
             </a>
           </h3>
+          {m.form && <p style={{ marginBottom: 8 }}>Forme récente : {m.form}</p>}
           {m.lastFive.length > 0 ? (
             <table
               style={{
@@ -227,7 +249,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                           textDecoration: "underline",
                         }}
                       >
-                        {clubNames[l.home_club] || l.home_club}
+                        {getClubName(l.home_club)}
                       </a>{" "}
                       vs{" "}
                       <a
@@ -239,7 +261,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                           textDecoration: "underline",
                         }}
                       >
-                        {clubNames[l.away_club] || l.away_club}
+                        {getClubName(l.away_club)}
                       </a>
                     </td>
                     <td style={{ padding: 4 }}>
