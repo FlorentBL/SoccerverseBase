@@ -1,5 +1,5 @@
 "use client";
-import DebuterPage from "@/components/DebuterPage";
+import HomePage from "@/components/HomePage";
 export default function Page() {
-  return <DebuterPage lang="en" />;
+  return <HomePage lang="en" />;
 }
