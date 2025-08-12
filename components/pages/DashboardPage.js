@@ -164,6 +164,13 @@ export default function DashboardPage({ lang = "fr" }) {
     if (sortField === "shares") {
       return (a.shares - b.shares) * (sortAsc ? 1 : -1);
     }
+    if (sortField === "matchDate") {
+      const tsA = getTimestamp(a.lastFixture);
+      const tsB = getTimestamp(b.lastFixture);
+      if (!tsA) return 1;
+      if (!tsB) return -1;
+      return (tsA - tsB) * (sortAsc ? 1 : -1);
+    }
     if (sortField === "position") {
       const posA = a.position ?? Infinity;
       const posB = b.position ?? Infinity;
@@ -197,15 +204,19 @@ export default function DashboardPage({ lang = "fr" }) {
       </a>
     );
   };
-
-  const renderDate = (f) => {
-    if (!f) return "-";
-    const ts =
+  const getTimestamp = (f) => {
+    if (!f) return null;
+    return (
       f.fixture_timestamp ||
       f.kickoff_timestamp ||
       f.timestamp ||
       f.date ||
-      f.time;
+      f.time || null
+    );
+  };
+
+  const renderDate = (f) => {
+    const ts = getTimestamp(f);
     if (!ts) return "-";
     const d = new Date(Number(ts) * 1000);
     return d.toLocaleDateString(lang);
@@ -260,6 +271,12 @@ export default function DashboardPage({ lang = "fr" }) {
                     </th>
                     <th className="px-4 py-3 tracking-wider select-none">{t.lastMatch}</th>
                     <th
+                      onClick={() => handleSort("matchDate")}
+                      className="px-4 py-3 cursor-pointer tracking-wider select-none"
+                    >
+                      {t.matchDate} {sortField === "matchDate" && (sortAsc ? "↑" : "↓")}
+                    </th>
+                    <th
                       onClick={() => handleSort("position")}
                       className="px-4 py-3 cursor-pointer tracking-wider select-none"
                     >
@@ -287,10 +304,10 @@ export default function DashboardPage({ lang = "fr" }) {
                       <td className="px-4 py-3 whitespace-nowrap">
                         {renderMatch(c.lastFixture, c.clubId)}
                         <div className="text-xs text-gray-400 leading-tight mt-1">
-                          {t.matchDate}: {renderDate(c.lastFixture)}<br />
                           {t.coach}: {c.coach || "-"}
                         </div>
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{renderDate(c.lastFixture)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{c.position ?? "-"}</td>
                     </tr>
                   ))}
