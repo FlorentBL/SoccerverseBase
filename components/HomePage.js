@@ -73,7 +73,7 @@ const LABELS = {
     sectionsTitle: "Site sections",
     sections: [
       {
-        href: "/getting-started",
+        href: "/comment-debuter",
         title: "Getting started",
         desc: "Guide to start well",
         featured: true,
@@ -125,7 +125,7 @@ const LABELS = {
     sectionsTitle: "Sezioni del sito",
     sections: [
       {
-        href: "/come-iniziare",
+        href: "/comment-debuter",
         title: "Come iniziare?",
         desc: "Guida per iniziare bene",
         featured: true,
