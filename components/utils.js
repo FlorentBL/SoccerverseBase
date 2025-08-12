@@ -50,11 +50,29 @@ export const FIELD_LABELS = {
     managers_wage: "Stipendio allenatore",
     ground_maintenance: "Manutenzione stadio",
     transfers_out: "Trasferimenti in uscita",
-    shareholder_payouts: "Dividendi",
-    shareholder_prize_money: "Premi azionisti",
-    other_outgoings: "Altre uscite"
-  }
-};
+      shareholder_payouts: "Dividendi",
+      shareholder_prize_money: "Premi azionisti",
+      other_outgoings: "Altre uscite"
+    },
+    zh: {
+      cash_injection: "资金注入",
+      gate_receipts: "门票收入",
+      tv_revenue: "电视转播收入",
+      sponsor: "赞助",
+      merchandise: "周边商品",
+      prize_money: "奖金",
+      transfers_in: "转会收入",
+      other_income: "其他收入",
+      player_wages: "球员工资",
+      agent_wages: "经纪人工资",
+      managers_wage: "教练工资",
+      ground_maintenance: "球场维护",
+      transfers_out: "转会支出",
+      shareholder_payouts: "股东分红",
+      shareholder_prize_money: "股东奖金",
+      other_outgoings: "其他支出"
+    }
+  };
 
 export const FIELD_ORDER = [
   "cash_injection", "gate_receipts", "tv_revenue", "sponsor", "merchandise",
@@ -76,7 +94,7 @@ export function isMatchWeek(week) {
   return typeof week.player_wages === "number" && Math.abs(week.player_wages) > 0;
 }
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", zh: "zh-CN" };
 
 export function formatSVC(val, field, lang = "fr") {
   if (typeof val !== "number") return "-";

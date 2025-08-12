@@ -32,7 +32,7 @@ const LABELS = {
     position: "Position",
     noClub: "No club found",
   },
-  it: {
+    it: {
     title: "Dashboard utente",
     name: "Nome",
     placeholder: "es: klo",
@@ -45,9 +45,24 @@ const LABELS = {
     matchDate: "Data",
     coach: "Allenatore",
     position: "Posizione",
-    noClub: "Nessun club trovato",
-  },
-};
+      noClub: "Nessun club trovato",
+    },
+    zh: {
+      title: "用户仪表盘",
+      name: "名称",
+      placeholder: "例如: klo",
+      submit: "搜索",
+      loading: "加载中…",
+      error: "加载错误",
+      club: "俱乐部",
+      shares: "股份",
+      lastMatch: "最近比赛",
+      matchDate: "日期",
+      coach: "教练",
+      position: "排名",
+      noClub: "未找到俱乐部",
+    },
+  };
 
 const CLUB_MAPPING_URL = "/club_mapping.json";
 

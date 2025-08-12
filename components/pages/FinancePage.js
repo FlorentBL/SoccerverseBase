@@ -29,16 +29,25 @@ const LABELS = {
     errorClub: "Club balance error",
     errorSeason: s => `Season ${s} balance error`,
   },
-  it: {
-    title: "Proiezione Finanziaria Club Soccerverse",
-    clubId: "ID Club",
-    placeholder: "es: 5902",
-    launch: "Avvia analisi",
-    loading: "Caricamento…",
-    errorClub: "Errore saldo club",
-    errorSeason: s => `Errore bilancio S${s}`,
-  }
-};
+    it: {
+      title: "Proiezione Finanziaria Club Soccerverse",
+      clubId: "ID Club",
+      placeholder: "es: 5902",
+      launch: "Avvia analisi",
+      loading: "Caricamento…",
+      errorClub: "Errore saldo club",
+      errorSeason: s => `Errore bilancio S${s}`,
+    },
+    zh: {
+      title: "Soccerverse 俱乐部财务预测",
+      clubId: "俱乐部 ID",
+      placeholder: "例如: 5902",
+      launch: "开始分析",
+      loading: "加载中…",
+      errorClub: "俱乐部余额错误",
+      errorSeason: s => `赛季 ${s} 账目错误`,
+    }
+  };
 
 export default function FinancePage({ lang = "fr" }) {
   const t = LABELS[lang] || LABELS.fr;

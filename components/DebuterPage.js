@@ -279,6 +279,93 @@ const translations = {
       },
     ],
   },
+  zh: {
+    heroTitle: "如何开始 Soccerverse",
+    heroDesc:
+      "Soccerverse 是一个连接区块链的足球模拟游戏，在动态的俱乐部和球员市场中进行互动。",
+    intro: [
+      "你可以扮演多个角色：教练（战术、阵容、财务）、经纪人（合同、转会、士气）、影响者（拥有者与战略决策者）、交易员（投机股份价值）或球探（发掘年轻天才）。",
+      "每周根据俱乐部或球员的表现获得奖励，并在赛季末得到奖金。",
+      "现实中的表现和转会会直接影响球员在游戏中的评分和价值，与现实足球保持联系。",
+      "交易使用数字代币进行买卖或投资，你的决定会影响收入和成绩。",
+    ],
+    callout:
+      "账户中有美元和 SVC。SVBase 上 logo 旁显示的 SVC 价格用于所有二级市场购买。",
+    outroIntro: [
+      "游戏遵循竞赛日程（联赛、杯赛、锦标赛），并具有强烈的社交与协作属性。",
+      "要顺利开始，官方指南和介绍视频会一步步引导你。",
+    ],
+    rolesHeading: "角色",
+    coach: {
+      title: "教练（免费游玩）",
+      description:
+        "下图显示 klo 是 RAAL La Louvière 的教练，下面是俱乐部影响者列表。这些影响者持有俱乐部股份，可授予你球队的全部权限。如果你是主要影响者，也可将这些权限授予自己。",
+      imageAlt: "教练界面示例",
+      bullets: [
+        "管理球队、设定战术、买卖球员、签合同。",
+        "负责俱乐部成绩和财务健康。",
+        "你的收入：教练工资（部分影响者会提供奖金以招募优秀教练！）",
+      ],
+    },
+    influencer: {
+      title: "俱乐部或球员影响者",
+      bullets: [
+        "持有俱乐部或球员股份。",
+        "参与战略决策并任命/解雇教练或经纪人。",
+        "你的收入：每场比赛获得分红，详见 分析 → 球员收益。俱乐部在赛季末的排名成功还会带来额外奖励，可在奖励模拟器中模拟。",
+      ],
+    },
+    agent: {
+      title: "经纪人",
+      bullets: [
+        "维护球员利益：合同、转会、士气。",
+        "教练与影响者之间的中间人。",
+        "你的收入：经纪人工资，详见 分析 → 球员收益。",
+      ],
+    },
+    trader: {
+      title: "交易员",
+      bullets: [
+        "市场专家，通过买卖股份来利用价格波动获利。",
+        "根据结果，俱乐部和球员价值会变化，要在合适时机买卖。",
+      ],
+    },
+    scout: {
+      title: "球探",
+      bullets: [
+        "在球员成名前发现他们。",
+        "随后可作为教练、经纪人、影响者或交易员获利。",
+        "你的收入：持有这些球员股份，成为他们的经纪人或与其他经纪人谈判回报。",
+      ],
+    },
+    afterRoles: [
+      "你不限于一个角色，可以组合多个角色以扩大机会。",
+      "游戏基于动态市场、玩家互动以及体育与金融策略的结合。",
+    ],
+    linksHeading: "实用链接",
+    links: [
+      {
+        href: "https://elrincondeldt.com/que-es-sv.html",
+        label: "El Rincon del DT：名称包来源，该作者在 Discord 上名为 Cipone！",
+      },
+      {
+        href: "https://guide.soccerverse.com/french",
+        label: "官方法语指南：非常全面，是圣经！",
+      },
+      {
+        href: "https://hub.soccerverse.com/",
+        label: "资讯中心：https://hub.soccerverse.com/",
+      },
+      {
+        href: "https://soccerratings.org/players",
+        label: "查看球员评分：https://soccerratings.org/players — 请核实球员现实情况。",
+      },
+      {
+        href: "https://soccerverse.com/soccerverse-litepaper/",
+        label: "Litepaper：值得一读",
+      },
+    ],
+  },
 };
 
 export default function DebuterPage({ lang = "fr" }) {

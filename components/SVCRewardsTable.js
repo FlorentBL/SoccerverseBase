@@ -49,7 +49,7 @@ const LABELS = {
       <b>Agent reward:</b> paid for every match played.
     </>
   },
-  it: {
+    it: {
     columns: [
       { key: "rating", label: "Valutazione", tip: "Valutazione globale" },
       { key: "wage", label: "Stipendio" },
@@ -64,14 +64,36 @@ const LABELS = {
     noteMax: "Valutazione max.",
     allSVC: "Tutti i valori della tabella sono espressi in SVC (Soccerverse Coin)",
     scroll: "↔️ Scorri la tabella orizzontalmente",
-    legend: <>
-      <b>Titolare:</b> deve giocare almeno 45 minuti. <br />
-      <b>Clean Sheet:</b> solo per portieri/difensori con almeno 70 min e 0 gol subiti.<br />
-      <b>Bonus influencer:</b> proporzionale alla quota.<br />
-      <b>Compenso agente:</b> versato ogni partita giocata.
-    </>
-  }
-};
+      legend: <>
+        <b>Titolare:</b> deve giocare almeno 45 minuti. <br />
+        <b>Clean Sheet:</b> solo per portieri/difensori con almeno 70 min e 0 gol subiti.<br />
+        <b>Bonus influencer:</b> proporzionale alla quota.<br />
+        <b>Compenso agente:</b> versato ogni partita giocata.
+      </>
+    },
+    zh: {
+      columns: [
+        { key: "rating", label: "评分", tip: "总体评分" },
+        { key: "wage", label: "工资" },
+        { key: "infPay", label: "影响者奖金", tip: "影响者奖金（按持股比例）" },
+        { key: "starter", label: "首发", tip: "至少出场45分钟" },
+        { key: "goal", label: "进球" },
+        { key: "assist", label: "助攻" },
+        { key: "cleanSheet", label: "零封", tip: "零封：守门员/后卫，至少70分钟" },
+        { key: "agentWage", label: "经纪人", tip: "经纪人报酬（每场）" }
+      ],
+      noteMin: "最低评分",
+      noteMax: "最高评分",
+      allSVC: "表中所有数值均以 SVC (Soccerverse Coin) 表示",
+      scroll: "↔️ 横向滚动表格",
+      legend: <>
+        <b>首发：</b> 必须出场至少45分钟。 <br />
+        <b>零封：</b> 仅限守门员/后卫，至少70分钟且无失球。<br />
+        <b>影响者奖金：</b> 按持股比例分配。<br />
+        <b>经纪人报酬：</b> 每场比赛发放。
+      </>
+    }
+  };
 
 function formatSVC(val, lang) {
   // Format selon la langue, FR/IT: virgule, EN: point

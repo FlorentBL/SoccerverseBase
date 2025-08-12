@@ -14,12 +14,17 @@ const LABELS = {
     show: "Show match detail",
     hide: "Hide match detail",
   },
-  it: {
-    title: "Proiezione Fine Stagione 2",
-    show: "Mostra dettaglio per giornata",
-    hide: "Nascondi dettaglio per giornata",
-  },
-};
+    it: {
+      title: "Proiezione Fine Stagione 2",
+      show: "Mostra dettaglio per giornata",
+      hide: "Nascondi dettaglio per giornata",
+    },
+    zh: {
+      title: "赛季2结束预测",
+      show: "显示比赛详情",
+      hide: "隐藏比赛详情",
+    },
+  };
 
 export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap, lang = "fr" }) {
   const [showDetail, setShowDetail] = useState(false);

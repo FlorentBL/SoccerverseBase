@@ -17,6 +17,11 @@ const LABELS = {
     title1: "Soccerverse",
     title2: ": Entrate Agente & Azionista",
     desc: "Diventa azionista o agente e ricevi premi reali secondo le prestazioni dei tuoi giocatori! Qui trovi tutti gli stipendi, bonus e commissioni per valore."
+  },
+  zh: {
+    title1: "Soccerverse",
+    title2: ": 经纪人与股东收益",
+    desc: "成为股东或经纪人，根据球员表现获得真实收益！在此查看所有按评分分类的工资、奖金和佣金。",
   }
 };
 

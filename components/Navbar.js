@@ -22,11 +22,11 @@ const MENU_LABELS = {
       ],
     },
   ],
-  en: [
-    { href: "/comment-debuter", label: "Getting started" },
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/scouting", label: "Scouting" },
-    { href: "/recompenses", label: "Rewards simulator" },
+    en: [
+      { href: "/comment-debuter", label: "Getting started" },
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/scouting", label: "Scouting" },
+      { href: "/recompenses", label: "Rewards simulator" },
     {
       label: "Analysis",
       children: [
@@ -36,11 +36,11 @@ const MENU_LABELS = {
       ],
     },
   ],
-  it: [
-    { href: "/comment-debuter", label: "Come iniziare" },
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/scouting", label: "Scouting" },
-    { href: "/recompenses", label: "Simulatore ricompense" },
+    it: [
+      { href: "/comment-debuter", label: "Come iniziare" },
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/scouting", label: "Scouting" },
+      { href: "/recompenses", label: "Simulatore ricompense" },
     {
       label: "Analisi",
       children: [
@@ -49,13 +49,28 @@ const MENU_LABELS = {
         { href: "/revenus", label: "Guadagni giocatori" },
       ],
     },
-  ],
-};
+    ],
+    zh: [
+      { href: "/comment-debuter", label: "入门" },
+      { href: "/dashboard", label: "仪表盘" },
+      { href: "/scouting", label: "球探" },
+      { href: "/recompenses", label: "奖励模拟器" },
+      {
+        label: "分析",
+        children: [
+          { href: "/finance", label: "俱乐部财务" },
+          { href: "/analyse-tactique", label: "战术" },
+          { href: "/revenus", label: "球员收益" },
+        ],
+      },
+    ],
+  };
 
 const LANGS = [
   { code: "fr", label: "FR" },
   { code: "en", label: "EN" },
   { code: "it", label: "IT" },
+  { code: "zh", label: "ZH" },
 ];
 
 export default function Navbar() {
@@ -67,8 +82,8 @@ export default function Navbar() {
   const menuItems = MENU_LABELS[currentLang];
 
   function getLangHref(targetLang) {
-    if (pathname.startsWith("/fr") || pathname.startsWith("/en") || pathname.startsWith("/it")) {
-      return pathname.replace(/^\/(fr|en|it)/, "/" + targetLang);
+    if (pathname.startsWith("/fr") || pathname.startsWith("/en") || pathname.startsWith("/it") || pathname.startsWith("/zh")) {
+      return pathname.replace(/^\/(fr|en|it|zh)/, "/" + targetLang);
     }
     return "/" + targetLang + pathname;
   }
