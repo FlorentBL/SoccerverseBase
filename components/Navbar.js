@@ -58,6 +58,12 @@ const LANGS = [
   { code: "it", label: "IT" },
 ];
 
+const PATCH_MESSAGES = {
+  fr: "Patch noms et logos. Merci à Cipone !",
+  en: "Names and logos patch. Thanks to Cipone!",
+  it: "Patch nomi e loghi. Grazie a Cipone!",
+};
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -167,6 +173,9 @@ export default function Navbar() {
             </button>
           </div>
         </div>
+        <p className="mt-1 text-center text-xs text-gray-300">
+          {PATCH_MESSAGES[currentLang]}
+        </p>
       </div>
 
       {open && (
