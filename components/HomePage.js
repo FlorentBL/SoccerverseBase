@@ -12,7 +12,7 @@ const LABELS = {
       <>Guide pratique pour débuter et progresser sur Soccerverse.<br />Accède rapidement aux ressources, infos et à la communauté FR.</>
     ),
     signup: "Inscription Soccerverse",
-    patch: "Patch FR (logos, noms)",
+    patch: "Patch noms et logos. Merci à Cipone !",
     discordTitle: "Communauté française K-SOCIOS",
     discordText: (
       <>Espace d’entraide, discussion et informations pour les francophones.<br />Rejoins le Discord pour poser tes questions ou échanger avec la commu.</>
@@ -64,7 +64,7 @@ const LABELS = {
       <>Practical guide to start and improve your Soccerverse experience.<br />Fast access to resources, info, and the international community.</>
     ),
     signup: "Sign up to Soccerverse",
-    patch: "Patch (logos, names)",
+    patch: "Names and logos patch. Thanks to Cipone!",
     discordTitle: "K-SOCIOS International Community",
     discordText: (
       <>Place for support, discussion, and sharing info about Soccerverse.<br />Join our Discord to ask questions and connect with other players.</>
@@ -116,7 +116,7 @@ const LABELS = {
       <>Guida pratica per iniziare e progredire su Soccerverse.<br />Accedi rapidamente a risorse, info e alla community IT.</>
     ),
     signup: "Iscrizione a Soccerverse",
-    patch: "Patch IT (loghi, nomi)",
+    patch: "Patch nomi e loghi. Grazie a Cipone!",
     discordTitle: "Community italiana K-SOCIOS",
     discordText: (
       <>Spazio di supporto, discussione e informazioni per gli italofoni.<br />Unisciti al Discord per fare domande o scambiare opinioni con la community.</>
