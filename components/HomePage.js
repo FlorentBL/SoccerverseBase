@@ -32,18 +32,13 @@ const LABELS = {
         desc: "Viens découvrir en un coup d'oeil les résultats des clubs que tu soutiens",
       },
       {
-        href: "/revenus",
-        title: "Gains Joueurs",
-        desc: "La grille qui détaille les salaires et gains liés aux joueurs",
-      },
-      {
         href: "/scouting",
         title: "Scouting",
         desc: "Détail d'un joueur, d'un club ou d'un championnat ? C'est ici que ca se passe",
       },
       {
         href: "/recompenses",
-        title: "Récompenses",
+        title: "Simulateur de récompense",
         desc: "Tu peux ici simuler les récompenses de fin de saison que ce soit pour le club ou pour ses influenceurs",
       },
       {
@@ -55,6 +50,11 @@ const LABELS = {
         href: "/analyse-tactique",
         title: "Analyse tactique",
         desc: "Analyse tes 3 prochains adversaires",
+      },
+      {
+        href: "/revenus",
+        title: "Gains Joueurs",
+        desc: "La grille qui détaille les salaires et gains liés aux joueurs",
       },
     ],
   },
@@ -84,18 +84,13 @@ const LABELS = {
         desc: "Discover at a glance the results of clubs you support",
       },
       {
-        href: "/revenus",
-        title: "Player Earnings",
-        desc: "Table detailing player salaries and earnings",
-      },
-      {
         href: "/scouting",
         title: "Scouting",
         desc: "Details about a player, club or league? It's all here",
       },
       {
         href: "/recompenses",
-        title: "Rewards",
+        title: "Rewards simulator",
         desc: "Simulate end-of-season rewards for clubs or influencers",
       },
       {
@@ -107,6 +102,11 @@ const LABELS = {
         href: "/analyse-tactique",
         title: "Tactical Analysis",
         desc: "Analyze your next 3 opponents",
+      },
+      {
+        href: "/revenus",
+        title: "Player Earnings",
+        desc: "Table detailing player salaries and earnings",
       },
     ],
   },
@@ -136,18 +136,13 @@ const LABELS = {
         desc: "Scopri in un colpo d'occhio i risultati dei club che sostieni",
       },
       {
-        href: "/revenus",
-        title: "Guadagni Giocatori",
-        desc: "Tabella che dettaglia stipendi e guadagni dei giocatori",
-      },
-      {
         href: "/scouting",
         title: "Scouting",
         desc: "Dettagli di un giocatore, club o campionato? È qui che succede",
       },
       {
         href: "/recompenses",
-        title: "Ricompense",
+        title: "Simulatore ricompense",
         desc: "Simula i premi di fine stagione per il club o i suoi influencer",
       },
       {
@@ -159,6 +154,11 @@ const LABELS = {
         href: "/analyse-tactique",
         title: "Analisi tattica",
         desc: "Analizza i tuoi prossimi 3 avversari",
+      },
+      {
+        href: "/revenus",
+        title: "Guadagni Giocatori",
+        desc: "Tabella che dettaglia stipendi e guadagni dei giocatori",
       },
     ],
   },
