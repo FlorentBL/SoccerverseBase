@@ -13,49 +13,62 @@ import {
 
 export default function DebuterPage() {
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12 space-y-20 text-white">
-      <header className="text-center space-y-6">
-        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-fuchsia-500 to-sky-500 bg-clip-text text-transparent">
-          Bien débuter sur Soccerverse
-        </h1>
-        <p className="text-gray-300 max-w-3xl mx-auto">
-          Soccerverse est un jeu de simulation de football connecté à la blockchain, où vous interagissez sur un marché dynamique de clubs et de joueurs.
-        </p>
-      </header>
+    <div className="relative overflow-hidden bg-slate-950 text-white">
+      {/* decorative blurred circles */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-40 -left-32 h-[32rem] w-[32rem] rounded-full bg-fuchsia-600/30 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-[32rem] w-[32rem] rounded-full bg-sky-600/30 blur-3xl" />
+      </div>
 
-      <section className="prose prose-invert max-w-none space-y-4">
-        <p>
-          Vous pouvez endosser un ou plusieurs rôles : Entraîneur (tactiques, effectif, finances), Agent (contrats, transferts, moral), Influenceur (propriétaire et décideur stratégique), Trader (spéculation sur la valeur des parts) ou Scout (découverte de jeunes talents).
-        </p>
-        <p>
-          Chaque semaine, vous recevez des gains en fonction des performances de vos clubs ou joueurs, ainsi qu’une prime de fin de saison.
-        </p>
-        <p>
-          Les performances et transferts réels des joueurs influencent directement leurs notes et leur valeur dans le jeu, créant un lien permanent avec le football IRL.
-        </p>
-        <p>
-          Les échanges utilisent des tokens numériques pour acheter, vendre ou investir, et vos décisions impactent vos revenus comme vos résultats sportifs.
-        </p>
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center gap-3">
-          <FaCoins className="text-yellow-400 text-xl flex-shrink-0" />
-          <p className="text-sm leading-relaxed">
-            Sur votre compte, vous disposez de dollars et de SVC. La valeur du SVC est affichée sur SVBase à côté du logo et sert à tous les achats sur le marché secondaire.
+      <div className="relative max-w-6xl mx-auto px-6 py-20 space-y-24">
+        <header className="text-center space-y-6">
+          <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight">
+            <span className="bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-400 bg-clip-text text-transparent">
+              Bien débuter sur Soccerverse
+            </span>
+          </h1>
+          <p className="text-gray-300 max-w-3xl mx-auto text-lg">
+            Soccerverse est un jeu de simulation de football connecté à la blockchain, où vous interagissez sur un marché dynamique de clubs et de joueurs.
           </p>
-        </div>
-        <p>
-          Le jeu suit un calendrier compétitif (ligues, coupes, tournois), avec un fort aspect social et collaboratif.
-        </p>
-        <p>
-          Pour bien commencer, le guide officiel et les vidéos d’introduction vous accompagnent pas à pas.
-        </p>
-      </section>
+        </header>
+
+        <section className="prose prose-invert max-w-none space-y-4">
+          <p>
+            Vous pouvez endosser un ou plusieurs rôles : Entraîneur (tactiques, effectif, finances), Agent (contrats, transferts, moral), Influenceur (propriétaire et décideur stratégique), Trader (spéculation sur la valeur des parts) ou Scout (découverte de jeunes talents).
+          </p>
+          <p>
+            Chaque semaine, vous recevez des gains en fonction des performances de vos clubs ou joueurs, ainsi qu’une prime de fin de saison.
+          </p>
+          <p>
+            Les performances et transferts réels des joueurs influencent directement leurs notes et leur valeur dans le jeu, créant un lien permanent avec le football IRL.
+          </p>
+          <p>
+            Les échanges utilisent des tokens numériques pour acheter, vendre ou investir, et vos décisions impactent vos revenus comme vos résultats sportifs.
+          </p>
+          <div className="relative p-4 rounded-xl border border-yellow-400/30 bg-gradient-to-r from-yellow-500/20 to-yellow-500/10 backdrop-blur">
+            <div className="absolute -top-4 -left-4 h-10 w-10 flex items-center justify-center rounded-full bg-yellow-400 text-slate-950">
+              <FaCoins />
+            </div>
+            <p className="text-sm leading-relaxed pl-8">
+              Sur votre compte, vous disposez de dollars et de SVC. La valeur du SVC est affichée sur SVBase à côté du logo et sert à tous les achats sur le marché secondaire.
+            </p>
+          </div>
+          <p>
+            Le jeu suit un calendrier compétitif (ligues, coupes, tournois), avec un fort aspect social et collaboratif.
+          </p>
+          <p>
+            Pour bien commencer, le guide officiel et les vidéos d’introduction vous accompagnent pas à pas.
+          </p>
+        </section>
 
       <section className="space-y-8">
-        <h2 className="text-3xl font-bold text-center">Les rôles</h2>
+        <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-fuchsia-400 to-sky-400 bg-clip-text text-transparent">Les rôles</h2>
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="p-6 rounded-xl border border-white/10 bg-white/5 space-y-4">
-            <div className="flex items-center gap-3">
-              <FaChalkboardTeacher className="text-fuchsia-400 text-2xl" />
+          <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm space-y-4 shadow-xl transition-colors hover:bg-white/10">
+            <div className="flex items-center gap-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-fuchsia-700">
+                <FaChalkboardTeacher className="text-white text-xl" />
+              </span>
               <h3 className="text-xl font-semibold">Entraîneur (FREE TO PLAY)</h3>
             </div>
             <p>
@@ -69,9 +82,11 @@ export default function DebuterPage() {
             </ul>
           </div>
 
-          <div className="p-6 rounded-xl border border-white/10 bg-white/5 space-y-4">
-            <div className="flex items-center gap-3">
-              <FaUserTie className="text-sky-400 text-2xl" />
+          <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm space-y-4 shadow-xl transition-colors hover:bg-white/10">
+            <div className="flex items-center gap-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-sky-700">
+                <FaUserTie className="text-white text-xl" />
+              </span>
               <h3 className="text-xl font-semibold">Influenceur de club ou de joueur</h3>
             </div>
             <ul className="list-disc pl-5 space-y-1 text-sm leading-relaxed">
@@ -81,9 +96,11 @@ export default function DebuterPage() {
             </ul>
           </div>
 
-          <div className="p-6 rounded-xl border border-white/10 bg-white/5 space-y-4">
-            <div className="flex items-center gap-3">
-              <FaHandshake className="text-green-400 text-2xl" />
+          <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm space-y-4 shadow-xl transition-colors hover:bg-white/10">
+            <div className="flex items-center gap-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-700">
+                <FaHandshake className="text-white text-xl" />
+              </span>
               <h3 className="text-xl font-semibold">Agent</h3>
             </div>
             <ul className="list-disc pl-5 space-y-1 text-sm leading-relaxed">
@@ -93,9 +110,11 @@ export default function DebuterPage() {
             </ul>
           </div>
 
-          <div className="p-6 rounded-xl border border-white/10 bg-white/5 space-y-4">
-            <div className="flex items-center gap-3">
-              <FaChartLine className="text-amber-400 text-2xl" />
+          <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm space-y-4 shadow-xl transition-colors hover:bg-white/10">
+            <div className="flex items-center gap-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600">
+                <FaChartLine className="text-white text-xl" />
+              </span>
               <h3 className="text-xl font-semibold">Trader</h3>
             </div>
             <ul className="list-disc pl-5 space-y-1 text-sm leading-relaxed">
@@ -104,9 +123,11 @@ export default function DebuterPage() {
             </ul>
           </div>
 
-          <div className="p-6 rounded-xl border border-white/10 bg-white/5 space-y-4 md:col-span-2">
-            <div className="flex items-center gap-3">
-              <FaSearch className="text-purple-400 text-2xl" />
+          <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm space-y-4 shadow-xl transition-colors hover:bg-white/10 md:col-span-2">
+            <div className="flex items-center gap-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+                <FaSearch className="text-white text-xl" />
+              </span>
               <h3 className="text-xl font-semibold">Scout</h3>
             </div>
             <ul className="list-disc pl-5 space-y-1 text-sm leading-relaxed">
@@ -118,66 +139,67 @@ export default function DebuterPage() {
         </div>
       </section>
 
-      <section className="prose prose-invert max-w-none space-y-4">
+      <section className="prose prose-invert max-w-3xl mx-auto text-center space-y-4">
         <p>Vous n’êtes pas limité à un seul rôle : vous pouvez en combiner plusieurs pour multiplier vos opportunités.</p>
         <p>Le jeu repose sur un marché dynamique, une forte interaction entre joueurs et un mélange de stratégie sportive et financière.</p>
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold">Liens utiles</h2>
-        <div className="grid sm:grid-cols-2 gap-3">
+      <section className="space-y-8">
+        <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-emerald-400 to-sky-400 bg-clip-text text-transparent">Liens utiles</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
           <a
-            className="flex items-start gap-3 p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            className="group flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors"
             href="https://elrincondeldt.com/que-es-sv.html"
             target="_blank"
             rel="noopener"
           >
-            <FaExternalLinkAlt className="text-sky-400 mt-1" />
+            <FaExternalLinkAlt className="text-sky-400 mt-1 group-hover:scale-110 transition-transform" />
             <span>
               El Rincon del DT : Le site derrière le pack de noms. Son créateur se trouve sur le Discord sous le nom de Cipone !
             </span>
           </a>
           <a
-            className="flex items-start gap-3 p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            className="group flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors"
             href="https://guide.soccerverse.com/french"
             target="_blank"
             rel="noopener"
           >
-            <FaExternalLinkAlt className="text-sky-400 mt-1" />
+            <FaExternalLinkAlt className="text-sky-400 mt-1 group-hover:scale-110 transition-transform" />
             <span>Le guide FR officiel : Très complet, c'est la bible !</span>
           </a>
           <a
-            className="flex items-start gap-3 p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            className="group flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors"
             href="https://hub.soccerverse.com/"
             target="_blank"
             rel="noopener"
           >
-            <FaExternalLinkAlt className="text-sky-400 mt-1" />
+            <FaExternalLinkAlt className="text-sky-400 mt-1 group-hover:scale-110 transition-transform" />
             <span>Le hub d’actualité : https://hub.soccerverse.com/</span>
           </a>
           <a
-            className="flex items-start gap-3 p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+            className="group flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors"
             href="https://soccerratings.org/players"
             target="_blank"
             rel="noopener"
           >
-            <FaExternalLinkAlt className="text-sky-400 mt-1" />
+            <FaExternalLinkAlt className="text-sky-400 mt-1 group-hover:scale-110 transition-transform" />
             <span>
               Pour connaître les ratings de joueurs : https://soccerratings.org/players — attention à vérifier la situation IRL officielle du joueur.
             </span>
           </a>
           <a
-            className="flex items-start gap-3 p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors sm:col-span-2"
+            className="group flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors sm:col-span-2"
             href="https://soccerverse.com/soccerverse-litepaper/"
             target="_blank"
             rel="noopener"
           >
-            <FaExternalLinkAlt className="text-sky-400 mt-1" />
+            <FaExternalLinkAlt className="text-sky-400 mt-1 group-hover:scale-110 transition-transform" />
             <span>Le litepaper : Toujours intéressant à connaître</span>
           </a>
         </div>
       </section>
     </div>
+  </div>
   );
 }
 
