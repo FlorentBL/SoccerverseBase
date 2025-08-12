@@ -3,6 +3,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .input-field {
+    @apply border border-gray-600 bg-[#202330] text-white rounded px-3 text-sm h-10 focus:outline-none focus:ring-1 focus:ring-indigo-500;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center bg-indigo-500 text-gray-900 font-medium rounded px-3 h-10 text-sm shadow hover:bg-indigo-400 transition;
+  }
+}
+
 body {
   @apply text-gray-100 bg-black overflow-x-hidden;
   min-height: 100vh;

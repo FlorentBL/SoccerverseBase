@@ -217,7 +217,7 @@ export default function DashboardPage({ lang = "fr" }) {
         <h1 className="text-3xl font-bold mb-8 text-center text-white tracking-tight">
           {t.title}
         </h1>
-        <form className="flex gap-2 mb-8 justify-center" onSubmit={handleSubmit}>
+        <form className="flex gap-2 mb-8 items-end justify-center" onSubmit={handleSubmit}>
           <div>
             <label className="block text-xs font-semibold mb-1 text-gray-300">
               {t.name}
@@ -226,15 +226,12 @@ export default function DashboardPage({ lang = "fr" }) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border border-gray-600 rounded p-2 w-40 bg-[#202330] text-white"
+              className="input-field w-40"
               placeholder={t.placeholder}
               required
             />
           </div>
-          <button
-            type="submit"
-            className="bg-green-500 text-black font-bold rounded px-5 py-2 shadow hover:bg-green-400 transition"
-          >
+          <button type="submit" className="btn-primary">
             {t.submit}
           </button>
         </form>

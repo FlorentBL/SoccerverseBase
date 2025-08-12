@@ -31,7 +31,7 @@ export default function RevenusPage({ lang = "fr" }) {
     <div className="min-h-screen text-white py-8 px-2 sm:px-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 flex flex-col sm:flex-row items-center sm:gap-2 text-center sm:text-left leading-tight">
-          <span className="text-green-400">{t.title1}</span>
+          <span className="text-indigo-400">{t.title1}</span>
           <span className="block sm:inline">{t.title2}</span>
         </h1>
         <p className="text-base sm:text-lg text-gray-300 mb-6 text-center sm:text-left">

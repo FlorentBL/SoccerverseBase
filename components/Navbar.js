@@ -9,28 +9,46 @@ import SVCRate from "./SVCRate";
 
 const MENU_LABELS = {
   fr: [
+    { href: "/comment-debuter", label: "Débuter" },
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/revenus", label: "Gains Joueurs" },
     { href: "/scouting", label: "Scouting" },
-    { href: "/recompenses", label: "Récompenses" },
-    { href: "/finance", label: "Analyse financière" },
-      { href: "/analyse-tactique", label: "Analyse tactique" },
+    { href: "/recompenses", label: "Simulateur de récompense" },
+    {
+      label: "Analyse",
+      children: [
+        { href: "/finance", label: "Finances d'un club" },
+        { href: "/analyse-tactique", label: "Tactique" },
+        { href: "/revenus", label: "Gains joueurs" },
+      ],
+    },
   ],
   en: [
+    { href: "/getting-started", label: "Getting started" },
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/revenus", label: "Player Earnings" },
     { href: "/scouting", label: "Scouting" },
-    { href: "/recompenses", label: "Rewards" },
-    { href: "/finance", label: "Financial Analysis" },
-      { href: "/analyse-tactique", label: "Tactical Analysis" },
+    { href: "/recompenses", label: "Rewards simulator" },
+    {
+      label: "Analysis",
+      children: [
+        { href: "/finance", label: "Club finances" },
+        { href: "/analyse-tactique", label: "Tactical" },
+        { href: "/revenus", label: "Player earnings" },
+      ],
+    },
   ],
   it: [
+    { href: "/come-iniziare", label: "Come iniziare" },
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/revenus", label: "Guadagni Giocatori" },
     { href: "/scouting", label: "Scouting" },
-    { href: "/recompenses", label: "Ricompense" },
-    { href: "/finance", label: "Analisi finanziaria" },
-      { href: "/analyse-tactique", label: "Analisi tattica" },
+    { href: "/recompenses", label: "Simulatore ricompense" },
+    {
+      label: "Analisi",
+      children: [
+        { href: "/finance", label: "Finanze del club" },
+        { href: "/analyse-tactique", label: "Tattica" },
+        { href: "/revenus", label: "Guadagni giocatori" },
+      ],
+    },
   ],
 };
 
@@ -79,17 +97,37 @@ export default function Navbar() {
           </div>
 
           <ul className="hidden md:flex gap-6 text-sm font-medium">
-            {menuItems.map(({ href, label }) => (
-              <li key={href}>
-                <Link
-                  href={getPageHref(href)}
-                  className="relative px-2 py-1 group"
-                >
-                  <span className="transition-colors group-hover:text-indigo-400">
-                    {label}
-                  </span>
-                  <span className="absolute left-0 -bottom-1 h-0.5 w-0 bg-indigo-500 transition-all group-hover:w-full" />
-                </Link>
+            {menuItems.map((item) => (
+              <li key={item.label || item.href} className="relative group">
+                {item.children ? (
+                  <>
+                    <span className="px-2 py-1 cursor-pointer transition-colors group-hover:text-indigo-400">
+                      {item.label}
+                    </span>
+                    <ul className="absolute left-0 top-full hidden group-hover:block bg-black/80 backdrop-blur-md rounded-md shadow-lg py-2">
+                      {item.children.map((child) => (
+                        <li key={child.href}>
+                          <Link
+                            href={getPageHref(child.href)}
+                            className="block whitespace-nowrap px-4 py-2 hover:bg-white/10"
+                          >
+                            {child.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <Link
+                    href={getPageHref(item.href)}
+                    className="relative px-2 py-1 group"
+                  >
+                    <span className="transition-colors group-hover:text-indigo-400">
+                      {item.label}
+                    </span>
+                    <span className="absolute left-0 -bottom-1 h-0.5 w-0 bg-indigo-500 transition-all group-hover:w-full" />
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -133,15 +171,31 @@ export default function Navbar() {
 
       {open && (
         <div className="md:hidden fixed inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-6 text-2xl text-gray-100">
-          {menuItems.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={getPageHref(href)}
-              className="hover:text-indigo-400"
-              onClick={() => setOpen(false)}
-            >
-              {label}
-            </Link>
+          {menuItems.map((item) => (
+            item.children ? (
+              <div key={item.label} className="flex flex-col items-center gap-2">
+                <span>{item.label}</span>
+                {item.children.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={getPageHref(child.href)}
+                    className="text-xl hover:text-indigo-400"
+                    onClick={() => setOpen(false)}
+                  >
+                    {child.label}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Link
+                key={item.href}
+                href={getPageHref(item.href)}
+                className="hover:text-indigo-400"
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            )
           ))}
           <SVCRate />
           <div className="flex gap-3 mt-6">

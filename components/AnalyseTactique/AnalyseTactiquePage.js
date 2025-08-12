@@ -364,12 +364,9 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
             value={clubId}
             onChange={e => setClubId(e.target.value)}
             placeholder={t.placeholder}
-            className="w-full sm:w-64 px-4 py-2 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="input-field w-full sm:w-64"
           />
-          <button
-            onClick={fetchSchedule}
-            className="px-6 py-2 rounded-md bg-indigo-500 text-white font-semibold hover:bg-indigo-400 transition-colors"
-          >
+          <button onClick={fetchSchedule} className="btn-primary">
             {t.analyze}
           </button>
         </div>

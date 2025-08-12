@@ -347,14 +347,12 @@ for (let i = 0; i < nbMatchsTotal; i++) {
               type="number"
               value={clubId}
               onChange={e => setClubId(e.target.value)}
-              className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+              className="input-field w-32"
               placeholder="ex: 5902"
               required
             />
           </div>
-          <button type="submit" className="bg-green-500 text-black font-bold rounded px-5 py-2 shadow hover:bg-green-400 transition">
-            Lancer l'analyse
-          </button>
+          <button type="submit" className="btn-primary">Lancer l'analyse</button>
         </form>
         {loading && <div className="text-white my-8 text-center">Chargement…</div>}
         {err && <div className="text-red-400 my-8 text-center">{err}</div>}
@@ -409,7 +407,7 @@ for (let i = 0; i < nbMatchsTotal; i++) {
                     type="number"
                     value={transfertSim}
                     onChange={e => setTransfertSim(e.target.value)}
-                    className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+                    className="input-field w-32"
                     placeholder="ex: 2000000"
                     min="0"
                   />
@@ -420,7 +418,7 @@ for (let i = 0; i < nbMatchsTotal; i++) {
                     type="number"
                     value={salaireSim}
                     onChange={e => setSalaireSim(e.target.value)}
-                    className="border border-gray-600 rounded p-2 w-32 bg-[#202330] text-white"
+                    className="input-field w-32"
                     placeholder="ex: 10000"
                     min="0"
                   />

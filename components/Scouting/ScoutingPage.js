@@ -21,8 +21,8 @@ export default function ScoutingPage({ lang = "fr" }) {
           <button key={key} onClick={() => setTab(key)}
             style={{
               fontWeight: 800, fontSize: 17, border: "none", borderRadius: 10, padding: "12px 34px",
-              background: tab === key ? "#21252b" : "#23272e", color: tab === key ? "#3fcf60" : "#ccc",
-              boxShadow: tab === key ? "0 4px 16px #0d8bff22" : "none", cursor: "pointer"
+              background: tab === key ? "#21252b" : "#23272e", color: tab === key ? "#818cf8" : "#ccc",
+              boxShadow: tab === key ? "0 4px 16px #818cf822" : "none", cursor: "pointer"
             }}>{labels[key]}</button>
         ))}
       </div>
