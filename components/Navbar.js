@@ -23,7 +23,7 @@ const MENU_LABELS = {
     },
   ],
   en: [
-    { href: "/getting-started", label: "Getting started" },
+    { href: "/comment-debuter", label: "Getting started" },
     { href: "/dashboard", label: "Dashboard" },
     { href: "/scouting", label: "Scouting" },
     { href: "/recompenses", label: "Rewards simulator" },
@@ -37,7 +37,7 @@ const MENU_LABELS = {
     },
   ],
   it: [
-    { href: "/come-iniziare", label: "Come iniziare" },
+    { href: "/comment-debuter", label: "Come iniziare" },
     { href: "/dashboard", label: "Dashboard" },
     { href: "/scouting", label: "Scouting" },
     { href: "/recompenses", label: "Simulatore ricompense" },
