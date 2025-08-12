@@ -284,7 +284,7 @@ const translations = {
 export default function DebuterPage({ lang = "fr" }) {
   const t = translations[lang] || translations.fr;
   return (
-    <div className="relative overflow-hidden bg-slate-950 text-white">
+    <div className="relative overflow-hidden text-white">
       {/* decorative blurred circles */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-40 -left-32 h-[32rem] w-[32rem] rounded-full bg-fuchsia-600/30 blur-3xl" />
