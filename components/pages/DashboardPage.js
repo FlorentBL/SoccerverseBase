@@ -155,6 +155,18 @@ export default function DashboardPage({ lang = "fr" }) {
     }
   };
 
+  function getTimestamp(f) {
+    if (!f) return null;
+    return (
+      f.fixture_timestamp ||
+      f.kickoff_timestamp ||
+      f.timestamp ||
+      f.date ||
+      f.time ||
+      null
+    );
+  }
+
   const sortedClubs = [...clubs].sort((a, b) => {
     if (sortField === "club") {
       const nameA = clubNames[a.clubId]?.name || String(a.clubId);
@@ -204,17 +216,6 @@ export default function DashboardPage({ lang = "fr" }) {
       </a>
     );
   };
-  const getTimestamp = (f) => {
-    if (!f) return null;
-    return (
-      f.fixture_timestamp ||
-      f.kickoff_timestamp ||
-      f.timestamp ||
-      f.date ||
-      f.time || null
-    );
-  };
-
   const renderDate = (f) => {
     const ts = getTimestamp(f);
     if (!ts) return "-";
