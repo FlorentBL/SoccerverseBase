@@ -209,7 +209,7 @@ export default function AnalysisPage({ lang = "fr" }) {
   const t = TEXTS[lang] || TEXTS.fr;
 
   // Filtres
-  const [leagueCsv, setLeagueCsv] = useState("549"); // ex: "548,549" ou "*"
+  const [leagueCsv, setLeagueCsv] = useState("*"); // ex: "548,549" ou "*"
   const [seasonId, setSeasonId] = useState("2");
   const [minN, setMinN] = useState(5);
   const [sideFilter, setSideFilter] = useState("any"); // any|home|away
