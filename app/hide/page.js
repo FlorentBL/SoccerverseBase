@@ -3,8 +3,8 @@ import React, { useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Analyse tactique (Formations vs Formations & Styles vs Styles)
- * Requis (environnement build/runtime) :
+ * Analyse tactique (Formations & Styles) depuis Supabase
+ * Requiert :
  *   NEXT_PUBLIC_SUPABASE_URL
  *   NEXT_PUBLIC_SUPABASE_KEY
  */
@@ -13,18 +13,18 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const key = process.env.NEXT_PUBLIC_SUPABASE_KEY ?? "";
 if (!url || !key) {
   throw new Error(
-    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_KEY. Configure dans Vercel → Project Settings → Environment Variables."
+    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_KEY. Configure-les dans Vercel → Project Settings → Environment Variables."
   );
 }
 const supabase = createClient(url, key);
 
 // ───────────────────────────────────────────────────────────────────────────────
-// i18n (court)
+// i18n (fr par défaut)
 const TEXTS = {
   fr: {
     title: "Analyse tactique",
-    leagueId: "League ID",
-    seasonId: "Season ID",
+    leagueIds: "Ligues (CSV ou *)",
+    seasonId: "Saison",
     minN: "Seuil n",
     side: "Côté",
     any: "Tous",
@@ -36,22 +36,24 @@ const TEXTS = {
     load: "Charger",
     matrixForm: "Matrice formation vs formation",
     matrixStyle: "Matrice style vs style",
-    formationFor: "Formation",
-    formationAgainst: "Adverse",
+    formationFor: "Pour",
+    formationAgainst: "Contre",
     count: "n",
     winrate: "%V",
     avgGf: "BMoy",
     avgGa: "EMoy",
-    bestMatchupsForm: "Meilleurs matchups (formations)",
-    worstMatchupsForm: "Pires matchups (formations)",
-    bestMatchupsStyle: "Meilleurs matchups (styles)",
-    worstMatchupsStyle: "Pires matchups (styles)",
+    bestMatchupsForm: "Meilleurs matchups (formations, n≥seuil)",
+    worstMatchupsForm: "Pires matchups (formations, n≥seuil)",
+    bestMatchupsStyle: "Meilleurs matchups (styles, n≥seuil)",
+    worstMatchupsStyle: "Pires matchups (styles, n≥seuil)",
     noData: "Aucune donnée",
+    fullTable: "Tableau complet",
+    exportCsv: "Exporter CSV",
   },
   en: {
     title: "Tactical analysis",
-    leagueId: "League ID",
-    seasonId: "Season ID",
+    leagueIds: "Leagues (CSV or *)",
+    seasonId: "Season",
     minN: "Min n",
     side: "Side",
     any: "Any",
@@ -63,17 +65,19 @@ const TEXTS = {
     load: "Load",
     matrixForm: "Formation vs formation matrix",
     matrixStyle: "Style vs style matrix",
-    formationFor: "Formation",
+    formationFor: "For",
     formationAgainst: "Against",
     count: "n",
     winrate: "Win%",
     avgGf: "GF avg",
     avgGa: "GA avg",
-    bestMatchupsForm: "Best matchups (formations)",
-    worstMatchupsForm: "Worst matchups (formations)",
-    bestMatchupsStyle: "Best matchups (styles)",
-    worstMatchupsStyle: "Worst matchups (styles)",
+    bestMatchupsForm: "Best matchups (formations, n≥min)",
+    worstMatchupsForm: "Worst matchups (formations, n≥min)",
+    bestMatchupsStyle: "Best matchups (styles, n≥min)",
+    worstMatchupsStyle: "Worst matchups (styles, n≥min)",
     noData: "No data",
+    fullTable: "Full table",
+    exportCsv: "Export CSV",
   },
 };
 
@@ -153,6 +157,14 @@ const STYLE_MAP = {
 // Utils
 const keyFn = (f) => (f ?? -1).toString();
 const formatPct = (x) => (x * 100).toFixed(0) + "%";
+const parseCsvIds = (s) =>
+  s
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0)
+    .map((x) => Number(x))
+    .filter((n) => Number.isFinite(n));
+
 function aggregateMatrix(rows) {
   // rows: { formation_id, opp_formation_id, goals_for, goals_against, result: 'W'|'D'|'L' }[]
   const map = new Map();
@@ -168,18 +180,43 @@ function aggregateMatrix(rows) {
   return map;
 }
 
+function downloadCsv(filename, rows) {
+  const header = ["for", "against", "n", "win_pct", "gf_avg", "ga_avg"];
+  const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [header.join(",")];
+  for (const r of rows) {
+    lines.push(
+      [
+        esc(r.nameF),
+        esc(r.nameG),
+        r.n,
+        (r.wr * 100).toFixed(0) + "%",
+        r.gf.toFixed(3),
+        r.ga.toFixed(3),
+      ].join(",")
+    );
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // ───────────────────────────────────────────────────────────────────────────────
-export default function TacticalMatrixPage({ lang = "fr" }) {
+export default function AnalysisPage({ lang = "fr" }) {
   const t = TEXTS[lang] || TEXTS.fr;
 
   // Filtres
-  const [leagueId, setLeagueId] = useState("549");
+  const [leagueCsv, setLeagueCsv] = useState("549"); // ex: "548,549" ou "*"
   const [seasonId, setSeasonId] = useState("2");
   const [minN, setMinN] = useState(5);
   const [sideFilter, setSideFilter] = useState("any"); // any|home|away
   const [view, setView] = useState("formation"); // formation|style
+  const [showTable, setShowTable] = useState(false);
 
-  // État UI
+  // État
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -203,14 +240,25 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
       setLoading(true);
       setError(null);
 
-      // 1) Matches joués pour league/season
-      const { data: matches, error: mErr } = await supabase
+      const season = Number(seasonId);
+      if (!Number.isFinite(season)) throw new Error("Season invalide");
+
+      // 1) Matches joués pour la saison + (ligues CSV) ou toutes ligues si '*'
+      const isAllLeagues = leagueCsv.trim() === "*";
+      const leagueIds = isAllLeagues ? [] : parseCsvIds(leagueCsv);
+
+      let matchesReq = supabase
         .from("sv_matches")
         .select("fixture_id, league_id, season_id, played")
-        .eq("league_id", Number(leagueId))
-        .eq("season_id", Number(seasonId))
+        .eq("season_id", season)
         .eq("played", true)
-        .limit(200000);
+        .limit(300000); // garde de sécurité
+
+      if (!isAllLeagues && leagueIds.length > 0) {
+        matchesReq = matchesReq.in("league_id", leagueIds);
+      }
+
+      const { data: matches, error: mErr } = await matchesReq;
       if (mErr) throw mErr;
 
       const fids = (matches || []).map((m) => m.fixture_id);
@@ -223,7 +271,7 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
         return;
       }
 
-      // 2) Charger tous les sides en batch (évite les URLs trop longues)
+      // 2) Charger les sides (batch .in)
       const allSides = [];
       const CHUNK = 800;
       for (let i = 0; i < fids.length; i += CHUNK) {
@@ -238,7 +286,7 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
         allSides.push(...(sides || []));
       }
 
-      // 3) Regrouper par fixture (on garde les DEUX côtés pour le pairing)
+      // 3) Regrouper par fixture, conserver les deux côtés
       const byFixture = new Map();
       for (const s of allSides) {
         const arr = byFixture.get(s.fixture_id) || [];
@@ -246,7 +294,7 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
         byFixture.set(s.fixture_id, arr);
       }
 
-      // 4) Construire deux datasets : formations et styles
+      // 4) Construire datasets formations & styles
       const rowsForm = [];
       const rowsStyle = [];
       const seenForm = new Set();
@@ -254,17 +302,11 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
 
       for (const [, sides] of byFixture) {
         if (!sides || sides.length !== 2) continue;
-        // Normaliser a=home, b=away (pas obligatoire mais pratique)
         const a = sides.find((x) => x.side === "home") || sides[0];
         const b = sides.find((x) => x.side === "away") || sides[1];
 
-        // a -> b si filtre OK
         const includeA = sideFilter === "any" || sideFilter === a.side;
-        if (
-          includeA &&
-          a.goals_for != null &&
-          a.goals_against != null
-        ) {
+        if (includeA && a.goals_for != null && a.goals_against != null) {
           rowsForm.push({
             formation_id: a.formation_id,
             opp_formation_id: b.formation_id,
@@ -295,13 +337,8 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
           if (typeof b.play_style === "number") seenSty.add(b.play_style);
         }
 
-        // b -> a si filtre OK
         const includeB = sideFilter === "any" || sideFilter === b.side;
-        if (
-          includeB &&
-          b.goals_for != null &&
-          b.goals_against != null
-        ) {
+        if (includeB && b.goals_for != null && b.goals_against != null) {
           rowsForm.push({
             formation_id: b.formation_id,
             opp_formation_id: a.formation_id,
@@ -333,7 +370,7 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
         }
       }
 
-      // 5) Agréger
+      // 5) Agrégation
       setMatrixForm(aggregateMatrix(rowsForm));
       setMatrixStyle(aggregateMatrix(rowsStyle));
       setFormationsPresent(Array.from(seenForm).sort((x, y) => x - y));
@@ -347,7 +384,7 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
     }
   }
 
-  // Classement Top/Flop basé sur la matrice courante
+  // Classements Top/Flop depuis la matrice courante
   const ranked = useMemo(() => {
     const out = [];
     for (const [k, a] of currentMatrix.entries()) {
@@ -367,12 +404,34 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
     const withMin = out.filter((r) => r.n >= minN);
     const best = [...withMin]
       .sort((x, y) => y.wr - x.wr || y.n - x.n)
-      .slice(0, 10);
+      .slice(0, 12);
     const worst = [...withMin]
       .sort((x, y) => x.wr - y.wr || y.n - x.n)
-      .slice(0, 10);
+      .slice(0, 12);
     return { best, worst };
   }, [currentMatrix, minN, view]);
+
+  // Tableau complet (toutes combinaisons)
+  const allRows = useMemo(() => {
+    const out = [];
+    for (const [k, a] of currentMatrix.entries()) {
+      const [fStr, gStr] = k.split("|");
+      const f = Number(fStr),
+        g = Number(gStr);
+      if (!a || a.n === 0) continue;
+      out.push({
+        f,
+        g,
+        nameF: nameFn(f),
+        nameG: nameFn(g),
+        n: a.n,
+        wr: a.w / a.n,
+        gf: a.gf / a.n,
+        ga: a.ga / a.n,
+      });
+    }
+    return out.sort((x, y) => y.n - x.n || y.wr - x.wr);
+  }, [currentMatrix, view]);
 
   const titleBest =
     view === "formation" ? t.bestMatchupsForm : t.bestMatchupsStyle;
@@ -386,18 +445,22 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
         <h1 className="text-2xl md:text-3xl font-bold mb-6">{t.title}</h1>
 
         {/* Filtres */}
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-3 items-end mb-6">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">{t.leagueId}</label>
+        <div className="grid grid-cols-2 md:grid-cols-8 gap-3 items-end mb-6">
+          <div className="md:col-span-3">
+            <label className="block text-xs text-gray-400 mb-1">
+              {t.leagueIds}
+            </label>
             <input
               className="w-full border border-gray-700 rounded-lg p-2 bg-transparent"
-              value={leagueId}
-              onChange={(e) => setLeagueId(e.target.value)}
-              placeholder="549"
+              value={leagueCsv}
+              onChange={(e) => setLeagueCsv(e.target.value)}
+              placeholder="548,549 ou *"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">{t.seasonId}</label>
+            <label className="block text-xs text-gray-400 mb-1">
+              {t.seasonId}
+            </label>
             <input
               className="w-full border border-gray-700 rounded-lg p-2 bg-transparent"
               value={seasonId}
@@ -445,6 +508,28 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
               disabled={loading}
             >
               {loading ? "…" : t.load}
+            </button>
+
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showTable}
+                onChange={(e) => setShowTable(e.target.checked)}
+              />
+              {t.fullTable}
+            </label>
+            <button
+              onClick={() =>
+                downloadCsv(
+                  view === "formation" ? "formations.csv" : "styles.csv",
+                  allRows
+                )
+              }
+              className="px-3 py-2 rounded-lg border border-gray-700 hover:bg-white/5 transition text-sm"
+              disabled={allRows.length === 0}
+              title="Export du tableau courant (vue/filtre actuels)"
+            >
+              {t.exportCsv}
             </button>
           </div>
         </div>
@@ -526,7 +611,7 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
           </div>
         </div>
 
-        {/* Matrice */}
+        {/* Matrice compacte */}
         <div className="border border-gray-800 rounded-xl p-4 overflow-x-auto">
           <h2 className="font-semibold mb-3">{titleMatrix}</h2>
           {currentDomain.length === 0 ? (
@@ -588,6 +673,51 @@ export default function TacticalMatrixPage({ lang = "fr" }) {
             </table>
           )}
         </div>
+
+        {/* Tableau complet */}
+        {showTable && (
+          <div className="border border-gray-800 rounded-xl p-4 mt-8 overflow-x-auto">
+            <h2 className="font-semibold mb-3">
+              {view === "formation"
+                ? "Toutes les combinaisons (formations)"
+                : "Toutes les combinaisons (styles)"}
+            </h2>
+            {allRows.length === 0 ? (
+              <div className="text-sm text-gray-500">{t.noData}</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-gray-400">
+                  <tr>
+                    <th className="text-left py-1 pr-2">{t.formationFor}</th>
+                    <th className="text-left py-1 pr-2">{t.formationAgainst}</th>
+                    <th className="text-right py-1 pr-2">{t.count}</th>
+                    <th className="text-right py-1 pr-2">{t.winrate}</th>
+                    <th className="text-right py-1 pr-2">{t.avgGf}</th>
+                    <th className="text-right py-1 pr-2">{t.avgGa}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {allRows.map((r, i) => (
+                    <tr key={`all-${i}`} className="hover:bg-white/5">
+                      <td className="py-1 pr-2">{r.nameF}</td>
+                      <td className="py-1 pr-2">{r.nameG}</td>
+                      <td className="py-1 pr-2 text-right">{r.n}</td>
+                      <td className="py-1 pr-2 text-right">
+                        {formatPct(r.wr)}
+                      </td>
+                      <td className="py-1 pr-2 text-right">
+                        {r.gf.toFixed(2)}
+                      </td>
+                      <td className="py-1 pr-2 text-right">
+                        {r.ga.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
