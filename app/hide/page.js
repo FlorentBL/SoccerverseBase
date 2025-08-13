@@ -221,17 +221,23 @@ export default function AnalysisPage({ lang = "fr" }) {
   const currentDomain = view === "formation" ? formationsPresent : stylesPresent;
   const nameFn = view === "formation" ? formationName : styleName;
 
-  const displayDomain = useMemo(() => {
+  const displayRows = useMemo(() => {
     if (view !== "style" || !sortConfig) return currentDomain;
-    const base = currentDomain.filter((id) => id !== sortConfig.styleId);
-    base.sort((a, b) => {
+    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
+    return [sortConfig.styleId, ...others];
+  }, [view, sortConfig, currentDomain]);
+
+  const displayCols = useMemo(() => {
+    if (view !== "style" || !sortConfig) return currentDomain;
+    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
+    others.sort((a, b) => {
       const aData = currentMatrix.get(`${sortConfig.styleId}|${a}`);
       const bData = currentMatrix.get(`${sortConfig.styleId}|${b}`);
       const aWr = aData && aData.n >= minN ? aData.w / aData.n : -1;
       const bWr = bData && bData.n >= minN ? bData.w / bData.n : -1;
       return sortConfig.asc ? aWr - bWr : bWr - aWr;
     });
-    return [sortConfig.styleId, ...base];
+    return [...others, sortConfig.styleId];
   }, [view, sortConfig, currentDomain, currentMatrix, minN]);
 
   async function loadData() {
@@ -567,7 +573,7 @@ export default function AnalysisPage({ lang = "fr" }) {
         <div className="border border-gray-800 rounded-xl p-4 overflow-x-auto">
           <h2 className="font-semibold mb-1">{titleMatrix}</h2>
           <p className="text-xs text-gray-400 mb-3">{t.legend}</p>
-          {displayDomain.length === 0 ? (
+          {displayRows.length === 0 ? (
             <div className="text-sm text-gray-500">{t.noData}</div>
           ) : (
             <table className="text-xs">
@@ -576,13 +582,13 @@ export default function AnalysisPage({ lang = "fr" }) {
                   <th className="p-2 bg-gray-900 sticky left-0 z-10">
                     {view === "formation" ? `${t.formationFor} ↓ / ${t.formationAgainst} →` : "Style ↓ / Style →"}
                   </th>
-                  {displayDomain.map((id) => (
+                  {displayCols.map((id) => (
                     <th key={`col-${id}`} className="p-2 text-nowrap">{nameFn(id)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {displayDomain.map((rowId) => (
+                {displayRows.map((rowId) => (
                   <tr key={`row-${rowId}`}>
                     <th
                       className={`p-2 bg-gray-900 sticky left-0 z-10 text-left ${view === "style" ? "cursor-pointer hover:underline" : ""}`}
@@ -590,7 +596,7 @@ export default function AnalysisPage({ lang = "fr" }) {
                     >
                       {nameFn(rowId)}
                     </th>
-                    {displayDomain.map((colId) => {
+                    {displayCols.map((colId) => {
                       const a = currentMatrix.get(`${rowId}|${colId}`);
                       if (!a || a.n < minN)
                         return <td key={`cell-${rowId}-${colId}`} className="p-2 text-center text-gray-600">—</td>;
