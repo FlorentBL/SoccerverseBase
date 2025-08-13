@@ -18,7 +18,8 @@ DEFAULT_PAR = int(os.getenv("PAR", "4"))
 DEFAULT_REFRESH_DAYS = int(os.getenv("REFRESH_DAYS", "14"))
 
 RPC_URL = "https://gsppub.soccerverse.io/"
-TACTICS_BASE = "https://services.soccerverse.com/api/fixture_history/tactics/"
+SERVICES = "https://services.soccerverse.com"
+TACTICS_BASE = f"{SERVICES}/api/fixture_history/tactics/"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Supabase
@@ -42,11 +43,9 @@ def get_supabase():
     key = os.getenv(name_key)
     return create_client(url, key)
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP utils
 async def _post_json(url, payload, client, tries=6, tag=""):
-    # Exponential backoff + 429
     for i in range(tries):
         try:
             r = await client.post(url, json=payload, timeout=30)
@@ -85,31 +84,52 @@ async def rpc(method, params, client):
     return await _post_json(RPC_URL, payload, client, tag=method)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Source SV JSON-RPC
+# Source SV
+
 async def get_league_club_ids(league_id: int, client: httpx.AsyncClient) -> list[int]:
     """
-    Essaie plusieurs méthodes connues pour récupérer la liste des clubs d'une ligue.
+    Stratégie robuste:
+      1) services.soccerverse.com/api/league_tables?league_id=... (publique)
+      2) fallback JSON-RPC get_league_clubs / get_league
     """
-    # 1) get_league_clubs
+    # 1) services API
+    try:
+        rows = await _get_json(f"{SERVICES}/api/league_tables?league_id={league_id}", client, tag=f"league_tables {league_id}")
+        if isinstance(rows, list) and rows:
+            ids = [int(r["club_id"]) for r in rows if isinstance(r, dict) and r.get("club_id") is not None]
+            ids = sorted(set(int(x) for x in ids))
+            if ids:
+                return ids
+    except Exception as e:
+        print(f"[WARN] league_tables {league_id}: {e}", flush=True)
+
+    # 2a) RPC get_league_clubs
     try:
         data = await rpc("get_league_clubs", {"league_id": league_id}, client)
         arr = data.get("result", {}).get("clubs") or data.get("result", [])
         ids = [c["club_id"] if isinstance(c, dict) and "club_id" in c else int(c) for c in arr]
-        return sorted(set(int(x) for x in ids if isinstance(x, (int, str))))
-    except Exception:
-        pass
+        ids = sorted(set(int(x) for x in ids if isinstance(x, (int, str))))
+        if ids:
+            return ids
+    except Exception as e:
+        print(f"[WARN] get_league_clubs {league_id}: {e}", flush=True)
 
-    # 2) get_league (certains endpoints renvoient clubs dans result.clubs)
-    data = await rpc("get_league", {"league_id": league_id}, client)
-    arr = data.get("result", {}).get("clubs") or data.get("result", {}).get("data", {}).get("clubs", [])
-    ids = [c["club_id"] if isinstance(c, dict) and "club_id" in c else int(c) for c in arr]
-    return sorted(set(int(x) for x in ids if isinstance(x, (int, str))))
+    # 2b) RPC get_league
+    try:
+        data = await rpc("get_league", {"league_id": league_id}, client)
+        arr = data.get("result", {}).get("clubs") or data.get("result", {}).get("data", {}).get("clubs", [])
+        ids = [c["club_id"] if isinstance(c, dict) and "club_id" in c else int(c) for c in arr]
+        ids = sorted(set(int(x) for x in ids if isinstance(x, (int, str))))
+        return ids
+    except Exception as e:
+        print(f"[WARN] get_league {league_id}: {e}", flush=True)
+        return []
 
 async def get_club_schedule(club_id: int, season_id: int, client: httpx.AsyncClient) -> list[dict]:
     data = await rpc("get_club_schedule", {"club_id": club_id, "season_id": season_id}, client)
     return data.get("result", {}).get("data", []) or data.get("result", []) or []
 
-async def get_fixture_core(fixture_id: int, client: httpx.AsyncClient) -> dict:
+async def get_fixture_core_rpc(fixture_id: int, client: httpx.AsyncClient) -> dict:
     data = await rpc("get_fixture", {"fixture_id": fixture_id}, client)
     return data.get("result", {}) or {}
 
@@ -118,19 +138,25 @@ async def get_tactics(fixture_id: int, client: httpx.AsyncClient) -> list[dict]:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DB helpers
-async def select_existing_fixtures(sb, league_id: int, season_id: int) -> set[int]:
+
+def select_existing_fixtures(sb, league_id: int, season_id: int) -> set[int]:
     res = sb.table("sv_matches").select("fixture_id").eq("league_id", league_id).eq("season_id", season_id).execute()
     return set(int(r["fixture_id"]) for r in (res.data or []))
 
-async def select_existing_sides(sb, fixture_ids: list[int]) -> set[tuple[int, str]]:
-    out = set()
-    CHUNK = 900
-    for i in range(0, len(fixture_ids), CHUNK):
-        part = fixture_ids[i : i + CHUNK]
-        res = sb.table("sv_match_sides").select("fixture_id, side").in_("fixture_id", part).execute()
-        for r in (res.data or []):
-            out.add((int(r["fixture_id"]), r["side"]))
-    return out
+def select_recent_core_from_db(sb, league_id: int, season_id: int, days: int) -> list[dict]:
+    if days <= 0: return []
+    cutoff = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
+    res = sb.table("sv_matches").select(
+        "fixture_id,date,home_club,away_club,home_goals,away_goals,played"
+    ).eq("league_id", league_id).eq("season_id", season_id).gte("date", cutoff).execute()
+    return res.data or []
+
+def get_fix_core_from_db(sb, fixture_id: int) -> dict:
+    res = sb.table("sv_matches").select(
+        "fixture_id,date,home_club,away_club,home_goals,away_goals,played"
+    ).eq("fixture_id", fixture_id).limit(1).execute()
+    rows = res.data or []
+    return rows[0] if rows else {}
 
 def upsert_matches(sb, rows: list[dict]):
     if not rows: return
@@ -142,8 +168,8 @@ def upsert_sides(sb, rows: list[dict]):
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Business
+
 def take_core_from_schedule(m: dict, league_id: int, season_id: int) -> dict:
-    # Les schedules ont souvent déjà l'info de base : clubs, date, score, played.
     return {
         "fixture_id": int(m["fixture_id"]),
         "league_id": league_id,
@@ -157,10 +183,6 @@ def take_core_from_schedule(m: dict, league_id: int, season_id: int) -> dict:
     }
 
 def build_side_rows_from_tactics(fix_core: dict, tactics: list[dict]) -> list[dict]:
-    """
-    Convertit la structure tactics en 2 lignes sv_match_sides, si possible.
-    """
-    # Index par club_id
     by_club = {t["club_id"]: t for t in tactics if "club_id" in t}
     home = fix_core["home_club"]
     away = fix_core["away_club"]
@@ -191,13 +213,12 @@ def build_side_rows_from_tactics(fix_core: dict, tactics: list[dict]) -> list[di
             "formation_id": formation_id,
             "play_style": play_style,
             "lineup": lineup,
-            "tactics_history": actions,  # on stocke l'historique brut si utile
+            "tactics_history": actions,
         })
     return out
 
 async def collect_league_fixtures(league_id: int, season_id: int, client: httpx.AsyncClient) -> list[dict]:
     club_ids = await get_league_club_ids(league_id, client)
-    # Agrège le calendrier de chaque club
     all_sched = []
     for cid in club_ids:
         try:
@@ -206,56 +227,68 @@ async def collect_league_fixtures(league_id: int, season_id: int, client: httpx.
             print(f"[WARN] schedule club {cid}: {e}", flush=True)
             sched = []
         all_sched.extend(sched)
-    # Déduplique par fixture_id
+
     out_map = {}
     for m in all_sched:
         fid = int(m["fixture_id"])
+        core = take_core_from_schedule(m, league_id, season_id)
         if fid not in out_map:
-            out_map[fid] = take_core_from_schedule(m, league_id, season_id)
+            out_map[fid] = core
         else:
-            # conservez 'played' et le score les plus "avancés"
-            if (m.get("played") == 1) and not out_map[fid]["played"]:
-                out_map[fid] = take_core_from_schedule(m, league_id, season_id)
+            if core["played"] and not out_map[fid]["played"]:
+                out_map[fid] = core
     return list(out_map.values())
 
 async def process_league(sb, league_id: int, season_id: int, refresh_days: int, client: httpx.AsyncClient):
-    # 1) Calendrier (core rows)
+    total_upserted_sides = 0
+
+    # 1) Tente d'agréger le calendrier
     core_rows = await collect_league_fixtures(league_id, season_id, client)
     print(f"[{league_id}] schedule size={len(core_rows)}", flush=True)
 
-    # 2) Upsert core matches (nouveaux ou updates)
-    upsert_matches(sb, core_rows)
-    print(f"[{league_id}] upserted sv_matches core: {len(core_rows)}", flush=True)
+    # 2) Upsert core si on a des données
+    if core_rows:
+        upsert_matches(sb, core_rows)
+        print(f"[{league_id}] upserted sv_matches core: {len(core_rows)}", flush=True)
+    else:
+        print(f"[{league_id}] no core rows from API; will try DB refresh only.", flush=True)
 
-    # 3) Cible des fixtures à détailler : nouveaux + récents (refresh_days)
-    existing_set = await select_existing_fixtures(sb, league_id, season_id)
-    all_ids = [r["fixture_id"] for r in core_rows]
-    new_ids = [fid for fid in all_ids if fid not in existing_set]  # (utile la 1ère fois)
-    cutoff_ts = int((datetime.now(timezone.utc) - timedelta(days=refresh_days)).timestamp())
-    recent_ids = [r["fixture_id"] for r in core_rows if r["date"] and r["date"] >= cutoff_ts]
-    target_ids = sorted(set(new_ids) | set(recent_ids))
+    # 3) Construire le mapping core
+    core_by_fid = {r["fixture_id"]: r for r in core_rows}
 
-    # 4) Ne garde que les fixtures joués
-    played_ids = [r["fixture_id"] for r in core_rows if r["played"]]
-    target_ids = [fid for fid in target_ids if fid in played_ids]
+    # 4) Déterminer les fixtures cible
+    target_ids = []
+    if core_rows:
+        existing_set = select_existing_fixtures(sb, league_id, season_id)
+        all_ids = [r["fixture_id"] for r in core_rows]
+        new_ids = [fid for fid in all_ids if fid not in existing_set]
+        cutoff_ts = int((datetime.now(timezone.utc) - timedelta(days=refresh_days)).timestamp())
+        recent_ids = [r["fixture_id"] for r in core_rows if r["date"] and r["date"] >= cutoff_ts]
+        played_ids = [r["fixture_id"] for r in core_rows if r["played"]]
+        target_ids = sorted(set(new_ids) | set(recent_ids))
+        target_ids = [fid for fid in target_ids if fid in played_ids]
+    else:
+        # Fallback: on rafraîchit uniquement les matchs récents déjà en DB
+        recent_core_db = select_recent_core_from_db(sb, league_id, season_id, refresh_days)
+        core_by_fid.update({r["fixture_id"]: r for r in recent_core_db if r.get("played")})
+        target_ids = [r["fixture_id"] for r in recent_core_db if r.get("played")]
+
     if not target_ids:
         print(f"[{league_id}] nothing to detail", flush=True)
         return
 
-    # Déjà présents côté "sides" ?
-    have_sides = await select_existing_sides(sb, target_ids)
-
     # 5) Détail tactique / upsert sides
-    rows_sides = []
+    rows_sides_batch = []
+    BATCH = 200
+
     for fid in target_ids:
-        # si les 2 côtés existent déjà, passe (fixture_id, 'home') & (fixture_id, 'away')
-        if (fid, "home") in have_sides and (fid, "away") in have_sides:
-            continue
-        try:
-            fix_core = await get_fixture_core(fid, client)
-        except Exception:
-            # fallback : trouve dans core_rows
-            fix_core = next((r for r in core_rows if r["fixture_id"] == fid), None) or {}
+        fix_core = core_by_fid.get(fid)
+        if not fix_core:
+            # Petit fallback : RPC puis DB
+            try:
+                fix_core = await get_fixture_core_rpc(fid, client)
+            except Exception:
+                fix_core = get_fix_core_from_db(sb, fid)
         if not fix_core:
             continue
 
@@ -265,20 +298,21 @@ async def process_league(sb, league_id: int, season_id: int, refresh_days: int, 
             print(f"[WARN] tactics {fid}: {e}", flush=True)
             continue
 
-        # Construit 2 lignes si possible (formation/style présents)
         side_rows = build_side_rows_from_tactics(fix_core, tactics)
-        # Ignore si aucun des 2 côtés n'a de tactique
         if not side_rows:
             continue
-        rows_sides.extend(side_rows)
+        rows_sides_batch.extend(side_rows)
 
-        if len(rows_sides) >= 200:
-            upsert_sides(sb, rows_sides); rows_sides = []
+        if len(rows_sides_batch) >= BATCH:
+            upsert_sides(sb, rows_sides_batch)
+            total_upserted_sides += len(rows_sides_batch)
+            rows_sides_batch = []
 
-    if rows_sides:
-        upsert_sides(sb, rows_sides)
+    if rows_sides_batch:
+        upsert_sides(sb, rows_sides_batch)
+        total_upserted_sides += len(rows_sides_batch)
 
-    print(f"[{league_id}] upserted sv_match_sides rows: {len(rows_sides)} (batched)", flush=True)
+    print(f"[{league_id}] upserted sv_match_sides rows: {total_upserted_sides}", flush=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # CLI
@@ -313,14 +347,12 @@ def resolve_leagues(ns) -> list[int]:
     if ns.leagues_file:
         ids.extend(read_leagues_from_file(ns.leagues_file))
 
-    # Fallback : env LEAGUES_CSV
     env_csv = os.getenv("LEAGUES_CSV", "").strip()
     if env_csv:
         ids.extend(int(x) for x in env_csv.split(",") if x.strip())
 
     if not ids:
-        ids = DEFAULT_LEAGUES[:]  # <- valeur par défaut demandée
-    # dedupe / tri
+        ids = DEFAULT_LEAGUES[:]  # liste par défaut
     return sorted(set(ids))
 
 async def main():
@@ -332,7 +364,6 @@ async def main():
 
     limits = httpx.Limits(max_keepalive_connections=20, max_connections=20)
     async with httpx.AsyncClient(limits=limits, headers={"Content-Type": "application/json"}) as client:
-        # parallélise par ligue (mais pas trop pour éviter les 429)
         sem = asyncio.Semaphore(ns.par)
 
         async def _one(lid: int):
