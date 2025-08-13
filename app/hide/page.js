@@ -161,7 +161,7 @@ export default function AnalysisPage({ lang = "fr" }) {
   const [seasonId, setSeasonId] = useState("2");
   const [minN, setMinN] = useState(5);
   const [sideFilter, setSideFilter] = useState("any"); // any|home|away
-  const [view, setView] = useState("formation"); // formation|style
+  const [view, setView] = useState("style"); // formation|style
   const [showTable, setShowTable] = useState(false);
 
   // État
