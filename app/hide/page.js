@@ -201,6 +201,8 @@ export default function AnalysisPage({ lang = "fr" }) {
   const [sideFilter, setSideFilter] = useState("any"); // any|home|away
   const [view, setView] = useState("style"); // formation|style
   const [showTable, setShowTable] = useState(false);
+  const [sortConfig, setSortConfig] = useState(null); // { styleId, asc }
+  const [filterStyle, setFilterStyle] = useState(null); // style id for combos
 
   // État
   const [loading, setLoading] = useState(false);
@@ -218,6 +220,25 @@ export default function AnalysisPage({ lang = "fr" }) {
   const currentMatrix = view === "formation" ? matrixForm : matrixStyle;
   const currentDomain = view === "formation" ? formationsPresent : stylesPresent;
   const nameFn = view === "formation" ? formationName : styleName;
+
+  const displayRows = useMemo(() => {
+    if (view !== "style" || !sortConfig) return currentDomain;
+    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
+    return [sortConfig.styleId, ...others];
+  }, [view, sortConfig, currentDomain]);
+
+  const displayCols = useMemo(() => {
+    if (view !== "style" || !sortConfig) return currentDomain;
+    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
+    others.sort((a, b) => {
+      const aData = currentMatrix.get(`${sortConfig.styleId}|${a}`);
+      const bData = currentMatrix.get(`${sortConfig.styleId}|${b}`);
+      const aWr = aData && aData.n >= minN ? aData.w / aData.n : -1;
+      const bWr = bData && bData.n >= minN ? bData.w / bData.n : -1;
+      return sortConfig.asc ? aWr - bWr : bWr - aWr;
+    });
+    return [...others, sortConfig.styleId];
+  }, [view, sortConfig, currentDomain, currentMatrix, minN]);
 
   async function loadData() {
     try {
@@ -350,6 +371,13 @@ export default function AnalysisPage({ lang = "fr" }) {
     }
   }
 
+  const handleSort = (id) => {
+    if (view !== "style") return;
+    setSortConfig((prev) =>
+      prev && prev.styleId === id ? { styleId: id, asc: !prev.asc } : { styleId: id, asc: false }
+    );
+  };
+
   // Info pour la coloration (max n affiché)
   const maxNInfo = useMemo(() => {
     let maxN = 0;
@@ -381,8 +409,12 @@ export default function AnalysisPage({ lang = "fr" }) {
       if (!a || a.n === 0 || f < 0 || g < 0) continue;
       out.push({ f, g, nameF: nameFn(f), nameG: nameFn(g), n: a.n, wr: a.w / a.n, gf: a.gf / a.n, ga: a.ga / a.n });
     }
-    return out.sort((x, y) => y.n - x.n || y.wr - x.wr);
-  }, [currentMatrix, view]);
+    let arr = out;
+    if (view === "style" && filterStyle != null) {
+      arr = arr.filter((r) => r.f === filterStyle);
+    }
+    return arr.sort((x, y) => y.n - x.n || y.wr - x.wr);
+  }, [currentMatrix, view, filterStyle, nameFn]);
 
   const titleBest = view === "formation" ? t.bestMatchupsForm : t.bestMatchupsStyle;
   const titleWorst = view === "formation" ? t.worstMatchupsForm : t.worstMatchupsStyle;
@@ -541,7 +573,7 @@ export default function AnalysisPage({ lang = "fr" }) {
         <div className="border border-gray-800 rounded-xl p-4 overflow-x-auto">
           <h2 className="font-semibold mb-1">{titleMatrix}</h2>
           <p className="text-xs text-gray-400 mb-3">{t.legend}</p>
-          {currentDomain.length === 0 ? (
+          {displayRows.length === 0 ? (
             <div className="text-sm text-gray-500">{t.noData}</div>
           ) : (
             <table className="text-xs">
@@ -550,16 +582,21 @@ export default function AnalysisPage({ lang = "fr" }) {
                   <th className="p-2 bg-gray-900 sticky left-0 z-10">
                     {view === "formation" ? `${t.formationFor} ↓ / ${t.formationAgainst} →` : "Style ↓ / Style →"}
                   </th>
-                  {currentDomain.map((id) => (
+                  {displayCols.map((id) => (
                     <th key={`col-${id}`} className="p-2 text-nowrap">{nameFn(id)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {currentDomain.map((rowId) => (
+                {displayRows.map((rowId) => (
                   <tr key={`row-${rowId}`}>
-                    <th className="p-2 bg-gray-900 sticky left-0 z-10 text-left">{nameFn(rowId)}</th>
-                    {currentDomain.map((colId) => {
+                    <th
+                      className={`p-2 bg-gray-900 sticky left-0 z-10 text-left ${view === "style" ? "cursor-pointer hover:underline" : ""}`}
+                      onClick={() => handleSort(rowId)}
+                    >
+                      {nameFn(rowId)}
+                    </th>
+                    {displayCols.map((colId) => {
                       const a = currentMatrix.get(`${rowId}|${colId}`);
                       if (!a || a.n < minN)
                         return <td key={`cell-${rowId}-${colId}`} className="p-2 text-center text-gray-600">—</td>;
@@ -592,6 +629,25 @@ export default function AnalysisPage({ lang = "fr" }) {
             <h2 className="font-semibold mb-3">
               {view === "formation" ? "Toutes les combinaisons (formations)" : "Toutes les combinaisons (styles)"}
             </h2>
+            {view === "style" && (
+              <div className="mb-3">
+                <label className="block text-xs text-gray-400 mb-1">Style</label>
+                <select
+                  className="rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                  value={filterStyle == null ? "" : filterStyle}
+                  onChange={(e) =>
+                    setFilterStyle(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                >
+                  <option value="">{t.any}</option>
+                  {stylesPresent.map((id) => (
+                    <option key={id} value={id}>
+                      {styleName(id)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {allRows.length === 0 ? (
               <div className="text-sm text-gray-500">{t.noData}</div>
             ) : (
