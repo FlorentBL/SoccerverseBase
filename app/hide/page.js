@@ -440,7 +440,10 @@ export default function AnalysisPage({ lang = "fr" }) {
   const titleMatrix = view === "formation" ? t.matrixForm : t.matrixStyle;
 
   return (
-    <div className="min-h-screen px-4 py-10">
+    <div
+  className="min-h-screen px-4 py-10 bg-neutral-950 text-gray-100"
+  style={{ colorScheme: "dark" }}
+>
       <div className="max-w-7xl mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold mb-6">{t.title}</h1>
 
@@ -451,7 +454,7 @@ export default function AnalysisPage({ lang = "fr" }) {
               {t.leagueIds}
             </label>
             <input
-              className="w-full border border-gray-700 rounded-lg p-2 bg-transparent"
+              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
               value={leagueCsv}
               onChange={(e) => setLeagueCsv(e.target.value)}
               placeholder="548,549 ou *"
@@ -462,7 +465,7 @@ export default function AnalysisPage({ lang = "fr" }) {
               {t.seasonId}
             </label>
             <input
-              className="w-full border border-gray-700 rounded-lg p-2 bg-transparent"
+              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
               value={seasonId}
               onChange={(e) => setSeasonId(e.target.value)}
               placeholder="2"
@@ -472,7 +475,7 @@ export default function AnalysisPage({ lang = "fr" }) {
             <label className="block text-xs text-gray-400 mb-1">{t.minN}</label>
             <input
               type="number"
-              className="w-full border border-gray-700 rounded-lg p-2 bg-transparent"
+              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
               value={minN}
               onChange={(e) => setMinN(Math.max(1, Number(e.target.value)))}
               min={1}
@@ -481,7 +484,7 @@ export default function AnalysisPage({ lang = "fr" }) {
           <div>
             <label className="block text-xs text-gray-400 mb-1">{t.side}</label>
             <select
-              className="w-full border border-gray-700 rounded-lg p-2 bg-transparent"
+              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
               value={sideFilter}
               onChange={(e) => setSideFilter(e.target.value)}
             >
@@ -493,7 +496,7 @@ export default function AnalysisPage({ lang = "fr" }) {
           <div>
             <label className="block text-xs text-gray-400 mb-1">{t.view}</label>
             <select
-              className="w-full border border-gray-700 rounded-lg p-2 bg-transparent"
+              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
               value={view}
               onChange={(e) => setView(e.target.value)}
             >
