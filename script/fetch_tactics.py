@@ -188,11 +188,15 @@ def get_fix_core_from_db(sb, fixture_id: int) -> dict:
 
 def upsert_matches(sb, rows: list[dict]):
     if not rows: return
-    sb.table("sv_matches").upsert(rows, on_conflict=["fixture_id"]).execute()
+    sb.table("sv_matches").upsert(rows, on_conflict="fixture_id").execute()
 
 def upsert_sides(sb, rows: list[dict]):
     if not rows: return
-    sb.table("sv_match_sides").upsert(rows, on_conflict=["fixture_id", "side"]).execute()
+    # side en lower pour homogénéiser
+    for r in rows:
+        if "side" in r and isinstance(r["side"], str):
+            r["side"] = r["side"].lower()
+    sb.table("sv_match_sides").upsert(rows, on_conflict="fixture_id,side").execute()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Business
