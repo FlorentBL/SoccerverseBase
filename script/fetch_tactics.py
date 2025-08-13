@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, sys, json, math, time, argparse, asyncio
+import os, sys, json, math, time, argparse, asyncio, random
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -17,9 +17,35 @@ DEFAULT_SEASON = int(os.getenv("SEASON_ID", "2"))
 DEFAULT_PAR = int(os.getenv("PAR", "4"))
 DEFAULT_REFRESH_DAYS = int(os.getenv("REFRESH_DAYS", "14"))
 
+# Cadence HTTP (anti-429)
+RPC_QPS = float(os.getenv("RPC_QPS", "1.0"))         # ex: 0.8, 1.0, 1.5...
+LEAGUE_PAUSE_S = float(os.getenv("LEAGUE_PAUSE_S", "1.0"))  # pause entre ligues
+
 RPC_URL = "https://gsppub.soccerverse.io/"
 SERVICES = "https://services.soccerverse.com"
 TACTICS_BASE = f"{SERVICES}/api/fixture_history/tactics/"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Limiteur de débit simple (QPS global)
+class AsyncRateLimiter:
+    def __init__(self, qps: float = 1.0, jitter: float = 0.25):
+        self.min_interval = 1.0 / max(qps, 0.01)
+        self.jitter = float(jitter)
+        self._lock = asyncio.Lock()
+        self._last = 0.0
+
+    async def wait(self):
+        async with self._lock:
+            now = time.monotonic()
+            delay = max(0.0, self.min_interval - (now - self._last))
+            # petit jitter pour désynchroniser vis-à-vis d'autres runners
+            if delay > 0:
+                delay += self.jitter * (random.random() - 0.5)
+                if delay > 0:
+                    await asyncio.sleep(delay)
+            self._last = time.monotonic()
+
+rate_limiter = AsyncRateLimiter(RPC_QPS)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Supabase
@@ -48,6 +74,7 @@ def get_supabase():
 async def _post_json(url, payload, client, tries=6, tag=""):
     for i in range(tries):
         try:
+            await rate_limiter.wait()  # ← limiteur global
             r = await client.post(url, json=payload, timeout=30)
             if r.status_code == 429:
                 wait = 2.0 * (i + 1)
@@ -65,6 +92,7 @@ async def _post_json(url, payload, client, tries=6, tag=""):
 async def _get_json(url, client, tries=6, tag=""):
     for i in range(tries):
         try:
+            await rate_limiter.wait()  # ← limiteur global
             r = await client.get(url, timeout=30)
             if r.status_code == 429:
                 wait = 2.0 * (i + 1)
@@ -219,6 +247,8 @@ def build_side_rows_from_tactics(fix_core: dict, tactics: list[dict]) -> list[di
 
 async def collect_league_fixtures(league_id: int, season_id: int, client: httpx.AsyncClient) -> list[dict]:
     club_ids = await get_league_club_ids(league_id, client)
+
+    # Séquentiel + rate limiter -> évite 429
     all_sched = []
     for cid in club_ids:
         try:
@@ -372,6 +402,10 @@ async def main():
                     await process_league(sb, lid, ns.season, ns.refresh_days, client)
                 except Exception as e:
                     print(f"[{lid}] ERROR: {e}", flush=True)
+                finally:
+                    # petite respiration entre ligues pour ménager l'API
+                    if LEAGUE_PAUSE_S > 0:
+                        await asyncio.sleep(LEAGUE_PAUSE_S)
 
         await asyncio.gather(*[_one(l) for l in leagues])
 

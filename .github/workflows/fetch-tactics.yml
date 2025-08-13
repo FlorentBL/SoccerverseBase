@@ -36,7 +36,11 @@ jobs:
       SEASON_ID: ${{ inputs.season_id }}
       LEAGUES_CSV: ${{ inputs.leagues_csv }}
       REFRESH_DAYS: ${{ inputs.refresh_days }}
-      PAR: "4"
+
+      # Réglages d'exécution
+      PAR: "2"                  # ↓ parallélisme plus bas
+      RPC_QPS: "0.8"            # ↓ cadence requêtes/sec
+      LEAGUE_PAUSE_S: "1.5"     # pause entre ligues
 
     steps:
       - name: Checkout
@@ -78,12 +82,21 @@ jobs:
           echo "SEASON_ID=${SEASON_ID:-2}" >> $GITHUB_ENV
           echo "LEAGUES_CSV=${LEAGUES_CSV:-}" >> $GITHUB_ENV
           echo "REFRESH_DAYS=${REFRESH_DAYS:-14}" >> $GITHUB_ENV
-          echo "PAR=${PAR:-4}" >> $GITHUB_ENV
-          echo "Using SEASON_ID=$SEASON_ID LEAGUES_CSV='${LEAGUES_CSV}' REFRESH_DAYS=$REFRESH_DAYS PAR=$PAR"
+          echo "PAR=${PAR:-2}" >> $GITHUB_ENV
+          echo "RPC_QPS=${RPC_QPS:-0.8}" >> $GITHUB_ENV
+          echo "LEAGUE_PAUSE_S=${LEAGUE_PAUSE_S:-1.5}" >> $GITHUB_ENV
+          echo "Using SEASON_ID=$SEASON_ID LEAGUES_CSV='${LEAGUES_CSV}' REFRESH_DAYS=$REFRESH_DAYS PAR=$PAR RPC_QPS=$RPC_QPS LEAGUE_PAUSE_S=$LEAGUE_PAUSE_S"
+
+      # (Optionnel) petit décalage pour éviter l'effet troupeau
+      - name: Gentle stagger
+        shell: bash
+        run: |
+          SECS=$(( (RANDOM % 20) + 5 ))
+          echo "Sleeping ${SECS}s to stagger..."
+          sleep "${SECS}"
 
       - name: Run fetcher
         run: |
           python script/fetch_tactics.py
-          # Notes:
-          # - Sans args => le script lit SEASON_ID/LEAGUES_CSV/REFRESH_DAYS/PAR depuis l'env
-          # - Pour forcer une liste spécifique: ajoutez --leagues "548,549"
+          # Sans args => le script lit SEASON_ID/LEAGUES_CSV/REFRESH_DAYS/PAR/RPC_QPS/LEAGUE_PAUSE_S depuis l'env
+          # Pour forcer une liste: ajoutez --leagues "548,549"
