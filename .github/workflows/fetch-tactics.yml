@@ -28,8 +28,11 @@ jobs:
     timeout-minutes: 60
 
     env:
+      # Secrets Supabase
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+
+      # Params (inputs si dispatch, sinon vides: on fixera des defaults plus bas)
       SEASON_ID: ${{ inputs.season_id }}
       LEAGUES_CSV: ${{ inputs.leagues_csv }}
       REFRESH_DAYS: ${{ inputs.refresh_days }}
@@ -55,12 +58,32 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r script/requirements.txt
+          if [ -f script/requirements.txt ]; then
+            pip install -r script/requirements.txt
+          elif [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install supabase==2.6.0 httpx==0.27.0 python-dotenv==1.0.1
+          fi
+
+      - name: Preflight Supabase env
+        run: |
+          [ -n "${SUPABASE_URL}" ] || { echo "❌ Missing SUPABASE_URL"; exit 1; }
+          [ -n "${SUPABASE_SERVICE_ROLE}" ] || { echo "❌ Missing SUPABASE_SERVICE_ROLE"; exit 1; }
+          echo "✅ Supabase env present"
+
+      - name: Resolve inputs/defaults
+        run: |
+          # Applique des valeurs par défaut si appel via cron (inputs vides)
+          echo "SEASON_ID=${SEASON_ID:-2}" >> $GITHUB_ENV
+          echo "LEAGUES_CSV=${LEAGUES_CSV:-}" >> $GITHUB_ENV
+          echo "REFRESH_DAYS=${REFRESH_DAYS:-14}" >> $GITHUB_ENV
+          echo "PAR=${PAR:-4}" >> $GITHUB_ENV
+          echo "Using SEASON_ID=$SEASON_ID LEAGUES_CSV='${LEAGUES_CSV}' REFRESH_DAYS=$REFRESH_DAYS PAR=$PAR"
 
       - name: Run fetcher
         run: |
           python script/fetch_tactics.py
-          # Remarques :
-          # - Sans args => utilise DEFAULT_LEAGUES + SEASON_ID/env (2)
-          # - Pour forcer les ligues : ajoutez --leagues "548,549"
-          # - Pour plus de verbosité : ajoutez 'set -x' au début
+          # Notes:
+          # - Sans args => le script lit SEASON_ID/LEAGUES_CSV/REFRESH_DAYS/PAR depuis l'env
+          # - Pour forcer une liste spécifique: ajoutez --leagues "548,549"

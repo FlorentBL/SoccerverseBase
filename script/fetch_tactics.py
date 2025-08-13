@@ -23,12 +23,25 @@ TACTICS_BASE = "https://services.soccerverse.com/api/fixture_history/tactics/"
 # ──────────────────────────────────────────────────────────────────────────────
 # Supabase
 def get_supabase():
-    load_dotenv()  # charge .env si présent (local)
-    url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_ROLE") or os.getenv("SUPABASE_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_KEY")
-    if not url or not key:
-        raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE/KEY in env.")
+    load_dotenv()
+    url_names = ["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]
+    key_names = ["SUPABASE_SERVICE_ROLE", "SUPABASE_KEY", "NEXT_PUBLIC_SUPABASE_KEY"]
+
+    name_url = next((n for n in url_names if os.getenv(n)), None)
+    name_key = next((n for n in key_names if os.getenv(n)), None)
+
+    if not name_url or not name_key:
+        raise RuntimeError(
+            "Missing Supabase env. Checked URL vars: "
+            + ", ".join(url_names)
+            + " — KEY vars: "
+            + ", ".join(key_names)
+        )
+
+    url = os.getenv(name_url)
+    key = os.getenv(name_key)
     return create_client(url, key)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HTTP utils
