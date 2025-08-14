@@ -4,11 +4,12 @@ import PlayerTab from "./PlayerTab";
 import ClubTab from "./ClubTab";
 import LeagueTab from "./LeagueTab";
 
-const TAB_LABELS = {
-  fr: { player: "Joueur", club: "Club", league: "Championnat" },
-  en: { player: "Player", club: "Club", league: "League" },
-  it: { player: "Giocatore", club: "Club", league: "Campionato" },
-};
+  const TAB_LABELS = {
+    fr: { player: "Joueur", club: "Club", league: "Championnat" },
+    en: { player: "Player", club: "Club", league: "League" },
+    it: { player: "Giocatore", club: "Club", league: "Campionato" },
+    zh: { player: "球员", club: "俱乐部", league: "联赛" },
+  };
 
 export default function ScoutingPage({ lang = "fr" }) {
   const [tab, setTab] = useState("player");

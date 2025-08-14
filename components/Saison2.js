@@ -13,12 +13,17 @@ const LABELS = {
     show: "Show match detail",
     hide: "Hide match detail",
   },
-  it: {
-    title: "Bilancio Stagione 2 (in corso)",
-    show: "Mostra dettaglio per giornata",
-    hide: "Nascondi dettaglio per giornata",
-  },
-};
+    it: {
+      title: "Bilancio Stagione 2 (in corso)",
+      show: "Mostra dettaglio per giornata",
+      hide: "Nascondi dettaglio per giornata",
+    },
+    zh: {
+      title: "赛季2收支（进行中）",
+      show: "显示比赛详情",
+      hide: "隐藏比赛详情",
+    },
+  };
 
 export default function Saison2({ bilan, weeks, details, lang = "fr" }) {
   const [showDetail, setShowDetail] = useState(false);

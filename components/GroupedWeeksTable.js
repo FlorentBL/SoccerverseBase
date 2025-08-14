@@ -19,15 +19,23 @@ const TYPE_LABELS = {
     competition: "🏆 Competitions",
     autre: "❓ Other events",
   },
-  it: {
-    match_domicile: "📘 Partite in casa",
-    match_exterieur: "🚌 Partite in trasferta",
-    transfert: "💰 Trasferimenti",
-    injection: "🏦 Iniezioni di cassa",
-    competition: "🏆 Competizioni",
-    autre: "❓ Altri eventi",
-  }
-};
+    it: {
+      match_domicile: "📘 Partite in casa",
+      match_exterieur: "🚌 Partite in trasferta",
+      transfert: "💰 Trasferimenti",
+      injection: "🏦 Iniezioni di cassa",
+      competition: "🏆 Competizioni",
+      autre: "❓ Altri eventi",
+    },
+    zh: {
+      match_domicile: "📘 主场比赛",
+      match_exterieur: "🚌 客场比赛",
+      transfert: "💰 转会",
+      injection: "🏦 资金注入",
+      competition: "🏆 赛事",
+      autre: "❓ 其他事件",
+    }
+  };
 
 export default function GroupedWeeksTable({ weeks, lang = "fr" }) {
   const grouped = {};

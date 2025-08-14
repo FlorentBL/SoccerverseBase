@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 
 const PLAYER_MAPPING_URL = "/player_mapping.json";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", zh: "zh-CN" };
 
 const T = {
   fr: {
@@ -47,7 +47,7 @@ const T = {
     transfermarkt: "View on Transfermarkt",
     seePlayer: "See player on Soccerverse",
   },
-  it: {
+    it: {
     idLabel: "ID Giocatore:",
     idPlaceholder: "Es: 17",
     showInfo: "Mostra info",
@@ -66,9 +66,30 @@ const T = {
     mobileUnavailable: "(Anteprima non disponibile su mobile)",
     openSoccerRatings: "Apri su SoccerRatings.org",
     transfermarkt: "Vedi su Transfermarkt",
-    seePlayer: "Vedi il giocatore su Soccerverse",
-  },
-};
+      seePlayer: "Vedi il giocatore su Soccerverse",
+    },
+    zh: {
+      idLabel: "球员 ID:",
+      idPlaceholder: "例如: 17",
+      showInfo: "显示信息",
+      searching: "搜索中...",
+      errorNotFound: "未找到该ID的球员。",
+      errorNetwork: "网络或解析错误。",
+      allValues: "所有数值单位为 SVC",
+      notAvailable: "不可用",
+      age: "年龄:",
+      club: "俱乐部:",
+      rating: "评分:",
+      value: "价值:",
+      wages: "工资:",
+      analysis: "SoccerRatings.org 分析",
+      openAnalysis: "在 SoccerRatings.org 查看完整分析",
+      mobileUnavailable: "(移动端无法预览)",
+      openSoccerRatings: "在 SoccerRatings.org 打开",
+      transfermarkt: "在 Transfermarkt 查看",
+      seePlayer: "在 Soccerverse 查看球员",
+    },
+  };
 
 function getEmoji(label) {
   switch (label) {

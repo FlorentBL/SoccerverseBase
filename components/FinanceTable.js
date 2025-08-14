@@ -4,7 +4,8 @@ import { FIELD_ORDER, FIELD_LABELS, COST_FIELDS, formatSVC } from "./utils";
 const TABLE_LABELS = {
   fr: { flux: "Flux", amount: "Montant", total: "total ", projection: "projection ", days: "journées" },
   en: { flux: "Flow", amount: "Amount", total: "total ", projection: "projection ", days: "days" },
-  it: { flux: "Flusso", amount: "Importo", total: "totale ", projection: "proiezione ", days: "giornate" }
+  it: { flux: "Flusso", amount: "Importo", total: "totale ", projection: "proiezione ", days: "giornate" },
+  zh: { flux: "项目", amount: "金额", total: "总计 ", projection: "预测 ", days: "天" }
 };
 
 export default function FinanceTable({ bilan, weeks, isProj, lang = "fr" }) {

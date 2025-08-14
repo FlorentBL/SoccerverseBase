@@ -22,16 +22,25 @@ const LABELS = {
     show: "Show match detail",
     hide: "Hide match detail",
   },
-  it: {
-    title: "Simulazione di reclutamento",
-    transfert: "Importo trasferimento",
-    salaire: "Stipendio settimanale (SVC/match)",
-    placeholderTransfert: "es: 2000000",
-    placeholderSalaire: "es: 10000",
-    show: "Mostra dettaglio per giornata",
-    hide: "Nascondi dettaglio per giornata",
-  },
-};
+    it: {
+      title: "Simulazione di reclutamento",
+      transfert: "Importo trasferimento",
+      salaire: "Stipendio settimanale (SVC/match)",
+      placeholderTransfert: "es: 2000000",
+      placeholderSalaire: "es: 10000",
+      show: "Mostra dettaglio per giornata",
+      hide: "Nascondi dettaglio per giornata",
+    },
+    zh: {
+      title: "引援模拟",
+      transfert: "转会费",
+      salaire: "周薪 (SVC/场)",
+      placeholderTransfert: "例如: 2000000",
+      placeholderSalaire: "例如: 10000",
+      show: "显示比赛详情",
+      hide: "隐藏比赛详情",
+    },
+  };
 
 export default function SimulationFinS2({
   results,

@@ -4,7 +4,7 @@ const PLAYER_MAPPING_URL = "/player_mapping.json";
 const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", zh: "zh-CN" };
 
 const T = {
   fr: {
@@ -109,7 +109,7 @@ const T = {
     moraleNeutral: "Neutral morale",
     moraleBad: "Bad morale",
   },
-  it: {
+    it: {
     idLabel: "ID Club:",
     idPlaceholder: "Es: 5902",
     showInfo: "Mostra info",
@@ -158,9 +158,60 @@ const T = {
     },
     moraleGood: "Buona morale",
     moraleNeutral: "Morale neutro",
-    moraleBad: "Cattiva morale",
-  },
-};
+      moraleBad: "Cattiva morale",
+    },
+    zh: {
+      idLabel: "俱乐部 ID:",
+      idPlaceholder: "例如: 5902",
+      showInfo: "显示信息",
+      searching: "搜索中...",
+      errorNotFound: "未找到该ID的俱乐部。",
+      errorNetwork: "网络或解析错误。",
+      squadLoading: "载入阵容...",
+      squadError: "未找到阵容中的球员。",
+      squadErrorNetwork: "网络或阵容解析错误。",
+      manager: "经理",
+      division: "级别",
+      fans: "粉丝",
+      balance: "余额",
+      stadium: "球场",
+      value: "价值",
+      avgWage: "平均工资",
+      league: "联赛",
+      teamRating: "⭑ 球队评分",
+      top21: "⭑ Top 21",
+      shooting: "🏹 射门",
+      passing: "🎯 传球",
+      tackling: "🛡️ 抢断",
+      gk: "🧤 门将",
+      topInfluencers: "主要影响者",
+      squadTitle: "俱乐部阵容",
+      columns: {
+        name: "名字",
+        positions: "位置",
+        rating: "评分",
+        rating_gk: "GK",
+        rating_tackling: "抢断",
+        rating_passing: "传球",
+        rating_shooting: "射门",
+        age: "年龄",
+        form: "状态",
+        matches: "比赛",
+        goals: "进球",
+        assists: "助攻",
+        value: "价值",
+        wages: "工资",
+        morale: "士气",
+        agent_name: "经纪人",
+        contract: "合同",
+        cartons: "牌",
+        country_id: "国家",
+      },
+      moraleGood: "良好士气",
+      moraleNeutral: "中性士气",
+      moraleBad: "糟糕士气",
+    },
+  };
 
 const SOCCERVERSE_POSITIONS_ORDER = [
   "GK", "LB", "CB", "RB",

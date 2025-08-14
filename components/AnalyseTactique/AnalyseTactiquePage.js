@@ -71,6 +71,26 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       tackles: "Contrasti",
       noData: "Nessun dato disponibile",
     },
+    zh: {
+      title: "战术分析",
+      placeholder: "俱乐部 ID",
+      analyze: "分析",
+      loading: "加载中...",
+      error: "API 调用错误",
+      nextMatchAgainst: "下一场对阵",
+      recentForm: "近期状态",
+      date: "日期",
+      match: "比赛",
+      score: "比分",
+      formation: "阵型",
+      style: "风格",
+      avgTempo: "平均节奏",
+      avgTackles: "平均抢断",
+      player: "球员",
+      tempo: "节奏",
+      tackles: "抢断",
+      noData: "无可用数据",
+    },
   };
   const t = TEXTS[lang] || TEXTS.fr;
 
@@ -153,6 +173,31 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
  22: "4-1-3-2",
  23: "3-2-2-2-1",
     },
+    zh: {
+      0: "4-4-2",
+      1: "4-3-3",
+      2: "4-5-1",
+      3: "3-4-3",
+      4: "3-5-2",
+      5: "3-3-4",
+      6: "5-4-1",
+      7: "5-3-2",
+      8: "5-2-3",
+      9: "4-4-2 (菱形)",
+      10: "4-3-3 边锋",
+      11: "4-5-1 防守",
+      12: "4-2-3-1",
+      13: "4-4-1-1",
+      14: "4-3-1-2",
+      15: "3-4-1-2",
+      16: "5-3-2 自由人",
+      17: "5-3-2 防守",
+      18: "4-2-4",
+      19: "4-2-2-2",
+      20: "3-4-2-1",
+      21: "4-1-3-2",
+      22: "3-2-2-2-1",
+    },
   };
 
   const STYLE_MAP = {
@@ -179,6 +224,14 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       3: "Passaggi (P)",
       4: "Contropiede (C)",
       5: "Palle lunghe (L)",
+    },
+    zh: {
+      0: "普通 (N)",
+      1: "防守 (D)",
+      2: "进攻 (O)",
+      3: "传球 (P)",
+      4: "反击 (C)",
+      5: "长传 (L)",
     },
   };
 

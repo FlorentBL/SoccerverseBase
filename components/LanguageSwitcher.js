@@ -5,7 +5,8 @@ import Link from "next/link";
 const LANGS = [
   { code: "fr", label: "FR" },
   { code: "en", label: "EN" },
-  { code: "it", label: "IT" }
+  { code: "it", label: "IT" },
+  { code: "zh", label: "ZH" }
 ];
 
 export default function LanguageSwitcher() {
@@ -17,10 +18,15 @@ export default function LanguageSwitcher() {
   const getHref = (lang) => {
     if (current === lang) return pathname;
     // Replace l'ancien préfixe par le nouveau, ou ajoute si absent
-    if (pathname.startsWith("/fr") || pathname.startsWith("/en") || pathname.startsWith("/it"))
-      return pathname.replace(/^\/(fr|en|it)/, "/" + lang);
-    return "/" + lang + pathname;
-  };
+      if (
+        pathname.startsWith("/fr") ||
+        pathname.startsWith("/en") ||
+        pathname.startsWith("/it") ||
+        pathname.startsWith("/zh")
+      )
+        return pathname.replace(/^\/(fr|en|it|zh)/, "/" + lang);
+      return "/" + lang + pathname;
+    };
 
   return (
     <div className="flex justify-end px-4 py-2 gap-1">

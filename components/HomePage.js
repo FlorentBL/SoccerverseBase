@@ -162,6 +162,58 @@ const LABELS = {
       },
     ],
   },
+  zh: {
+    hero1: "SoccerverseBase",
+    hero2: (
+      <>入门并提升 Soccerverse 的实用指南。<br />快速访问资源、信息和中文社区。</>
+    ),
+    signup: "注册 Soccerverse",
+    patch: "汉化补丁（标志、名称）",
+    discordTitle: "K-SOCIOS 中文社区",
+    discordText: (
+      <>提供支持、讨论和信息的中文空间。<br />加入 Discord 提问或与玩家交流。</>
+    ),
+    discordBtn: "加入 K-SOCIOS Discord",
+    sectionsTitle: "网站栏目",
+    sections: [
+      {
+        href: "/comment-debuter",
+        title: "如何开始？",
+        desc: "新手指南",
+        featured: true,
+      },
+      {
+        href: "/dashboard",
+        title: "仪表盘",
+        desc: "一眼查看你支持的俱乐部成绩",
+      },
+      {
+        href: "/scouting",
+        title: "球探",
+        desc: "想查看球员、俱乐部或联赛详情？来这里",
+      },
+      {
+        href: "/recompenses",
+        title: "奖励模拟器",
+        desc: "可模拟赛季末俱乐部或影响者奖励",
+      },
+      {
+        href: "/finance",
+        title: "财务分析",
+        desc: "想了解俱乐部财务？预测赛季末甚至模拟引援",
+      },
+      {
+        href: "/analyse-tactique",
+        title: "战术分析",
+        desc: "分析你接下来的 3 个对手",
+      },
+      {
+        href: "/revenus",
+        title: "球员收益",
+        desc: "展示球员工资和收益的表格",
+      },
+    ],
+  },
 };
 
 export default function HomePage({ lang = "fr" }) {

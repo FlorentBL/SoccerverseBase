@@ -14,13 +14,19 @@ const LABELS = {
     totalRecettes: "Total income S2: ",
     totalCharges: "Total expenses S2: ",
   },
-  it: {
-    soldeFin: "Saldo previsto fine S2: ",
-    masseSalariale: "Stipendio giocatori previsto S2: ",
-    totalRecettes: "Totale entrate S2: ",
-    totalCharges: "Totale spese S2: ",
-  },
-};
+    it: {
+      soldeFin: "Saldo previsto fine S2: ",
+      masseSalariale: "Stipendio giocatori previsto S2: ",
+      totalRecettes: "Totale entrate S2: ",
+      totalCharges: "Totale spese S2: ",
+    },
+    zh: {
+      soldeFin: "赛季2预计余额：",
+      masseSalariale: "赛季2预计球员工资总额：",
+      totalRecettes: "赛季2总收入：",
+      totalCharges: "赛季2总支出：",
+    },
+  };
 
 export default function RecapSynthese({ soldeFin, masseSalariale, totalRecettes, totalCharges, lang = "fr" }) {
   const t = LABELS[lang] || LABELS.fr;

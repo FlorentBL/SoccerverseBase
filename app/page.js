@@ -1,6 +1,7 @@
 // /app/page.js
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 export default function Home({ params }) {
   // Vérifie si on est en environnement "Edge" (middleware), pour accéder aux headers
@@ -18,20 +19,25 @@ export default function Home({ params }) {
     if (lang.startsWith("en")) {
       redirect("/en");
     }
-    // Ajoute d'autres langues ici si besoin, exemple italien :
-    // if (lang.startsWith("it")) { redirect("/it"); }
+    if (lang.startsWith("it")) {
+      redirect("/it");
+    }
+    if (lang.startsWith("zh")) {
+      redirect("/zh");
+    }
     // Sinon, fallback vers FR :
     redirect("/fr");
   } else {
     // Côté client (au cas où, par sécurité)
     if (navigator.language.startsWith("en")) {
       redirect("/en");
+    } else if (navigator.language.startsWith("it")) {
+      redirect("/it");
+    } else if (navigator.language.startsWith("zh")) {
+      redirect("/zh");
     } else {
       redirect("/fr");
     }
   }
   return null;
 }
-
-// Ajoute cette import en haut du fichier :
-import { headers } from "next/headers";

@@ -35,7 +35,7 @@ const LABELS = {
     alertDebt:
       "Rewards are only distributed to influencers if the club is not in debt.",
   },
-  it: {
+    it: {
     title: "Ricompense di Lega",
     seasonLabel: "Stagione:",
     seasonPlaceholder: "Seleziona una stagione",
@@ -47,10 +47,25 @@ const LABELS = {
     error: "Errore di rete o dati mancanti",
     columns: { rank: "#", club: "Club", reward: "Premio", influencers: "Influencer" },
     alertS1: "Nella Stagione 1 si utilizzano i budget della Stagione 2.",
-    alertDebt:
-      "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
-  },
-};
+      alertDebt:
+        "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
+    },
+    zh: {
+      title: "联赛奖励",
+      seasonLabel: "赛季:",
+      seasonPlaceholder: "选择赛季",
+      countryLabel: "国家:",
+      countryPlaceholder: "选择国家",
+      divisionLabel: "级别:",
+      divisionPlaceholder: "选择级别",
+      loading: "计算中...",
+      error: "网络错误或缺少数据",
+      columns: { rank: "#", club: "俱乐部", reward: "奖励", influencers: "影响者" },
+      alertS1: "第1赛季使用第2赛季预算。",
+      alertDebt:
+        "只有俱乐部没有债务时才向影响者分配奖励。",
+    },
+  };
 
 function codeFromFlag(flag) {
   if (!flag) return null;
