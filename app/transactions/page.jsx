@@ -15,7 +15,7 @@ export default function TransactionAnalysis() {
     setError(null);
     setSearched(true);
     try {
-      const res = await fetch("/api/soccerverse/transactions", {
+      const res = await fetch("/api/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: username.trim() }),
