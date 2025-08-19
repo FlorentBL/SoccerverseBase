@@ -76,7 +76,7 @@ export function isMatchWeek(week) {
   return typeof week.player_wages === "number" && Math.abs(week.player_wages) > 0;
 }
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 export function formatSVC(val, field, lang = "fr") {
   if (typeof val !== "number") return "-";

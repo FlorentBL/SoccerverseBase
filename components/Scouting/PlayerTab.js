@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 
 const PLAYER_MAPPING_URL = "/player_mapping.json";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 const T = {
   fr: {

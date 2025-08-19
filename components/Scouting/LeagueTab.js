@@ -3,7 +3,7 @@ import React, { useState, useRef } from "react";
 const CLUB_MAPPING_URL = "/club_mapping.json";
 const COUNTRY_MAPPING_URL = "/country_mapping2.json";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 const GROUP_LABELS = {
   AFR: { fr: "Afrique", en: "Africa", it: "Africa" },

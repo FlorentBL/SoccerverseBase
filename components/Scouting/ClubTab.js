@@ -4,7 +4,7 @@ const PLAYER_MAPPING_URL = "/player_mapping.json";
 const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 const T = {
   fr: {

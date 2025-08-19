@@ -18,6 +18,9 @@ export default function Home({ params }) {
     if (lang.startsWith("en")) {
       redirect("/en");
     }
+    if (lang.startsWith("es")) {
+      redirect("/es");
+    }
     // Ajoute d'autres langues ici si besoin, exemple italien :
     // if (lang.startsWith("it")) { redirect("/it"); }
     // Sinon, fallback vers FR :
@@ -26,6 +29,8 @@ export default function Home({ params }) {
     // Côté client (au cas où, par sécurité)
     if (navigator.language.startsWith("en")) {
       redirect("/en");
+    } else if (navigator.language.startsWith("es")) {
+      redirect("/es");
     } else {
       redirect("/fr");
     }
