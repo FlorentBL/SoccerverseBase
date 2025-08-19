@@ -1,6 +1,6 @@
 // app/transactions/page.jsx
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function TransactionAnalysis() {
   const [username, setUsername] = useState("");
@@ -8,6 +8,28 @@ export default function TransactionAnalysis() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searched, setSearched] = useState(false);
+  const [clubMap, setClubMap] = useState({});
+  const [playerMap, setPlayerMap] = useState({});
+
+  useEffect(() => {
+    const loadMaps = async () => {
+      try {
+        const [clubRes, playerRes] = await Promise.all([
+          fetch("/club_mapping.json"),
+          fetch("/player_mapping.json"),
+        ]);
+        const [clubData, playerData] = await Promise.all([
+          clubRes.json(),
+          playerRes.json(),
+        ]);
+        setClubMap(clubData);
+        setPlayerMap(playerData);
+      } catch {
+        /* ignore mapping errors */
+      }
+    };
+    loadMaps();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +70,63 @@ export default function TransactionAnalysis() {
     return d.toLocaleString("fr-FR");
   };
 
+  const getClubName = (id) => clubMap[id]?.name || clubMap[id]?.n || String(id);
+  const getPlayerName = (id) => {
+    const p = playerMap[id];
+    if (!p) return String(id);
+    return p.name || [p.f, p.s].filter(Boolean).join(" ");
+  };
+  const renderUser = (name) => {
+    if (!name) return "-";
+    const href = `https://play.soccerverse.com/profile/${name}`;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-indigo-400 hover:underline"
+      >
+        {name}
+      </a>
+    );
+  };
+  const renderShare = (share) => {
+    if (!share || !share.id) return "-";
+    let label = share.id;
+    let link = "";
+    let prefix = "";
+    if (share.type === "club") {
+      label = getClubName(share.id);
+      link = `https://play.soccerverse.com/club/${share.id}`;
+      prefix = "Club";
+    } else if (share.type === "player") {
+      label = getPlayerName(share.id);
+      link = `https://play.soccerverse.com/player/${share.id}`;
+      prefix = "Joueur";
+    } else if (share.type === "user") {
+      label = share.id;
+      link = `https://play.soccerverse.com/profile/${share.id}`;
+      prefix = "Utilisateur";
+    }
+    return (
+      <div>
+        {prefix && <span className="mr-1">{prefix}:</span>}
+        {link ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-400 hover:underline"
+          >
+            {label}
+          </a>
+        ) : (
+          label
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen text-white py-8 px-2 sm:px-4">
       <div className="max-w-4xl mx-auto">
@@ -76,35 +155,35 @@ export default function TransactionAnalysis() {
 
         {transactions.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-gray-400">
-                <tr>
-                  <th className="text-left py-2 pr-2">Nom</th>
-                  <th className="text-left py-2 pr-2">Type</th>
-                  <th className="text-left py-2 pr-2">Part</th>
-                  <th className="text-right py-2 pr-2">Quantité</th>
-                  <th className="text-left py-2 pr-2">Autre</th>
-                  <th className="text-left py-2 pr-2">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {transactions.map((t, i) => (
-                  <tr
-                    key={`${t.name}-${t?.share?.type}-${t?.share?.id}-${t.date}-${i}`}
-                    className="hover:bg-white/5"
-                  >
-                    <td className="py-2 pr-2">{t?.name ?? "-"}</td>
-                    <td className="py-2 pr-2">{t?.type ?? "-"}</td>
-                    <td className="py-2 pr-2">
-                      {t?.share?.type ?? "-"} {t?.share?.id ?? ""}
-                    </td>
-                    <td className="py-2 pr-2 text-right">{t?.num ?? "-"}</td>
-                    <td className="py-2 pr-2">{t?.other_name ?? "-"}</td>
-                    <td className="py-2 pr-2">{formatDate(t?.date)}</td>
+            <div className="rounded-lg border border-gray-700 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-800 text-gray-300">
+                  <tr>
+                    <th className="text-left py-2 pr-2">Nom</th>
+                    <th className="text-left py-2 pr-2">Type</th>
+                    <th className="text-left py-2 pr-2">Part</th>
+                    <th className="text-right py-2 pr-2">Quantité</th>
+                    <th className="text-left py-2 pr-2">Autre</th>
+                    <th className="text-left py-2 pr-2">Date</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {transactions.map((t, i) => (
+                    <tr
+                      key={`${t.name}-${t?.share?.type}-${t?.share?.id}-${t.date}-${i}`}
+                      className="hover:bg-white/5"
+                    >
+                      <td className="py-2 pr-2">{renderUser(t?.name)}</td>
+                      <td className="py-2 pr-2">{t?.type ?? "-"}</td>
+                      <td className="py-2 pr-2">{renderShare(t?.share)}</td>
+                      <td className="py-2 pr-2 text-right">{t?.num ?? "-"}</td>
+                      <td className="py-2 pr-2">{renderUser(t?.other_name)}</td>
+                      <td className="py-2 pr-2">{formatDate(t?.date)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           searched && !loading && <div className="text-gray-400">Aucune transaction</div>
