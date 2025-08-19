@@ -10,6 +10,12 @@ export default function TransactionAnalysis() {
   const [searched, setSearched] = useState(false);
   const [clubMap, setClubMap] = useState({});
   const [playerMap, setPlayerMap] = useState({});
+  const suggestions = [
+    "SoccerversePortugal",
+    "paul90c",
+    "NachoHeras",
+    "Luucasmb",
+  ];
 
   useEffect(() => {
     const loadMaps = async () => {
@@ -31,9 +37,11 @@ export default function TransactionAnalysis() {
     loadMaps();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!username.trim()) return;
+  const handleSubmit = async (e, nameArg) => {
+    e?.preventDefault();
+    const searchName = nameArg ?? username;
+    if (!searchName.trim()) return;
+    setUsername(searchName);
     setLoading(true);
     setError(null);
     setSearched(true);
@@ -41,7 +49,7 @@ export default function TransactionAnalysis() {
       const res = await fetch("/api/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: username.trim() }),
+        body: JSON.stringify({ name: searchName.trim() }),
       });
 
       if (!res.ok) {
@@ -150,6 +158,22 @@ export default function TransactionAnalysis() {
             {loading ? "Chargement..." : "Rechercher"}
           </button>
         </form>
+
+        <div className="mb-6">
+          <p className="mb-2 text-sm text-gray-300">Suggestions :</p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => handleSubmit(null, s)}
+                className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {error && <div className="text-red-400 mb-4">{error}</div>}
 
