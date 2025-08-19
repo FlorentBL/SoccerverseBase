@@ -50,6 +50,21 @@ const LABELS = {
     alertDebt:
       "Le ricompense vengono distribuite agli influencer solo se il club non ha debiti.",
   },
+  es: {
+    title: "Recompensas de Liga",
+    seasonLabel: "Temporada:",
+    seasonPlaceholder: "Selecciona una temporada",
+    countryLabel: "País:",
+    countryPlaceholder: "Selecciona un país",
+    divisionLabel: "División:",
+    divisionPlaceholder: "Selecciona una división",
+    loading: "Calculando...",
+    error: "Error de red o datos faltantes",
+    columns: { rank: "#", club: "Club", reward: "Recompensa", influencers: "Influencers" },
+    alertS1: "En la Temporada 1 se usan los presupuestos de la Temporada 2.",
+    alertDebt:
+      "Las recompensas solo se distribuyen a los influencers si el club no tiene deudas.",
+  },
 };
 
 function codeFromFlag(flag) {

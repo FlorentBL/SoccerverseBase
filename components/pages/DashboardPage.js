@@ -47,6 +47,21 @@ const LABELS = {
     position: "Posizione",
     noClub: "Nessun club trovato",
   },
+  es: {
+    title: "Dashboard de usuario",
+    name: "Nombre",
+    placeholder: "ej: klo",
+    submit: "Buscar",
+    loading: "Cargando…",
+    error: "Error de carga",
+    club: "Club",
+    shares: "Acciones",
+    lastMatch: "Último partido",
+    matchDate: "Fecha",
+    coach: "Entrenador",
+    position: "Posición",
+    noClub: "Ningún club encontrado",
+  },
 };
 
 const CLUB_MAPPING_URL = "/club_mapping.json";

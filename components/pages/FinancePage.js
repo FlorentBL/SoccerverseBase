@@ -37,6 +37,15 @@ const LABELS = {
     loading: "Caricamento…",
     errorClub: "Errore saldo club",
     errorSeason: s => `Errore bilancio S${s}`,
+  },
+  es: {
+    title: "Proyección financiera Club Soccerverse",
+    clubId: "ID Club",
+    placeholder: "ej: 5902",
+    launch: "Iniciar análisis",
+    loading: "Cargando…",
+    errorClub: "Error saldo club",
+    errorSeason: s => `Error balance S${s}`,
   }
 };
 

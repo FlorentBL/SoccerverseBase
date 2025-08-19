@@ -20,6 +20,12 @@ const LABELS = {
     totalRecettes: "Totale entrate S2: ",
     totalCharges: "Totale spese S2: ",
   },
+  es: {
+    soldeFin: "Saldo proyectado fin S2: ",
+    masseSalariale: "Masa salarial jugadores prevista S2: ",
+    totalRecettes: "Total ingresos S2: ",
+    totalCharges: "Total gastos S2: ",
+  },
 };
 
 export default function RecapSynthese({ soldeFin, masseSalariale, totalRecettes, totalCharges, lang = "fr" }) {

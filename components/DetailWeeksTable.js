@@ -4,7 +4,8 @@ import { FIELD_ORDER, FIELD_LABELS, COST_FIELDS, formatSVC, formatDate } from ".
 const LABELS = {
   fr: { week: "Journée", date: "Date" },
   en: { week: "Week", date: "Date" },
-  it: { week: "Giornata", date: "Data" }
+  it: { week: "Giornata", date: "Data" },
+  es: { week: "Jornada", date: "Fecha" }
 };
 
 export default function DetailWeeksTable({ weeks, title, lang = "fr" }) {

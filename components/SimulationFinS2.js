@@ -31,6 +31,15 @@ const LABELS = {
     show: "Mostra dettaglio per giornata",
     hide: "Nascondi dettaglio per giornata",
   },
+  es: {
+    title: "Simulación de fichaje",
+    transfert: "Monto del traspaso",
+    salaire: "Salario semanal (SVC/partido)",
+    placeholderTransfert: "ej: 2000000",
+    placeholderSalaire: "ej: 10000",
+    show: "Mostrar detalle por jornada",
+    hide: "Ocultar detalle por jornada",
+  },
 };
 
 export default function SimulationFinS2({

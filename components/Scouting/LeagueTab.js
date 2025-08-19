@@ -6,17 +6,17 @@ const COUNTRY_MAPPING_URL = "/country_mapping2.json";
 const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 const GROUP_LABELS = {
-  AFR: { fr: "Afrique", en: "Africa", it: "Africa" },
-  AME: { fr: "Amérique", en: "America", it: "America" },
-  ASI: { fr: "Asie", en: "Asia", it: "Asia" },
-  EUR: { fr: "Europe", en: "Europe", it: "Europa" },
+  AFR: { fr: "Afrique", en: "Africa", it: "Africa", es: "África" },
+  AME: { fr: "Amérique", en: "America", it: "America", es: "América" },
+  ASI: { fr: "Asie", en: "Asia", it: "Asia", es: "Asia" },
+  EUR: { fr: "Europe", en: "Europe", it: "Europa", es: "Europa" },
 };
 
 const SPECIAL_COUNTRIES = {
-  ENG: { fr: "Angleterre", en: "England", it: "Inghilterra" },
-  SCO: { fr: "Écosse", en: "Scotland", it: "Scozia" },
-  WAL: { fr: "Pays de Galles", en: "Wales", it: "Galles" },
-  NIR: { fr: "Irlande du Nord", en: "Northern Ireland", it: "Irlanda del Nord" },
+  ENG: { fr: "Angleterre", en: "England", it: "Inghilterra", es: "Inglaterra" },
+  SCO: { fr: "Écosse", en: "Scotland", it: "Scozia", es: "Escocia" },
+  WAL: { fr: "Pays de Galles", en: "Wales", it: "Galles", es: "Gales" },
+  NIR: { fr: "Irlande du Nord", en: "Northern Ireland", it: "Irlanda del Nord", es: "Irlanda del Norte" },
 };
 
 function codeFromFlag(flag) {

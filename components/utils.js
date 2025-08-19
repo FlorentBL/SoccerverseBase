@@ -53,6 +53,24 @@ export const FIELD_LABELS = {
     shareholder_payouts: "Dividendi",
     shareholder_prize_money: "Premi azionisti",
     other_outgoings: "Altre uscite"
+  },
+  es: {
+    cash_injection: "Inyección de efectivo",
+    gate_receipts: "Ingresos taquilla",
+    tv_revenue: "Ingresos TV",
+    sponsor: "Patrocinadores",
+    merchandise: "Merchandising",
+    prize_money: "Premios competiciones",
+    transfers_in: "Fichajes (entradas)",
+    other_income: "Otros ingresos",
+    player_wages: "Salarios jugadores",
+    agent_wages: "Salarios agentes",
+    managers_wage: "Salario entrenador",
+    ground_maintenance: "Mantenimiento estadio",
+    transfers_out: "Fichajes (salidas)",
+    shareholder_payouts: "Dividendos",
+    shareholder_prize_money: "Premios accionistas",
+    other_outgoings: "Otros gastos"
   }
 };
 

@@ -68,6 +68,27 @@ const T = {
     transfermarkt: "Vedi su Transfermarkt",
     seePlayer: "Vedi il giocatore su Soccerverse",
   },
+  es: {
+    idLabel: "ID Jugador:",
+    idPlaceholder: "Ej: 17",
+    showInfo: "Mostrar info",
+    searching: "Buscando...",
+    errorNotFound: "Ningún jugador encontrado para este ID.",
+    errorNetwork: "Error de red o de datos.",
+    allValues: "Todos los valores están en SVC",
+    notAvailable: "No disponible",
+    age: "Edad:",
+    club: "Club:",
+    rating: "Nota:",
+    value: "Valor:",
+    wages: "Salario:",
+    analysis: "Análisis SoccerRatings.org",
+    openAnalysis: "Ver análisis completo en SoccerRatings.org",
+    mobileUnavailable: "(La vista previa no está disponible en móvil)",
+    openSoccerRatings: "Abrir en SoccerRatings.org",
+    transfermarkt: "Ver en Transfermarkt",
+    seePlayer: "Ver jugador en Soccerverse",
+  },
 };
 
 function getEmoji(label) {
