@@ -1,3 +1,4 @@
+// app/transactions/page.jsx
 "use client";
 import React, { useState } from "react";
 
@@ -88,7 +89,10 @@ export default function TransactionAnalysis() {
               </thead>
               <tbody className="divide-y divide-gray-800">
                 {transactions.map((t, i) => (
-                  <tr key={`${t.name}-${t?.share?.type}-${t?.share?.id}-${t.date}-${i}`} className="hover:bg-white/5">
+                  <tr
+                    key={`${t.name}-${t?.share?.type}-${t?.share?.id}-${t.date}-${i}`}
+                    className="hover:bg-white/5"
+                  >
                     <td className="py-2 pr-2">{t?.name ?? "-"}</td>
                     <td className="py-2 pr-2">{t?.type ?? "-"}</td>
                     <td className="py-2 pr-2">
@@ -103,8 +107,7 @@ export default function TransactionAnalysis() {
             </table>
           </div>
         ) : (
-          searched &&
-          !loading && <div className="text-gray-400">Aucune transaction</div>
+          searched && !loading && <div className="text-gray-400">Aucune transaction</div>
         )}
       </div>
     </div>
