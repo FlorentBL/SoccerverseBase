@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Analyse tactique (Formations & Styles) depuis Supabase + Conseiller tactique
+ * Analyse tactique (Formations & Styles) depuis Supabase + Conseillers
  * Requiert :
  *   NEXT_PUBLIC_SUPABASE_URL
  *   NEXT_PUBLIC_SUPABASE_KEY
@@ -50,7 +50,7 @@ const TEXTS = {
     fullTable: "Tableau complet",
     exportCsv: "Exporter CSV",
     legend: "Légende : rouge = faible %V, vert = fort %V ; intensité = taille de l'échantillon",
-    // Conseiller
+    // Conseiller (mono-dimension)
     advisorTitle: "Conseiller tactique",
     advisorMode: "Mode d’analyse",
     advisorOpp: "Adversaire (attendu)",
@@ -60,6 +60,18 @@ const TEXTS = {
     advisorGain: "Gain vs actuel",
     advisorPick: "Choisis au moins un adversaire",
     advisorHint: "Le conseiller utilise la matrice filtrée ci-dessus (saison, ligues, côté, n).",
+    // Conseiller global (formation + style)
+    comboTitle: "Conseiller global (tactique + style)",
+    comboOppForm: "Tactique adverse (attendue)",
+    comboOppStyle: "Style adverse (attendu)",
+    comboMineForm: "Ma tactique actuelle (optionnel)",
+    comboMineStyle: "Mon style actuel (optionnel)",
+    comboRun: "Recommander tactique + style",
+    comboFormHeader: "Top 3 tactiques vs sa tactique",
+    comboStyleHeader: "Top 3 styles vs son style",
+    comboSuggestHeader: "Suggestion combinée",
+    comboNeedOpp: "Renseigne au moins la tactique **et** le style adverses.",
+    comboScore: "Score combiné estimé",
   },
   en: {
     title: "Tactical analysis",
@@ -90,7 +102,7 @@ const TEXTS = {
     fullTable: "Full table",
     exportCsv: "Export CSV",
     legend: "Legend: red = low Win%, green = high Win%; intensity = sample size",
-    // Advisor
+    // Advisor (single-dimension)
     advisorTitle: "Tactical advisor",
     advisorMode: "Analysis mode",
     advisorOpp: "Opponent (expected)",
@@ -100,6 +112,18 @@ const TEXTS = {
     advisorGain: "Gain vs current",
     advisorPick: "Pick at least an opponent",
     advisorHint: "The advisor uses the filtered matrix above (season, leagues, side, n).",
+    // Global advisor
+    comboTitle: "Global advisor (tactic + style)",
+    comboOppForm: "Opponent tactic (expected)",
+    comboOppStyle: "Opponent style (expected)",
+    comboMineForm: "My current tactic (optional)",
+    comboMineStyle: "My current style (optional)",
+    comboRun: "Recommend tactic + style",
+    comboFormHeader: "Top 3 tactics vs their tactic",
+    comboStyleHeader: "Top 3 styles vs their style",
+    comboSuggestHeader: "Combined suggestion",
+    comboNeedOpp: "Provide both opponent tactic **and** style.",
+    comboScore: "Estimated combined score",
   },
 };
 
@@ -237,6 +261,7 @@ export default function AnalysisPage({ lang = "fr" }) {
   const formationName = (id) => (id == null || id === -1 ? "—" : FORMATION_MAP[lang]?.[id] ?? String(id));
   const styleName = (id) => (id == null || id === -1 ? "—" : STYLE_MAP[lang]?.[id] ?? String(id));
 
+  // Vue en cours (unique source de vérité)
   const currentMatrix = view === "formation" ? matrixForm : matrixStyle;
   const currentDomain = view === "formation" ? formationsPresent : stylesPresent;
   const nameFn = view === "formation" ? formationName : styleName;
@@ -268,7 +293,7 @@ export default function AnalysisPage({ lang = "fr" }) {
       const season = Number(seasonId);
       if (!Number.isFinite(season)) throw new Error("Season invalide");
 
-      // 1) Matches joués pour la saison + (ligues CSV) ou toutes ligues si '*'
+      // 1) Matches (saison + ligues filtrées)
       const isAllLeagues = leagueCsv.trim() === "*";
       const leagueIds = isAllLeagues ? [] : parseCsvIds(leagueCsv);
 
@@ -296,7 +321,7 @@ export default function AnalysisPage({ lang = "fr" }) {
         return;
       }
 
-      // 2) Charger les sides (batch .in)
+      // 2) Charger sides par batch
       const allSides = [];
       const CHUNK = 800;
       for (let i = 0; i < fids.length; i += CHUNK) {
@@ -309,7 +334,7 @@ export default function AnalysisPage({ lang = "fr" }) {
         allSides.push(...(sides || []));
       }
 
-      // 3) Regrouper par fixture, conserver les deux côtés
+      // 3) Groupement par fixture
       const byFixture = new Map();
       for (const s of allSides) {
         const arr = byFixture.get(s.fixture_id) || [];
@@ -317,7 +342,7 @@ export default function AnalysisPage({ lang = "fr" }) {
         byFixture.set(s.fixture_id, arr);
       }
 
-      // 4) Construire datasets formations & styles (en ignorant les tactiques manquantes)
+      // 4) Construire datasets formations & styles (2 côtés)
       const rowsForm = [];
       const rowsStyle = [];
       const seenForm = new Set();
@@ -398,7 +423,7 @@ export default function AnalysisPage({ lang = "fr" }) {
     );
   };
 
-  // Info pour la coloration (max n affiché)
+  // Info coloration (max n)
   const maxNInfo = useMemo(() => {
     let maxN = 0;
     for (const a of (view === "formation" ? matrixForm : matrixStyle).values())
@@ -406,7 +431,7 @@ export default function AnalysisPage({ lang = "fr" }) {
     return { maxN };
   }, [matrixForm, matrixStyle, minN, view]);
 
-
+  // Classements Top/Flop (vue courante)
   const ranked = useMemo(() => {
     const out = [];
     for (const [k, a] of currentMatrix.entries()) {
@@ -421,7 +446,7 @@ export default function AnalysisPage({ lang = "fr" }) {
     return { best, worst };
   }, [currentMatrix, minN, view]);
 
-  // Tableau complet (toutes combinaisons)
+  // Tableau complet
   const allRows = useMemo(() => {
     const out = [];
     for (const [k, a] of currentMatrix.entries()) {
@@ -441,7 +466,7 @@ export default function AnalysisPage({ lang = "fr" }) {
   const titleWorst = view === "formation" ? t.worstMatchupsForm : t.worstMatchupsStyle;
   const titleMatrix = view === "formation" ? t.matrixForm : t.matrixStyle;
 
-  // ───────────── Conseiller tactique ─────────────
+  // ───────────── Conseiller tactique (mono-dimension) ─────────────
   const [advisorMode, setAdvisorMode] = useState("style"); // 'formation' | 'style'
   const [oppChoice, setOppChoice] = useState("");          // id string
   const [myChoice, setMyChoice] = useState("");            // id string
@@ -452,7 +477,6 @@ export default function AnalysisPage({ lang = "fr" }) {
   const nameForAdvisor = advisorMode === "formation" ? formationName : styleName;
 
   function getTopCounters(matrix, opponentId, thresholdN) {
-    // Cherche toutes les lignes "f|opponentId" valides
     const out = [];
     for (const [k, a] of matrix.entries()) {
       const [fStr, gStr] = k.split("|");
@@ -460,7 +484,6 @@ export default function AnalysisPage({ lang = "fr" }) {
       if (g !== opponentId || !a || a.n < thresholdN || f < 0) continue;
       out.push({ f, g, n: a.n, wr: a.w / a.n, gf: a.gf / a.n, ga: a.ga / a.n });
     }
-    // tri Win% desc puis n desc
     out.sort((x, y) => y.wr - x.wr || y.n - x.n);
     return out.slice(0, 3);
   }
@@ -469,7 +492,7 @@ export default function AnalysisPage({ lang = "fr" }) {
     const a = matrix.get(`${mine}|${opp}`);
     if (!a || a.n < minN) return null;
     return { wr: a.w / a.n, n: a.n, gf: a.gf / a.n, ga: a.ga / a.n };
-    }
+  }
 
   function runAdvisor() {
     const g = Number(oppChoice);
@@ -487,6 +510,66 @@ export default function AnalysisPage({ lang = "fr" }) {
       baseN: base?.n ?? null,
     }));
     setAdvise(enriched);
+  }
+
+  // ───────────── Conseiller global (formation + style) ─────────────
+  const [oppFormChoice, setOppFormChoice] = useState("");
+  const [oppStyleChoice, setOppStyleChoice] = useState("");
+  const [myFormChoice, setMyFormChoice] = useState("");
+  const [myStyleChoice, setMyStyleChoice] = useState("");
+  const [combo, setCombo] = useState(null);
+
+  function runCombinedAdvisor() {
+    const oppF = Number(oppFormChoice);
+    const oppS = Number(oppStyleChoice);
+    if (!Number.isFinite(oppF) || !Number.isFinite(oppS)) {
+      setCombo({ error: t.comboNeedOpp });
+      return;
+    }
+
+    // Top 3 tactiques vs sa tactique
+    const topForms = getTopCounters(matrixForm, oppF, minN);
+    // Top 3 styles vs son style
+    const topStyles = getTopCounters(matrixStyle, oppS, minN);
+
+    // Bases actuelles (si fournies)
+    const mineF = Number(myFormChoice);
+    const mineS = Number(myStyleChoice);
+    const baseForm = Number.isFinite(mineF) ? currentPairWR(matrixForm, mineF, oppF) : null;
+    const baseStyle = Number.isFinite(mineS) ? currentPairWR(matrixStyle, mineS, oppS) : null;
+
+    const topFormsEnriched = topForms.map((r) => ({
+      ...r,
+      deltaWr: baseForm ? r.wr - baseForm.wr : null,
+      baseWr: baseForm?.wr ?? null,
+      baseN: baseForm?.n ?? null,
+    }));
+    const topStylesEnriched = topStyles.map((r) => ({
+      ...r,
+      deltaWr: baseStyle ? r.wr - baseStyle.wr : null,
+      baseWr: baseStyle?.wr ?? null,
+      baseN: baseStyle?.n ?? null,
+    }));
+
+    // Suggestion combinée : meilleure paire (f, s) en score multiplicatif
+    // (approximation indépendante : wr_comb = wr_form * wr_style)
+    let bestPair = null;
+    for (const tf of topFormsEnriched) {
+      for (const ts of topStylesEnriched) {
+        const score = (tf.wr ?? 0) * (ts.wr ?? 0);
+        if (!bestPair || score > bestPair.score) {
+          bestPair = { f: tf.f, s: ts.f, wrF: tf.wr, wrS: ts.wr, score };
+        }
+      }
+    }
+
+    setCombo({
+      oppF,
+      oppS,
+      forms: topFormsEnriched,
+      styles: topStylesEnriched,
+      bestPair,
+    });
   }
 
   return (
@@ -573,7 +656,7 @@ export default function AnalysisPage({ lang = "fr" }) {
 
         {error && <div className="text-sm text-red-400 mb-4">{String(error)}</div>}
 
-        {/* Conseiller tactique */}
+        {/* Conseiller tactique (mono-dimension) */}
         <div className="border border-gray-800 rounded-xl p-4 mb-8">
           <div className="flex items-start justify-between gap-4 flex-col md:flex-row">
             <div>
@@ -638,7 +721,7 @@ export default function AnalysisPage({ lang = "fr" }) {
             </div>
           </div>
 
-          {/* Résultats */}
+          {/* Résultats mono-dimension */}
           <div className="mt-4">
             <h3 className="font-semibold mb-2">{t.advisorResults}</h3>
             {advise.length === 0 ? (
@@ -684,6 +767,190 @@ export default function AnalysisPage({ lang = "fr" }) {
                 ))}
               </ul>
             )}
+          </div>
+        </div>
+
+        {/* Conseiller global (formation + style) */}
+        <div className="border border-gray-800 rounded-xl p-4 mb-8">
+          <h2 className="font-semibold mb-1">{t.comboTitle}</h2>
+          <p className="text-xs text-gray-400">{t.advisorHint}</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mt-4 items-end">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.comboOppForm}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                value={oppFormChoice}
+                onChange={(e) => setOppFormChoice(e.target.value)}
+              >
+                <option value="">{t.any}</option>
+                {formationsPresent.map((id) => (
+                  <option key={`oppf-${id}`} value={id}>{formationName(id)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.comboOppStyle}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                value={oppStyleChoice}
+                onChange={(e) => setOppStyleChoice(e.target.value)}
+              >
+                <option value="">{t.any}</option>
+                {stylesPresent.map((id) => (
+                  <option key={`opps-${id}`} value={id}>{styleName(id)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.comboMineForm}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                value={myFormChoice}
+                onChange={(e) => setMyFormChoice(e.target.value)}
+              >
+                <option value="">{t.any}</option>
+                {formationsPresent.map((id) => (
+                  <option key={`myf-${id}`} value={id}>{formationName(id)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.comboMineStyle}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                value={myStyleChoice}
+                onChange={(e) => setMyStyleChoice(e.target.value)}
+              >
+                <option value="">{t.any}</option>
+                {stylesPresent.map((id) => (
+                  <option key={`mys-${id}`} value={id}>{styleName(id)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <button
+                onClick={runCombinedAdvisor}
+                className="mt-2 w-full px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 transition text-white font-medium"
+                disabled={formationsPresent.length === 0 || stylesPresent.length === 0}
+              >
+                {t.comboRun}
+              </button>
+            </div>
+          </div>
+
+          {/* Résultats combo */}
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Bloc tactiques */}
+            <div className="border border-gray-800 rounded-lg p-4">
+              <h3 className="font-semibold mb-2">{t.comboFormHeader}</h3>
+              {!combo ? (
+                <div className="text-sm text-gray-500">{t.noData}</div>
+              ) : combo.error ? (
+                <div className="text-sm text-amber-400">{combo.error}</div>
+              ) : combo.forms?.length ? (
+                <ul className="space-y-2">
+                  {combo.forms.map((r, idx) => (
+                    <li key={`combo-form-${idx}`} className="p-3 rounded-lg bg-gray-900/40 border border-gray-800">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="font-medium">{formationName(r.f)} <span className="text-gray-400">vs</span> {formationName(combo.oppF)}</div>
+                        <div className="text-sm tabular-nums">
+                          <span className="mr-3">{formatPct(r.wr)}</span>
+                          <span className="mr-3 text-gray-400">n={r.n}</span>
+                          <span className="text-gray-400">{r.gf.toFixed(2)} / {r.ga.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      {r.deltaWr != null && (
+                        <div className="mt-2 text-xs text-gray-300">
+                          {t.advisorGain}: <b>{(r.deltaWr * 100).toFixed(1)} pts</b>{" "}
+                          <span className="text-gray-500">
+                            (actuel {r.baseWr != null ? formatPct(r.baseWr) : "—"}
+                            {r.baseN != null ? `, n=${r.baseN}` : ""})
+                          </span>
+                        </div>
+                      )}
+                      <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
+                        <div className="h-2" style={{ width: `${Math.max(2, Math.min(100, r.wr * 100))}%`, backgroundColor: barColor(r.wr) }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-sm text-gray-500">{t.noData}</div>
+              )}
+            </div>
+
+            {/* Bloc styles */}
+            <div className="border border-gray-800 rounded-lg p-4">
+              <h3 className="font-semibold mb-2">{t.comboStyleHeader}</h3>
+              {!combo ? (
+                <div className="text-sm text-gray-500">{t.noData}</div>
+              ) : combo.error ? (
+                <div className="text-sm text-amber-400">{combo.error}</div>
+              ) : combo.styles?.length ? (
+                <ul className="space-y-2">
+                  {combo.styles.map((r, idx) => (
+                    <li key={`combo-style-${idx}`} className="p-3 rounded-lg bg-gray-900/40 border border-gray-800">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="font-medium">{styleName(r.f)} <span className="text-gray-400">vs</span> {styleName(combo.oppS)}</div>
+                        <div className="text-sm tabular-nums">
+                          <span className="mr-3">{formatPct(r.wr)}</span>
+                          <span className="mr-3 text-gray-400">n={r.n}</span>
+                          <span className="text-gray-400">{r.gf.toFixed(2)} / {r.ga.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      {r.deltaWr != null && (
+                        <div className="mt-2 text-xs text-gray-300">
+                          {t.advisorGain}: <b>{(r.deltaWr * 100).toFixed(1)} pts</b>{" "}
+                          <span className="text-gray-500">
+                            (actuel {r.baseWr != null ? formatPct(r.baseWr) : "—"}
+                            {r.baseN != null ? `, n=${r.baseN}` : ""})
+                          </span>
+                        </div>
+                      )}
+                      <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
+                        <div className="h-2" style={{ width: `${Math.max(2, Math.min(100, r.wr * 100))}%`, backgroundColor: barColor(r.wr) }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-sm text-gray-500">{t.noData}</div>
+              )}
+            </div>
+
+            {/* Suggestion combinée */}
+            <div className="border border-gray-800 rounded-lg p-4">
+              <h3 className="font-semibold mb-2">{t.comboSuggestHeader}</h3>
+              {!combo || combo.error ? (
+                <div className="text-sm text-gray-500">{!combo ? t.noData : combo.error}</div>
+              ) : combo.bestPair ? (
+                <div className="space-y-2">
+                  <div className="text-sm">
+                    <div>
+                      <span className="text-gray-400">Tactique :</span> <b>{formationName(combo.bestPair.f)}</b>{" "}
+                      <span className="text-gray-500">(WR ~ {formatPct(combo.bestPair.wrF)})</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Style :</span> <b>{styleName(combo.bestPair.s)}</b>{" "}
+                      <span className="text-gray-500">(WR ~ {formatPct(combo.bestPair.wrS)})</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-300">
+                    {t.comboScore}: <b>{formatPct((combo.bestPair.wrF || 0) * (combo.bestPair.wrS || 0))}</b>
+                    <div className="text-gray-500 mt-1">
+                      Heuristique indépendante (WR tactique × WR style). Ajuste <span className="italic">n</span> avec le seuil si besoin.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">{t.noData}</div>
+              )}
+            </div>
           </div>
         </div>
 
