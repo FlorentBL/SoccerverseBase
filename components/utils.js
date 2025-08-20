@@ -53,6 +53,24 @@ export const FIELD_LABELS = {
     shareholder_payouts: "Dividendi",
     shareholder_prize_money: "Premi azionisti",
     other_outgoings: "Altre uscite"
+  },
+  es: {
+    cash_injection: "Inyección de efectivo",
+    gate_receipts: "Ingresos taquilla",
+    tv_revenue: "Ingresos TV",
+    sponsor: "Patrocinadores",
+    merchandise: "Merchandising",
+    prize_money: "Premios competiciones",
+    transfers_in: "Fichajes (entradas)",
+    other_income: "Otros ingresos",
+    player_wages: "Salarios jugadores",
+    agent_wages: "Salarios agentes",
+    managers_wage: "Salario entrenador",
+    ground_maintenance: "Mantenimiento estadio",
+    transfers_out: "Fichajes (salidas)",
+    shareholder_payouts: "Dividendos",
+    shareholder_prize_money: "Premios accionistas",
+    other_outgoings: "Otros gastos"
   }
 };
 
@@ -76,7 +94,7 @@ export function isMatchWeek(week) {
   return typeof week.player_wages === "number" && Math.abs(week.player_wages) > 0;
 }
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 export function formatSVC(val, field, lang = "fr") {
   if (typeof val !== "number") return "-";

@@ -18,6 +18,11 @@ const LABELS = {
     show: "Mostra dettaglio per giornata",
     hide: "Nascondi dettaglio per giornata",
   },
+  es: {
+    title: "Balance Temporada 2 (en curso)",
+    show: "Mostrar detalle por jornada",
+    hide: "Ocultar detalle por jornada",
+  },
 };
 
 export default function Saison2({ bilan, weeks, details, lang = "fr" }) {

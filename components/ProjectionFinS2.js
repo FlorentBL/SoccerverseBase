@@ -19,6 +19,11 @@ const LABELS = {
     show: "Mostra dettaglio per giornata",
     hide: "Nascondi dettaglio per giornata",
   },
+  es: {
+    title: "Proyección fin Temporada 2",
+    show: "Mostrar detalle por jornada",
+    hide: "Ocultar detalle por jornada",
+  },
 };
 
 export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap, lang = "fr" }) {

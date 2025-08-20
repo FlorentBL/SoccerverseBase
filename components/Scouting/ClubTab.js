@@ -4,7 +4,7 @@ const PLAYER_MAPPING_URL = "/player_mapping.json";
 const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 const T = {
   fr: {
@@ -159,6 +159,57 @@ const T = {
     moraleGood: "Buona morale",
     moraleNeutral: "Morale neutro",
     moraleBad: "Cattiva morale",
+  },
+  es: {
+    idLabel: "ID Club:",
+    idPlaceholder: "Ej: 5902",
+    showInfo: "Mostrar info",
+    searching: "Buscando...",
+    errorNotFound: "Ningún club encontrado para este ID.",
+    errorNetwork: "Error de red o de datos.",
+    squadLoading: "Cargando plantilla...",
+    squadError: "Ningún jugador encontrado en la plantilla.",
+    squadErrorNetwork: "Error de red o de plantilla.",
+    manager: "Manager",
+    division: "División",
+    fans: "Aficionados",
+    balance: "Balance",
+    stadium: "Estadio",
+    value: "Valor",
+    avgWage: "Salario medio",
+    league: "Liga",
+    teamRating: "⭑ Rating equipo",
+    top21: "⭑ Top 21",
+    shooting: "🏹 Tiro",
+    passing: "🎯 Pase",
+    tackling: "🛡️ Entrada",
+    gk: "🧤 Portero",
+    topInfluencers: "Top Influencers",
+    squadTitle: "Plantilla del Club",
+    columns: {
+      name: "Nombre",
+      positions: "Pos.",
+      rating: "Nota",
+      rating_gk: "GK",
+      rating_tackling: "Ent.",
+      rating_passing: "Pas.",
+      rating_shooting: "Tiro",
+      age: "Edad",
+      form: "Forma",
+      matches: "Partidos",
+      goals: "Goles",
+      assists: "Asistencias",
+      value: "Valor",
+      wages: "Salario",
+      morale: "Moral",
+      agent_name: "Agente",
+      contract: "Contrato",
+      cartons: "Tarjetas",
+      country_id: "País",
+    },
+    moraleGood: "Buena moral",
+    moraleNeutral: "Moral neutra",
+    moraleBad: "Mala moral",
   },
 };
 

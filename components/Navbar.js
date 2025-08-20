@@ -50,12 +50,27 @@ const MENU_LABELS = {
       ],
     },
   ],
+  es: [
+    { href: "/comment-debuter", label: "Cómo empezar" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/scouting", label: "Scouting" },
+    { href: "/recompenses", label: "Simulador de recompensas" },
+    {
+      label: "Análisis",
+      children: [
+        { href: "/finance", label: "Finanzas del club" },
+        { href: "/analyse-tactique", label: "Táctica" },
+        { href: "/revenus", label: "Ganancias jugadores" },
+      ],
+    },
+  ],
 };
 
 const LANGS = [
   { code: "fr", label: "FR" },
   { code: "en", label: "EN" },
   { code: "it", label: "IT" },
+  { code: "es", label: "ES" },
 ];
 
 export default function Navbar() {
@@ -67,8 +82,13 @@ export default function Navbar() {
   const menuItems = MENU_LABELS[currentLang];
 
   function getLangHref(targetLang) {
-    if (pathname.startsWith("/fr") || pathname.startsWith("/en") || pathname.startsWith("/it")) {
-      return pathname.replace(/^\/(fr|en|it)/, "/" + targetLang);
+    if (
+      pathname.startsWith("/fr") ||
+      pathname.startsWith("/en") ||
+      pathname.startsWith("/it") ||
+      pathname.startsWith("/es")
+    ) {
+      return pathname.replace(/^\/(fr|en|it|es)/, "/" + targetLang);
     }
     return "/" + targetLang + pathname;
   }

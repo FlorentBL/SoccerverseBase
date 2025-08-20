@@ -279,6 +279,95 @@ const translations = {
       },
     ],
   },
+  es: {
+    heroTitle: "Cómo empezar en Soccerverse",
+    heroDesc:
+      "Soccerverse es un juego de simulación de fútbol conectado a la blockchain, donde interactúas en un mercado dinámico de clubes y jugadores.",
+    intro: [
+      "Puedes asumir uno o varios roles: Entrenador (tácticas, plantilla, finanzas), Agente (contratos, traspasos, moral), Influencer (propietario y decisor estratégico), Trader (especulación sobre el valor de las participaciones) o Scout (descubrimiento de jóvenes talentos).",
+      "Cada semana recibes ganancias según los rendimientos de tus clubes o jugadores, además de una prima de fin de temporada.",
+      "Las actuaciones y transferencias reales de los jugadores influyen directamente en sus notas y valor en el juego, creando un vínculo permanente con el fútbol real.",
+      "Las transacciones utilizan tokens digitales para comprar, vender o invertir, y tus decisiones afectan tanto a tus ingresos como a tus resultados deportivos.",
+    ],
+    callout:
+      "En tu cuenta dispones de dólares y de SVC. El valor del SVC se muestra en SVBase junto al logo y se utiliza para todas las compras en el mercado secundario.",
+    outroIntro: [
+      "El juego sigue un calendario competitivo (ligas, copas, torneos) con un fuerte aspecto social y colaborativo.",
+      "Para empezar con buen pie, la guía oficial y los vídeos de introducción te acompañan paso a paso.",
+    ],
+    rolesHeading: "Los roles",
+    coach: {
+      title: "Entrenador (FREE TO PLAY)",
+      description:
+        "En la imagen de abajo se ve que klo es el entrenador del RAAL La Louvière y debajo la lista de los influencers del club. Estos influencers poseen participaciones del club y pueden darte plenos poderes para ese equipo. Si tú mismo eres el influencer mayoritario, puedes concederte esos derechos.",
+      imageAlt: "Ejemplo de interfaz de entrenador",
+      bullets: [
+        "Gestiona el equipo, define las tácticas, compra/vende jugadores, firma contratos.",
+        "Responsable de los resultados deportivos y de la salud financiera del club.",
+        "Tus ganancias: tu salario de entrenador (¡algunos influencers añaden primas para reclutar entrenadores con talento!).",
+      ],
+    },
+    influencer: {
+      title: "Influencer de club o de jugador",
+      bullets: [
+        "Propietario de una participación de un club o de un jugador.",
+        "Participa en las decisiones estratégicas y nombra/destituye entrenadores o agentes.",
+        "Tus ganancias: recibes dividendos por cada partido jugado. Detalle en Análisis → Ganancias jugadores. En los clubes, la posición de fin de temporada añade un bono en caso de éxito. Puedes simular estas ganancias en el simulador de recompensas.",
+      ],
+    },
+    agent: {
+      title: "Agente",
+      bullets: [
+        "Defiende los intereses de un jugador: contratos, traspasos, moral.",
+        "Intermediario entre entrenadores e influencers.",
+        "Tus ganancias: salario de agente, ver Análisis → Ganancias jugadores para más detalle.",
+      ],
+    },
+    trader: {
+      title: "Trader",
+      bullets: [
+        "Especialista del mercado, compra y vende influencia (participaciones) para aprovechar las variaciones de precio.",
+        "Según los resultados, tanto clubes como jugadores pueden cambiar de valor; te toca comprar y vender en el momento adecuado.",
+      ],
+    },
+    scout: {
+      title: "Scout",
+      bullets: [
+        "Detecta a los jóvenes talentos antes de que exploten.",
+        "Luego puede sacar provecho como entrenador, agente, influencer o trader.",
+        "Tus ganancias: toma participaciones en estos jugadores, conviértete en su agente o negocia contraprestaciones con otros agentes.",
+      ],
+    },
+    afterRoles: [
+      "No estás limitado a un solo rol: puedes combinar varios para multiplicar tus oportunidades.",
+      "El juego se basa en un mercado dinámico, una fuerte interacción entre jugadores y una mezcla de estrategia deportiva y financiera.",
+    ],
+    linksHeading: "Enlaces útiles",
+    links: [
+      {
+        href: "https://elrincondeldt.com/que-es-sv.html",
+        label:
+          "El Rincón del DT: el sitio detrás del pack de nombres. ¡Su creador está en el Discord bajo el nombre de Cipone!",
+      },
+      {
+        href: "https://guide.soccerverse.com/french",
+        label: "La guía oficial en francés: ¡muy completa, es la biblia!",
+      },
+      {
+        href: "https://hub.soccerverse.com/",
+        label: "El hub de actualidad: https://hub.soccerverse.com/",
+      },
+      {
+        href: "https://soccerratings.org/players",
+        label:
+          "Para conocer las valoraciones de los jugadores: https://soccerratings.org/players — recuerda comprobar la situación oficial del jugador en la vida real.",
+      },
+      {
+        href: "https://soccerverse.com/soccerverse-litepaper/",
+        label: "El litepaper: siempre interesante de conocer",
+      },
+    ],
+  },
 };
 
 export default function DebuterPage({ lang = "fr" }) {

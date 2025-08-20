@@ -162,6 +162,58 @@ const LABELS = {
       },
     ],
   },
+  es: {
+    hero1: "SoccerverseBase",
+    hero2: (
+      <>Guía práctica para comenzar y progresar en Soccerverse.<br />Accede rápidamente a recursos, información y a la comunidad ES.</>
+    ),
+    signup: "Registro en Soccerverse",
+    patch: "Parche de nombres y logos. ¡Gracias a Cipone!",
+    discordTitle: "Comunidad española K-SOCIOS",
+    discordText: (
+      <>Espacio de ayuda, discusión e información para hispanohablantes.<br />Únete al Discord para hacer preguntas o charlar con la comunidad.</>
+    ),
+    discordBtn: "Unirse al Discord K-SOCIOS",
+    sectionsTitle: "Secciones del sitio",
+    sections: [
+      {
+        href: "/comment-debuter",
+        title: "¿Cómo empezar?",
+        desc: "Guía para empezar bien",
+        featured: true,
+      },
+      {
+        href: "/dashboard",
+        title: "Dashboard",
+        desc: "Descubre de un vistazo los resultados de los clubes que apoyas",
+      },
+      {
+        href: "/scouting",
+        title: "Scouting",
+        desc: "¿Detalles de un jugador, club o liga? Aquí los encontrarás",
+      },
+      {
+        href: "/recompenses",
+        title: "Simulador de recompensas",
+        desc: "Simula las recompensas de fin de temporada para clubes o influencers",
+      },
+      {
+        href: "/finance",
+        title: "Análisis financiero",
+        desc: "¿Quieres ver la situación financiera de un club? Predice el final de la temporada o simula un fichaje",
+      },
+      {
+        href: "/analyse-tactique",
+        title: "Análisis táctico",
+        desc: "Analiza a tus próximos 3 rivales",
+      },
+      {
+        href: "/revenus",
+        title: "Ganancias de jugadores",
+        desc: "Tabla que detalla salarios y ganancias de los jugadores",
+      },
+    ],
+  },
 };
 
 export default function HomePage({ lang = "fr" }) {

@@ -8,6 +8,7 @@ const TAB_LABELS = {
   fr: { player: "Joueur", club: "Club", league: "Championnat" },
   en: { player: "Player", club: "Club", league: "League" },
   it: { player: "Giocatore", club: "Club", league: "Campionato" },
+  es: { player: "Jugador", club: "Club", league: "Liga" },
 };
 
 export default function ScoutingPage({ lang = "fr" }) {

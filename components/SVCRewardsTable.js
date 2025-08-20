@@ -70,6 +70,28 @@ const LABELS = {
       <b>Bonus influencer:</b> proporzionale alla quota.<br />
       <b>Compenso agente:</b> versato ogni partita giocata.
     </>
+  },
+  es: {
+    columns: [
+      { key: "rating", label: "Nota", tip: "Nota global" },
+      { key: "wage", label: "Salario" },
+      { key: "infPay", label: "Prima Influencer", tip: "Prima de influencer (proporcional a la parte poseída)" },
+      { key: "starter", label: "Titular", tip: "Debe jugar al menos 45 min" },
+      { key: "goal", label: "Gol" },
+      { key: "assist", label: "Asistencia" },
+      { key: "cleanSheet", label: "C.Sheet", tip: "Portería a cero: porteros/defensores, mín 70 min" },
+      { key: "agentWage", label: "Agente", tip: "Pago al agente (por partido)" }
+    ],
+    noteMin: "Nota mín.",
+    noteMax: "Nota máx.",
+    allSVC: "Todos los valores de la tabla se expresan en SVC (Soccerverse Coin)",
+    scroll: "↔️ Desplaza la tabla horizontalmente",
+    legend: <>
+      <b>Titular:</b> debe jugar al menos 45 minutos. <br />
+      <b>Portería a cero:</b> solo para porteros/defensores con al menos 70 min y 0 goles en contra.<br />
+      <b>Prima de influencer:</b> proporcional a la parte poseída.<br />
+      <b>Pago al agente:</b> se paga por cada partido jugado.
+    </>
   }
 };
 

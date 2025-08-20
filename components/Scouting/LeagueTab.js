@@ -3,20 +3,20 @@ import React, { useState, useRef } from "react";
 const CLUB_MAPPING_URL = "/club_mapping.json";
 const COUNTRY_MAPPING_URL = "/country_mapping2.json";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
 
 const GROUP_LABELS = {
-  AFR: { fr: "Afrique", en: "Africa", it: "Africa" },
-  AME: { fr: "Amérique", en: "America", it: "America" },
-  ASI: { fr: "Asie", en: "Asia", it: "Asia" },
-  EUR: { fr: "Europe", en: "Europe", it: "Europa" },
+  AFR: { fr: "Afrique", en: "Africa", it: "Africa", es: "África" },
+  AME: { fr: "Amérique", en: "America", it: "America", es: "América" },
+  ASI: { fr: "Asie", en: "Asia", it: "Asia", es: "Asia" },
+  EUR: { fr: "Europe", en: "Europe", it: "Europa", es: "Europa" },
 };
 
 const SPECIAL_COUNTRIES = {
-  ENG: { fr: "Angleterre", en: "England", it: "Inghilterra" },
-  SCO: { fr: "Écosse", en: "Scotland", it: "Scozia" },
-  WAL: { fr: "Pays de Galles", en: "Wales", it: "Galles" },
-  NIR: { fr: "Irlande du Nord", en: "Northern Ireland", it: "Irlanda del Nord" },
+  ENG: { fr: "Angleterre", en: "England", it: "Inghilterra", es: "Inglaterra" },
+  SCO: { fr: "Écosse", en: "Scotland", it: "Scozia", es: "Escocia" },
+  WAL: { fr: "Pays de Galles", en: "Wales", it: "Galles", es: "Gales" },
+  NIR: { fr: "Irlande du Nord", en: "Northern Ireland", it: "Irlanda del Nord", es: "Irlanda del Norte" },
 };
 
 function codeFromFlag(flag) {
@@ -149,6 +149,48 @@ const T = {
       balance: "Bilancio",
       transfers_in: "Entr.",
       transfers_out: "Usc.",
+      avg_player_rating_top21: "Top21",
+      avg_shooting: "🏹",
+      avg_passing: "🎯",
+      avg_tackling: "🛡️",
+      gk_rating: "🧤",
+    },
+  },
+  es: {
+    countryLabel: "País:",
+    countryPlaceholder: "Selecciona un país",
+    divisionLabel: "División:",
+    divisionPlaceholder: "Selecciona una división",
+    seasonLabel: "Temporada:",
+    seasonPlaceholder: "Selecciona una temporada",
+    seasonNames: { S1: "Temporada 1", S2: "Temporada 2" },
+    showTable: "Mostrar clasificación",
+    searching: "Buscando...",
+    loadingDetails: "Cargando estadísticas de clubes...",
+    errorNetwork: "Error de red o de análisis de datos.",
+    noLeague: "No se encontró liga o equipos.",
+    standingsTitle: "Clasificación",
+    championshipLabel: "Liga:",
+    columns: {
+      rank: "#",
+      club: "Club",
+      manager_name: "Manager",
+      pts: "Pts",
+      played: "J",
+      won: "G",
+      drawn: "E",
+      lost: "P",
+      goals_for: "GF",
+      goals_against: "GC",
+      fanbase: "Afición",
+      stadium_size_current: "Estadio",
+      avg_player_rating: "Rating",
+      avg_wages: "💸Prom",
+      total_wages: "💸Total",
+      total_player_value: "🏦Valor",
+      balance: "Saldo",
+      transfers_in: "Entr.",
+      transfers_out: "Sal.",
       avg_player_rating_top21: "Top21",
       avg_shooting: "🏹",
       avg_passing: "🎯",

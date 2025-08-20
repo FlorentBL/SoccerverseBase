@@ -6,18 +6,23 @@ const LABELS = {
   fr: {
     title1: "Soccerverse",
     title2: ": Revenus Agent & Actionnaire",
-    desc: "Devenez actionnaire ou agent et touchez des revenus réels selon les performances de vos joueurs ! Retrouvez ici tous les salaires, primes et commissions par note."
+    desc: "Devenez actionnaire ou agent et touchez des revenus réels selon les performances de vos joueurs ! Retrouvez ici tous les salaires, primes et commissions par note.",
   },
   en: {
     title1: "Soccerverse",
     title2: ": Agent & Shareholder Earnings",
-    desc: "Become a shareholder or agent and earn real rewards based on your players’ performances! Find here all salaries, bonuses, and commissions by rating."
+    desc: "Become a shareholder or agent and earn real rewards based on your players’ performances! Find here all salaries, bonuses, and commissions by rating.",
   },
   it: {
     title1: "Soccerverse",
     title2: ": Entrate Agente & Azionista",
-    desc: "Diventa azionista o agente e ricevi premi reali secondo le prestazioni dei tuoi giocatori! Qui trovi tutti gli stipendi, bonus e commissioni per valore."
-  }
+    desc: "Diventa azionista o agente e ricevi premi reali secondo le prestazioni dei tuoi giocatori! Qui trovi tutti gli stipendi, bonus e commissioni per valore.",
+  },
+  es: {
+    title1: "Soccerverse",
+    title2: ": Ingresos Agente & Accionista",
+    desc: "Conviértete en accionista o agente y gana recompensas reales según el rendimiento de tus jugadores. Aquí están todos los salarios, primas y comisiones por nota.",
+  },
 };
 
 export default function RevenusPage({ lang = "fr" }) {

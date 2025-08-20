@@ -26,6 +26,14 @@ const TYPE_LABELS = {
     injection: "🏦 Iniezioni di cassa",
     competition: "🏆 Competizioni",
     autre: "❓ Altri eventi",
+  },
+  es: {
+    match_domicile: "📘 Partidos en casa",
+    match_exterieur: "🚌 Partidos fuera",
+    transfert: "💰 Traspasos",
+    injection: "🏦 Inyecciones de efectivo",
+    competition: "🏆 Competiciones",
+    autre: "❓ Otros eventos",
   }
 };
 
