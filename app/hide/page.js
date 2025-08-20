@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Analyse tactique (Formations & Styles) depuis Supabase
+ * Analyse tactique (Formations & Styles) depuis Supabase + Conseiller tactique
  * Requiert :
  *   NEXT_PUBLIC_SUPABASE_URL
  *   NEXT_PUBLIC_SUPABASE_KEY
@@ -50,6 +50,16 @@ const TEXTS = {
     fullTable: "Tableau complet",
     exportCsv: "Exporter CSV",
     legend: "Légende : rouge = faible %V, vert = fort %V ; intensité = taille de l'échantillon",
+    // Conseiller
+    advisorTitle: "Conseiller tactique",
+    advisorMode: "Mode d’analyse",
+    advisorOpp: "Adversaire (attendu)",
+    advisorMine: "Ma config actuelle (optionnel)",
+    advisorRun: "Recommander",
+    advisorResults: "Recommandations (Top 3)",
+    advisorGain: "Gain vs actuel",
+    advisorPick: "Choisis au moins un adversaire",
+    advisorHint: "Le conseiller utilise la matrice filtrée ci-dessus (saison, ligues, côté, n).",
   },
   en: {
     title: "Tactical analysis",
@@ -80,62 +90,72 @@ const TEXTS = {
     fullTable: "Full table",
     exportCsv: "Export CSV",
     legend: "Legend: red = low Win%, green = high Win%; intensity = sample size",
+    // Advisor
+    advisorTitle: "Tactical advisor",
+    advisorMode: "Analysis mode",
+    advisorOpp: "Opponent (expected)",
+    advisorMine: "My current setup (optional)",
+    advisorRun: "Recommend",
+    advisorResults: "Recommendations (Top 3)",
+    advisorGain: "Gain vs current",
+    advisorPick: "Pick at least an opponent",
+    advisorHint: "The advisor uses the filtered matrix above (season, leagues, side, n).",
   },
 };
 
 // Mappings formations & styles
 const FORMATION_MAP = {
   fr: {
-      0: "4-4-2",
-  1: "4-3-3",
-  2: "4-5-1",
-  3: "3-4-3",
-  4: "3-5-2",
-  5: "3-3-4",
-  6: "5-4-1",
-  7: "5-3-2",
-  8: "5-2-3",
-  9: "4-4-2 (Losange)",
- 10: "4-3-3 Ailiers",
- 11: "4-5-1 Défensif",
- 12: "4-2-3-1",
- 13: "4-1-2-2-1",   // manquante
- 14: "4-4-1-1",
- 15: "4-3-1-2",
- 16: "3-4-1-2",
- 17: "5-3-2 Libéro",
- 18: "5-3-2 Défensif",
- 19: "4-2-4",
- 20: "4-2-2-2",
- 21: "3-4-2-1",
- 22: "4-1-3-2",
- 23: "3-2-2-2-1",
+    0: "4-4-2",
+    1: "4-3-3",
+    2: "4-5-1",
+    3: "3-4-3",
+    4: "3-5-2",
+    5: "3-3-4",
+    6: "5-4-1",
+    7: "5-3-2",
+    8: "5-2-3",
+    9: "4-4-2 (Losange)",
+    10: "4-3-3 Ailiers",
+    11: "4-5-1 Défensif",
+    12: "4-2-3-1",
+    13: "4-1-2-2-1",
+    14: "4-4-1-1",
+    15: "4-3-1-2",
+    16: "3-4-1-2",
+    17: "5-3-2 Libéro",
+    18: "5-3-2 Défensif",
+    19: "4-2-4",
+    20: "4-2-2-2",
+    21: "3-4-2-1",
+    22: "4-1-3-2",
+    23: "3-2-2-2-1",
   },
   en: {
-      0: "4-4-2",
-  1: "4-3-3",
-  2: "4-5-1",
-  3: "3-4-3",
-  4: "3-5-2",
-  5: "3-3-4",
-  6: "5-4-1",
-  7: "5-3-2",
-  8: "5-2-3",
-  9: "4-4-2 (Losange)",
- 10: "4-3-3 Ailiers",
- 11: "4-5-1 Défensif",
- 12: "4-2-3-1",
- 13: "4-1-2-2-1",   // manquante
- 14: "4-4-1-1",
- 15: "4-3-1-2",
- 16: "3-4-1-2",
- 17: "5-3-2 Libéro",
- 18: "5-3-2 Défensif",
- 19: "4-2-4",
- 20: "4-2-2-2",
- 21: "3-4-2-1",
- 22: "4-1-3-2",
- 23: "3-2-2-2-1",
+    0: "4-4-2",
+    1: "4-3-3",
+    2: "4-5-1",
+    3: "3-4-3",
+    4: "3-5-2",
+    5: "3-3-4",
+    6: "5-4-1",
+    7: "5-3-2",
+    8: "5-2-3",
+    9: "4-4-2 (Diamond)",
+    10: "4-3-3 Wingers",
+    11: "4-5-1 Defensive",
+    12: "4-2-3-1",
+    13: "4-1-2-2-1",
+    14: "4-4-1-1",
+    15: "4-3-1-2",
+    16: "3-4-1-2",
+    17: "5-3-2 Libero",
+    18: "5-3-2 Defensive",
+    19: "4-2-4",
+    20: "4-2-2-2",
+    21: "3-4-2-1",
+    22: "4-1-3-2",
+    23: "3-2-2-2-1",
   },
 };
 const STYLE_MAP = {
@@ -181,10 +201,10 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(a.href);
 }
 
-// Couleurs (WR 0→1 : rouge→vert). Intensité ~ sqrt(n / maxN) pour éviter l’écrasement par les gros n.
+// Couleurs (WR 0→1 : rouge→vert). Intensité ~ sqrt(n / maxN).
 const hueForWR = (wr) => Math.round(Math.max(0, Math.min(1, wr)) * 120); // 0=red,120=green
 const cellBg = (wr, n, maxN) => {
-  const intensity = maxN > 0 ? Math.sqrt(n / maxN) : 0.5; // 0..1
+  const intensity = maxN > 0 ? Math.sqrt(n / maxN) : 0.5;
   const alpha = 0.18 + 0.32 * intensity; // 0.18..0.50
   return `hsla(${hueForWR(wr)}, 85%, 45%, ${alpha})`;
 };
@@ -381,17 +401,22 @@ export default function AnalysisPage({ lang = "fr" }) {
   // Info pour la coloration (max n affiché)
   const maxNInfo = useMemo(() => {
     let maxN = 0;
-    for (const a of currentMatrix.values()) if (a && a.n >= minN) maxN = Math.max(maxN, a.n);
+    for (const a of (view === "formation" ? matrixForm : matrixStyle).values())
+      if (a && a.n >= minN) maxN = Math.max(maxN, a.n);
     return { maxN };
-  }, [currentMatrix, minN, view]);
+  }, [matrixForm, matrixStyle, minN, view]);
 
   // Classements Top/Flop depuis la matrice courante
+  const currentMatrix = view === "formation" ? matrixForm : matrixStyle;
+  const currentDomain = view === "formation" ? formationsPresent : stylesPresent;
+  const nameFn = view === "formation" ? formationName : styleName;
+
   const ranked = useMemo(() => {
     const out = [];
     for (const [k, a] of currentMatrix.entries()) {
       const [fStr, gStr] = k.split("|");
       const f = Number(fStr), g = Number(gStr);
-      if (!a || a.n === 0 || f < 0 || g < 0) continue; // ignore clés invalides
+      if (!a || a.n === 0 || f < 0 || g < 0) continue;
       out.push({ f, g, n: a.n, wr: a.w / a.n, gf: a.gf / a.n, ga: a.ga / a.n });
     }
     const withMin = out.filter((r) => r.n >= minN);
@@ -419,6 +444,54 @@ export default function AnalysisPage({ lang = "fr" }) {
   const titleBest = view === "formation" ? t.bestMatchupsForm : t.bestMatchupsStyle;
   const titleWorst = view === "formation" ? t.worstMatchupsForm : t.worstMatchupsStyle;
   const titleMatrix = view === "formation" ? t.matrixForm : t.matrixStyle;
+
+  // ───────────── Conseiller tactique ─────────────
+  const [advisorMode, setAdvisorMode] = useState("style"); // 'formation' | 'style'
+  const [oppChoice, setOppChoice] = useState("");          // id string
+  const [myChoice, setMyChoice] = useState("");            // id string
+  const [advise, setAdvise] = useState([]);                // results array
+
+  const matrixForAdvisor = advisorMode === "formation" ? matrixForm : matrixStyle;
+  const domainForAdvisor = advisorMode === "formation" ? formationsPresent : stylesPresent;
+  const nameForAdvisor = advisorMode === "formation" ? formationName : styleName;
+
+  function getTopCounters(matrix, opponentId, thresholdN) {
+    // Cherche toutes les lignes "f|opponentId" valides
+    const out = [];
+    for (const [k, a] of matrix.entries()) {
+      const [fStr, gStr] = k.split("|");
+      const f = Number(fStr), g = Number(gStr);
+      if (g !== opponentId || !a || a.n < thresholdN || f < 0) continue;
+      out.push({ f, g, n: a.n, wr: a.w / a.n, gf: a.gf / a.n, ga: a.ga / a.n });
+    }
+    // tri Win% desc puis n desc
+    out.sort((x, y) => y.wr - x.wr || y.n - x.n);
+    return out.slice(0, 3);
+  }
+
+  function currentPairWR(matrix, mine, opp) {
+    const a = matrix.get(`${mine}|${opp}`);
+    if (!a || a.n < minN) return null;
+    return { wr: a.w / a.n, n: a.n, gf: a.gf / a.n, ga: a.ga / a.n };
+    }
+
+  function runAdvisor() {
+    const g = Number(oppChoice);
+    if (!Number.isFinite(g)) {
+      setAdvise([{ error: t.advisorPick }]);
+      return;
+    }
+    const top = getTopCounters(matrixForAdvisor, g, minN);
+    const mine = Number(myChoice);
+    const base = Number.isFinite(mine) ? currentPairWR(matrixForAdvisor, mine, g) : null;
+    const enriched = top.map((r) => ({
+      ...r,
+      deltaWr: base ? r.wr - base.wr : null,
+      baseWr: base?.wr ?? null,
+      baseN: base?.n ?? null,
+    }));
+    setAdvise(enriched);
+  }
 
   return (
     <div className="min-h-screen px-4 py-10 bg-neutral-950 text-gray-100" style={{ colorScheme: "dark" }}>
@@ -503,6 +576,120 @@ export default function AnalysisPage({ lang = "fr" }) {
         </div>
 
         {error && <div className="text-sm text-red-400 mb-4">{String(error)}</div>}
+
+        {/* Conseiller tactique */}
+        <div className="border border-gray-800 rounded-xl p-4 mb-8">
+          <div className="flex items-start justify-between gap-4 flex-col md:flex-row">
+            <div>
+              <h2 className="font-semibold mb-1">{t.advisorTitle}</h2>
+              <p className="text-xs text-gray-400">{t.advisorHint}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4 items-end">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.advisorMode}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                value={advisorMode}
+                onChange={(e) => { setAdvisorMode(e.target.value); setAdvise([]); }}
+              >
+                <option value="formation">{t.formations}</option>
+                <option value="style">{t.styles}</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-400 mb-1">{t.advisorOpp}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                value={oppChoice}
+                onChange={(e) => setOppChoice(e.target.value)}
+              >
+                <option value="">{t.any}</option>
+                {domainForAdvisor.map((id) => (
+                  <option key={`opp-${id}`} value={id}>
+                    {nameForAdvisor(id)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-400 mb-1">{t.advisorMine}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                value={myChoice}
+                onChange={(e) => setMyChoice(e.target.value)}
+              >
+                <option value="">{t.any}</option>
+                {domainForAdvisor.map((id) => (
+                  <option key={`mine-${id}`} value={id}>
+                    {nameForAdvisor(id)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-5">
+              <button
+                onClick={runAdvisor}
+                className="mt-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 transition text-white font-medium"
+                disabled={domainForAdvisor.length === 0}
+              >
+                {t.advisorRun}
+              </button>
+            </div>
+          </div>
+
+          {/* Résultats */}
+          <div className="mt-4">
+            <h3 className="font-semibold mb-2">{t.advisorResults}</h3>
+            {advise.length === 0 ? (
+              <div className="text-sm text-gray-500">{t.noData}</div>
+            ) : advise[0]?.error ? (
+              <div className="text-sm text-amber-400">{advise[0].error}</div>
+            ) : (
+              <ul className="space-y-2">
+                {advise.map((r, idx) => (
+                  <li key={`advice-${idx}`} className="p-3 rounded-lg border border-gray-800 bg-gray-900/40">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="font-medium">
+                        {nameForAdvisor(r.f)} <span className="text-gray-400">vs</span> {nameForAdvisor(r.g)}
+                      </div>
+                      <div className="text-sm tabular-nums">
+                        <span className="mr-3">{formatPct(r.wr)}</span>
+                        <span className="mr-3 text-gray-400">n={r.n}</span>
+                        <span className="text-gray-400">
+                          {r.gf.toFixed(2)} / {r.ga.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    {r.deltaWr != null && (
+                      <div className="mt-2 text-xs text-gray-300">
+                        {t.advisorGain}: <b>{(r.deltaWr * 100).toFixed(1)} pts</b>{" "}
+                        <span className="text-gray-500">
+                          (actuel {r.baseWr != null ? formatPct(r.baseWr) : "—"}
+                          {r.baseN != null ? `, n=${r.baseN}` : ""})
+                        </span>
+                      </div>
+                    )}
+                    <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
+                      <div
+                        className="h-2"
+                        style={{
+                          width: `${Math.max(2, Math.min(100, r.wr * 100))}%`,
+                          backgroundColor: barColor(r.wr),
+                        }}
+                        aria-hidden
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
 
         {/* Best / Worst */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
