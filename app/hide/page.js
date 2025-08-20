@@ -406,10 +406,6 @@ export default function AnalysisPage({ lang = "fr" }) {
     return { maxN };
   }, [matrixForm, matrixStyle, minN, view]);
 
-  // Classements Top/Flop depuis la matrice courante
-  const currentMatrix = view === "formation" ? matrixForm : matrixStyle;
-  const currentDomain = view === "formation" ? formationsPresent : stylesPresent;
-  const nameFn = view === "formation" ? formationName : styleName;
 
   const ranked = useMemo(() => {
     const out = [];
