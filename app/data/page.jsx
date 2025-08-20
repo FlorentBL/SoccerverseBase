@@ -2,17 +2,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * DataBase – Soccerverse (Users / Clubs / Trades)
- * - Liste paginée + tri client + recherche + export CSV
- * - Drawer latéral : détails de la ligne (lazy fetch si endpoint défini)
+ * DataBase – Soccerverse (Users / Clubs / Trades) + Enrichissement via Data Pack
+ * - Onglets : Users / Clubs / Trades
+ * - Drawer latéral (lazy‑fetch) au clic sur ligne
+ * - Tri client par en‑tête, pagination, recherche, export CSV
+ * - Enrichissement depuis https://downloads.soccerverse.com/svpack/default.json (pack “cosmétique”)
  *
- * Endpoints par défaut (modifiables via env) :
- * - USERS_LIST   : /api/users/detailed      (officiel)
- * - CLUBS_LIST   : /api/clubs/detailed      (à ajuster selon votre backend)
- * - TRADES_LIST  : /api/trades/recent       (à ajuster selon votre backend)
- * - USERS_DETAIL : /api/users/profile?name= (optionnel, fallback = données de la ligne)
- * - CLUBS_DETAIL : /api/clubs/:id           (optionnel)
- * - TRADES_DETAIL: /api/trades/:id          (optionnel)
+ * ENV support (optionnel) :
+ *  - NEXT_PUBLIC_SV_SERVICES_URL
+ *  - NEXT_PUBLIC_SV_CLUBS_LIST, NEXT_PUBLIC_SV_TRADES_LIST
+ *  - NEXT_PUBLIC_SV_USERS_DETAIL_BASE, NEXT_PUBLIC_SV_CLUBS_DETAIL_BASE, NEXT_PUBLIC_SV_TRADES_DETAIL_BASE
+ *  - NEXT_PUBLIC_SV_PACK_URL (par défaut : downloads.soccerverse.com/svpack/default.json)
  */
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -23,14 +23,12 @@ const API_BASE =
 
 // LIST
 const USERS_LIST = `${API_BASE}/api/users/detailed`;
-//👇 à adapter si nécessaire selon votre source “clubs”
 const CLUBS_LIST =
   process.env.NEXT_PUBLIC_SV_CLUBS_LIST ||
-  `${API_BASE}/api/clubs/detailed`;
-//👇 à adapter si nécessaire pour “trades”
+  `${API_BASE}/api/clubs/detailed`; // adapte si besoin
 const TRADES_LIST =
   process.env.NEXT_PUBLIC_SV_TRADES_LIST ||
-  `${API_BASE}/api/trades/recent`;
+  `${API_BASE}/api/trades/recent`; // adapte si besoin
 
 // DETAIL (lazy)
 const USERS_DETAIL_BASE =
@@ -40,6 +38,11 @@ const CLUBS_DETAIL_BASE =
   process.env.NEXT_PUBLIC_SV_CLUBS_DETAIL_BASE || `${API_BASE}/api/clubs/`;
 const TRADES_DETAIL_BASE =
   process.env.NEXT_PUBLIC_SV_TRADES_DETAIL_BASE || `${API_BASE}/api/trades/`;
+
+// Data Pack URL
+const PACK_URL =
+  process.env.NEXT_PUBLIC_SV_PACK_URL ||
+  "https://downloads.soccerverse.com/svpack/default.json";
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Utils
@@ -86,7 +89,6 @@ function downloadCSV(filename, rows, headers) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
-// Permet "a.b.c" → obj[a]?.b?.c
 function resolveValue(obj, path) {
   if (!path) return undefined;
   return path.split(".").reduce((acc, k) => (acc == null ? acc : acc[k]), obj);
@@ -110,7 +112,7 @@ function usePagedList({ endpoint, page, perPage, serverSortOrder }) {
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("per_page", String(perPage));
-    if (serverSortOrder) params.set("sort_order", serverSortOrder); // asc/desc si supporté
+    if (serverSortOrder) params.set("sort_order", serverSortOrder); // si supporté
     const url = `${endpoint}?${params.toString()}`;
 
     if (abortRef.current) abortRef.current.abort();
@@ -141,7 +143,6 @@ function usePagedList({ endpoint, page, perPage, serverSortOrder }) {
       }
     : null;
 
-  // Essayons items génériques: .items || .data || []
   const items =
     state.data?.items ??
     state.data?.data ??
@@ -152,11 +153,182 @@ function usePagedList({ endpoint, page, perPage, serverSortOrder }) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Drawer (détails)
+// Data Pack loader + indexation
+function useDataPack(url = PACK_URL) {
+  const [state, setState] = useState({
+    loading: false,
+    error: "",
+    pack: null,
+    clubsById: null,     // { [clubId]: { id, name, country, division, logoUrl, ... } }
+    leaguesById: null,   // { [leagueId]: { id, name, country, division, logoUrl, ... } }
+    playersById: null,   // { [playerId]: { id, name, position, age, nationality, photoUrl, ... } }
+  });
+
+  useEffect(() => {
+    let aborted = false;
+    async function run() {
+      setState((s) => ({ ...s, loading: true, error: "" }));
+      try {
+        const res = await fetch(url, { headers: { accept: "application/json" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        const pack = await res.json();
+
+        // Le pack peut avoir différentes formes. Gestion défensive :
+        const clubsArr =
+          pack?.Clubs || pack?.clubs || pack?.club || [];
+        const leaguesArr =
+          pack?.Leagues || pack?.leagues || [];
+        const playersArr =
+          pack?.Players || pack?.players || [];
+
+        // Détecte champs usuels
+        function pickStr(o, keys, fallback = undefined) {
+          for (const k of keys) if (o?.[k] != null) return String(o[k]);
+          return fallback;
+        }
+        function pickNum(o, keys, fallback = undefined) {
+          for (const k of keys)
+            if (o?.[k] != null && !Number.isNaN(Number(o[k])))
+              return Number(o[k]);
+          return fallback;
+        }
+
+        // Base image URL éventuelle
+        const baseImg =
+          pack?.BaseImageURL ||
+          pack?.baseImageUrl ||
+          pack?.base_image_url ||
+          "";
+
+        // Clubs
+        const clubsById = {};
+        for (const c of clubsArr) {
+          const id = pickNum(c, ["id", "club_id", "clubId"]);
+          if (id == null) continue;
+          const name = pickStr(c, ["name", "club_name", "displayName"], `Club ${id}`);
+          const country = pickStr(c, ["country", "nation"]);
+          const division = pickStr(c, ["division", "div"]);
+          const leagueId = pickNum(c, ["league_id", "leagueId"]);
+          const logoId = pickStr(c, ["logo", "logo_id", "logoId"]);
+          const logoUrl = logoId
+            ? `${(c.logoBaseUrl || baseImg || "").replace(/\/+$/, "")}/${String(logoId)}.png`
+            : c.logoUrl || c.logo || null;
+
+          clubsById[id] = { id, name, country, division, leagueId, logoUrl, _raw: c };
+        }
+
+        // Leagues
+        const leaguesById = {};
+        for (const l of leaguesArr) {
+          const id = pickNum(l, ["id", "league_id", "leagueId"]);
+          if (id == null) continue;
+          const name = pickStr(l, ["name", "league_name", "displayName"], `League ${id}`);
+          const country = pickStr(l, ["country", "nation"]);
+          const division = pickStr(l, ["division", "div"]);
+          const logoId = pickStr(l, ["logo", "logo_id", "logoId"]);
+          const logoUrl = logoId
+            ? `${(l.logoBaseUrl || baseImg || "").replace(/\/+$/, "")}/${String(logoId)}.png`
+            : l.logoUrl || l.logo || null;
+          leaguesById[id] = { id, name, country, division, logoUrl, _raw: l };
+        }
+
+        // Players (utile pour enrichir certains trades)
+        const playersById = {};
+        for (const p of playersArr) {
+          const id = pickNum(p, ["id", "player_id", "playerId"]);
+          if (id == null) continue;
+          const name = pickStr(p, ["name", "player_name", "displayName"], `Player ${id}`);
+          const position = pickStr(p, ["position", "pos"]);
+          const age = pickNum(p, ["age"]);
+          const nationality = pickStr(p, ["nationality", "country", "nation"]);
+          const photoId = pickStr(p, ["photo", "photo_id", "photoId", "imageId"]);
+          const photoUrl = photoId
+            ? `${(p.photoBaseUrl || baseImg || "").replace(/\/+$/, "")}/${String(photoId)}.jpg`
+            : p.photoUrl || p.photo || null;
+          playersById[id] = { id, name, position, age, nationality, photoUrl, _raw: p };
+        }
+
+        if (!aborted) {
+          setState({
+            loading: false,
+            error: "",
+            pack,
+            clubsById,
+            leaguesById,
+            playersById,
+          });
+        }
+      } catch (e) {
+        if (!aborted) {
+          setState({
+            loading: false,
+            error: e?.message || "Erreur chargement Data Pack",
+            pack: null,
+            clubsById: null,
+            leaguesById: null,
+            playersById: null,
+          });
+        }
+      }
+    }
+    run();
+    return () => {
+      aborted = true;
+    };
+  }, [url]);
+
+  return state;
+}
+
+// Enrich helpers
+function clubLabel(clubsById, leaguesById, clubId) {
+  if (!clubId || !clubsById) return null;
+  const c = clubsById[clubId];
+  if (!c) return null;
+  const leagueName = c.leagueId && leaguesById?.[c.leagueId]?.name;
+  return {
+    name: c.name,
+    logoUrl: c.logoUrl || null,
+    sub: [c.country, c.division, leagueName].filter(Boolean).join(" · "),
+  };
+}
+function leagueLabel(leaguesById, leagueId) {
+  if (!leagueId || !leaguesById) return null;
+  const l = leaguesById[leagueId];
+  if (!l) return null;
+  return {
+    name: l.name,
+    logoUrl: l.logoUrl || null,
+    sub: [l.country, l.division].filter(Boolean).join(" · "),
+  };
+}
+function guessTradeAssetLabel(asset, { clubsById, playersById, leaguesById }) {
+  // Essai simple : si l’actif est un ID numérique d’un club/league/player, affiche son nom.
+  if (asset == null) return null;
+  const s = String(asset);
+  const n = Number(s);
+  if (!Number.isNaN(n)) {
+    if (clubsById?.[n]) return { type: "club", name: clubsById[n].name, img: clubsById[n].logoUrl };
+    if (playersById?.[n]) return { type: "player", name: playersById[n].name, img: playersById[n].photoUrl };
+    if (leaguesById?.[n]) return { type: "league", name: leaguesById[n].name, img: leaguesById[n].logoUrl };
+  }
+  // Si l’actif ressemble à "club:123" / "player:456"
+  const m = s.match(/^(club|player|league)[:/](\d+)$/i);
+  if (m) {
+    const type = m[1].toLowerCase();
+    const id = Number(m[2]);
+    if (type === "club" && clubsById?.[id]) return { type, name: clubsById[id].name, img: clubsById[id].logoUrl };
+    if (type === "player" && playersById?.[id]) return { type, name: playersById[id].name, img: playersById[id].photoUrl };
+    if (type === "league" && leaguesById?.[id]) return { type, name: leaguesById[id].name, img: leaguesById[id].logoUrl };
+  }
+  return null;
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Drawer générique
 function Drawer({ open, onClose, title, loading, error, data, renderSummary }) {
   return (
     <>
-      {/* Overlay */}
       <div
         className={clsx(
           "fixed inset-0 bg-black/40 transition-opacity",
@@ -164,7 +336,6 @@ function Drawer({ open, onClose, title, loading, error, data, renderSummary }) {
         )}
         onClick={onClose}
       />
-      {/* Panel */}
       <aside
         className={clsx(
           "fixed top-0 right-0 h-full w-full sm:w-[520px] bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform",
@@ -185,9 +356,7 @@ function Drawer({ open, onClose, title, loading, error, data, renderSummary }) {
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-56px)]">
-          {/* Résumé de la ligne (fourni par l'appelant) */}
           {renderSummary}
-
           <div className="text-sm text-gray-400">Détails (lazy‑fetch)</div>
           {loading ? (
             <div className="text-gray-300">Chargement…</div>
@@ -208,8 +377,6 @@ function Drawer({ open, onClose, title, loading, error, data, renderSummary }) {
   );
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Table shell
 function SkeletonRow({ cols = 10 }) {
   return (
     <tr className="animate-pulse border-b border-gray-800">
@@ -233,7 +400,8 @@ function EmptyRow({ colSpan, label = "Aucun résultat." }) {
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Onglet: Users
-function UsersTab() {
+function UsersTab({ packIndex }) {
+  const { clubsById, leaguesById } = packIndex || {};
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
   const [serverSortOrder, setServerSortOrder] = useState("asc");
@@ -252,7 +420,7 @@ function UsersTab() {
 
   const baseHeaders = [
     { key: "name", label: "Nom" },
-    { key: "club_id", label: "Club ID" },
+    { key: "club_id", label: "Club" }, // enrichi (nom/logo) si possible
     { key: "balance", label: "Solde" },
     { key: "manager_voted", label: "Mgr Voté" },
     { key: "last_active", label: "Dernière activité" },
@@ -273,9 +441,16 @@ function UsersTab() {
     setClientSort((s) => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: "desc" }));
   }
 
+  const enriched = useMemo(() => {
+    return (items || []).map((u) => {
+      const club = u.club_id ? clubLabel(clubsById, leaguesById, u.club_id) : null;
+      return { ...u, _clubView: club };
+    });
+  }, [items, clubsById, leaguesById]);
+
   // Filtrage + tri
   const filtered = useMemo(() => {
-    let out = items ?? [];
+    let out = enriched;
     if (hasClubOnly) out = out.filter((u) => u.club_id !== null);
     const mb = Number(minBalance || 0);
     if (mb > 0) out = out.filter((u) => (u.balance || 0) >= mb);
@@ -285,6 +460,8 @@ function UsersTab() {
         [
           u.name,
           u.club_id,
+          u._clubView?.name,
+          u._clubView?.sub,
           u.manager_voted,
           u.balance,
           u.total_volume,
@@ -297,22 +474,26 @@ function UsersTab() {
       );
     }
     return out;
-  }, [items, hasClubOnly, minBalance, debouncedSearch]);
+  }, [enriched, hasClubOnly, minBalance, debouncedSearch]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
     const { key, dir } = clientSort;
     const sign = dir === "asc" ? 1 : -1;
     arr.sort((a, b) => {
+      // Spé tri club par nom enrichi
+      if (key === "club_id") {
+        const va = a._clubView?.name || "";
+        const vb = b._clubView?.name || "";
+        return va.localeCompare(vb) * sign;
+      }
       const va = resolveValue(a, key);
       const vb = resolveValue(b, key);
-      // Spé date ISO
       if (key === "last_active") {
         const da = va ? new Date(va).getTime() : 0;
         const db = vb ? new Date(vb).getTime() : 0;
         return (da - db) * sign;
       }
-      // Numérique sinon lexicographique
       if (typeof va === "number" && typeof vb === "number") return (va - vb) * sign;
       return String(va ?? "").localeCompare(String(vb ?? "")) * sign;
     });
@@ -326,7 +507,6 @@ function UsersTab() {
 
   useEffect(() => {
     if (!open || !selected) return;
-    // Essaie un endpoint détail si dispo (par nom)
     const name = selected?.name;
     if (!name || !USERS_DETAIL_BASE) {
       setDetail({ loading: false, error: "", data: null });
@@ -341,9 +521,7 @@ function UsersTab() {
         const json = await res.json();
         if (!aborted) setDetail({ loading: false, error: "", data: json });
       })
-      .catch((e) => {
-        if (!aborted) setDetail({ loading: false, error: e.message || "Erreur", data: null });
-      });
+      .catch((e) => !aborted && setDetail({ loading: false, error: e.message || "Erreur", data: null }));
     return () => {
       aborted = true;
     };
@@ -478,7 +656,7 @@ function UsersTab() {
 
       {/* Table */}
       <div className="mt-4 overflow-auto rounded-2xl border border-gray-800">
-        <table className="min-w-[1100px] w-full text-sm">
+        <table className="min-w-[1150px] w-full text-sm">
           <thead className="bg-gray-800 sticky top-0 z-10">
             <tr className="text-left">
               {baseHeaders.map((h) => {
@@ -516,6 +694,7 @@ function UsersTab() {
                   key={`${u.name}-${idx}`}
                   className="border-b border-gray-800 hover:bg-gray-800/40 cursor-pointer"
                   onClick={() => {
+                    // enrich résumé drawer
                     setSelected(u);
                     setOpen(true);
                   }}
@@ -531,7 +710,26 @@ function UsersTab() {
                       <span className="truncate" title={u.name}>{u.name ?? "-"}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2">{u.club_id ?? "-"}</td>
+                  <td className="px-3 py-2">
+                    {u._clubView ? (
+                      <div className="flex items-center gap-2">
+                        {u._clubView.logoUrl ? (
+                          <img
+                            src={u._clubView.logoUrl}
+                            alt=""
+                            className="w-5 h-5 rounded object-cover"
+                            loading="lazy"
+                          />
+                        ) : null}
+                        <div className="truncate">
+                          <div className="text-gray-200">{u._clubView.name}</div>
+                          <div className="text-xs text-gray-500">{u._clubView.sub}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      u.club_id ?? "-"
+                    )}
+                  </td>
                   <td className="px-3 py-2">{formatSVC(u.balance)}</td>
                   <td className="px-3 py-2">{u.manager_voted ?? "-"}</td>
                   <td className="px-3 py-2">{formatISO(u.last_active)}</td>
@@ -563,10 +761,23 @@ function UsersTab() {
           selected ? (
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div><span className="text-gray-400">Nom</span><div className="text-gray-200">{selected.name}</div></div>
-              <div><span className="text-gray-400">Club ID</span><div className="text-gray-200">{selected.club_id ?? "-"}</div></div>
               <div><span className="text-gray-400">Solde</span><div className="text-gray-200">{formatSVC(selected.balance)}</div></div>
               <div><span className="text-gray-400">Dernière activité</span><div className="text-gray-200">{formatISO(selected.last_active)}</div></div>
-              <div className="col-span-2"><span className="text-gray-400">Profil pic</span><div className="mt-2"><img src={selected.profile_pic} alt="" className="h-16 w-16 rounded" /></div></div>
+              {selected._clubView ? (
+                <div className="col-span-2">
+                  <span className="text-gray-400">Club</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    {selected._clubView.logoUrl ? (
+                      <img src={selected._clubView.logoUrl} alt="" className="h-6 w-6 rounded" />
+                    ) : null}
+                    <div>
+                      <div className="text-gray-200">{selected._clubView.name}</div>
+                      <div className="text-xs text-gray-500">{selected._clubView.sub}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              <div className="col-span-2"><span className="text-gray-400">Profil</span><div className="mt-2"><img src={selected.profile_pic} alt="" className="h-16 w-16 rounded" /></div></div>
             </div>
           ) : null
         }
@@ -576,8 +787,9 @@ function UsersTab() {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Onglet: Clubs (structure générique, adapte les colonnes selon ton endpoint)
-function ClubsTab() {
+// Onglet: Clubs
+function ClubsTab({ packIndex }) {
+  const { clubsById, leaguesById } = packIndex || {};
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
   const [serverSortOrder, setServerSortOrder] = useState("asc");
@@ -588,17 +800,10 @@ function ClubsTab() {
     serverSortOrder,
   });
 
-  // Filtres & tri client
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounced(search, 300);
-  const [clientSort, setClientSort] = useState({ key: "balance", dir: "desc" });
-
-  // Colonnes par défaut (adapte les clés à ta payload clubs)
+  // Colonnes (affiche nom/logo via pack si possible)
   const headers = [
-    { key: "id", label: "Club ID" },
-    { key: "name", label: "Nom" },
-    { key: "league_id", label: "League" },
-    { key: "division", label: "Division" },
+    { key: "id", label: "Club" }, // remplacé par bloc “logo + nom + sous-ligne”
+    { key: "league", label: "League" }, // enrichi
     { key: "manager", label: "Manager" },
     { key: "value", label: "Valeur" },
     { key: "balance", label: "Solde" },
@@ -606,27 +811,59 @@ function ClubsTab() {
     { key: "last_active", label: "Dernière activité" },
   ];
 
-  // Normalisation minimale d’un item club (selon ce que ton backend renvoie)
+  // Normalisation + enrichissement
   const normalized = useMemo(() => {
-    return (items || []).map((c) => ({
-      id: c.id ?? c.club_id ?? c.clubId ?? null,
-      name: c.name ?? c.club_name ?? "-",
-      league_id: c.league_id ?? c.leagueId ?? c.league ?? null,
-      division: c.division ?? c.div ?? null,
-      manager: c.manager ?? c.manager_name ?? c.owner ?? "-",
-      value: c.value ?? c.club_value ?? null,
-      balance: c.balance ?? c.bank_balance ?? null,
-      fans: c.fans ?? c.supporters ?? null,
-      last_active: c.last_active ?? c.updated_at ?? c.last_seen ?? null,
-      _raw: c, // pour drawer
-    }));
-  }, [items]);
+    return (items || []).map((c) => {
+      const id = c.id ?? c.club_id ?? c.clubId ?? null;
+      const manager = c.manager ?? c.manager_name ?? c.owner ?? "-";
+      const value = c.value ?? c.club_value ?? null;
+      const balance = c.balance ?? c.bank_balance ?? null;
+      const fans = c.fans ?? c.supporters ?? null;
+      const last_active = c.last_active ?? c.updated_at ?? c.last_seen ?? null;
+      const leagueId = c.league_id ?? c.leagueId ?? c.league ?? null;
+
+      // pack enrich
+      const cPack = id && clubsById ? clubsById[id] : null;
+      const lPack = leagueId && leaguesById ? leaguesById[leagueId] : null;
+
+      return {
+        id,
+        manager,
+        value,
+        balance,
+        fans,
+        last_active,
+        leagueId,
+        _clubView: cPack
+          ? { name: cPack.name, logoUrl: cPack.logoUrl, sub: [cPack.country, cPack.division].filter(Boolean).join(" · ") }
+          : { name: c.name ?? c.club_name ?? `Club ${id}`, logoUrl: null, sub: [c.country, c.division].filter(Boolean).join(" · ") },
+        _leagueView: lPack
+          ? { name: lPack.name, logoUrl: lPack.logoUrl, sub: [lPack.country, lPack.division].filter(Boolean).join(" · ") }
+          : { name: c.league_name ?? String(leagueId ?? "-"), logoUrl: null, sub: "" },
+        _raw: c,
+      };
+    });
+  }, [items, clubsById, leaguesById]);
+
+  // Filtres / tri client
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, 300);
+  const [clientSort, setClientSort] = useState({ key: "value", dir: "desc" });
 
   const filtered = useMemo(() => {
     const s = debouncedSearch.trim().toLowerCase();
     if (!s) return normalized;
     return normalized.filter((c) =>
-      [c.id, c.name, c.manager, c.league_id, c.division, c.value, c.balance]
+      [
+        c.id,
+        c._clubView?.name,
+        c._clubView?.sub,
+        c._leagueView?.name,
+        c._leagueView?.sub,
+        c.manager,
+        c.value,
+        c.balance,
+      ]
         .map((x) => (x == null ? "" : String(x)))
         .join(" ")
         .toLowerCase()
@@ -639,6 +876,16 @@ function ClubsTab() {
     const { key, dir } = clientSort;
     const sign = dir === "asc" ? 1 : -1;
     arr.sort((a, b) => {
+      if (key === "id") {
+        const va = a._clubView?.name || "";
+        const vb = b._clubView?.name || "";
+        return va.localeCompare(vb) * sign;
+      }
+      if (key === "league") {
+        const va = a._leagueView?.name || "";
+        const vb = b._leagueView?.name || "";
+        return va.localeCompare(vb) * sign;
+      }
       const va = resolveValue(a, key);
       const vb = resolveValue(b, key);
       if (key === "last_active") {
@@ -652,7 +899,7 @@ function ClubsTab() {
     return arr;
   }, [filtered, clientSort]);
 
-  // Drawer détails club
+  // Drawer
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState({ loading: false, error: "", data: null });
@@ -678,7 +925,17 @@ function ClubsTab() {
   }, [open, selected]);
 
   function exportCSV() {
-    downloadCSV(`clubs_p${page}_pp${perPage}.csv`, sorted, headers);
+    downloadCSV(`clubs_p${page}_pp${perPage}.csv`, sorted, [
+      { key: "id", label: "Club ID" },
+      { key: "_clubView.name", label: "Nom" },
+      { key: "_clubView.sub", label: "Infos" },
+      { key: "_leagueView.name", label: "League" },
+      { key: "manager", label: "Manager" },
+      { key: "value", label: "Valeur" },
+      { key: "balance", label: "Solde" },
+      { key: "fans", label: "Fans" },
+      { key: "last_active", label: "Dernière activité" },
+    ]);
   }
   function onSort(k) {
     setClientSort((s) => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: "desc" }));
@@ -696,7 +953,7 @@ function ClubsTab() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Nom, manager, league, division…"
+            placeholder="Club, league, manager…"
             className="w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 outline-none focus:border-sky-500"
           />
         </div>
@@ -780,7 +1037,7 @@ function ClubsTab() {
 
       {/* Table */}
       <div className="mt-4 overflow-auto rounded-2xl border border-gray-800">
-        <table className="min-w-[1100px] w-full text-sm">
+        <table className="min-w-[1150px] w-full text-sm">
           <thead className="bg-gray-800 sticky top-0 z-10">
             <tr className="text-left">
               {headers.map((h) => {
@@ -822,10 +1079,28 @@ function ClubsTab() {
                     setOpen(true);
                   }}
                 >
-                  <td className="px-3 py-2">{c.id ?? "-"}</td>
-                  <td className="px-3 py-2">{c.name}</td>
-                  <td className="px-3 py-2">{c.league_id ?? "-"}</td>
-                  <td className="px-3 py-2">{c.division ?? "-"}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      {c._clubView?.logoUrl ? (
+                        <img src={c._clubView.logoUrl} alt="" className="w-5 h-5 rounded object-cover" loading="lazy" />
+                      ) : null}
+                      <div className="truncate">
+                        <div className="text-gray-200">{c._clubView?.name ?? c.id}</div>
+                        <div className="text-xs text-gray-500">{c._clubView?.sub}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      {c._leagueView?.logoUrl ? (
+                        <img src={c._leagueView.logoUrl} alt="" className="w-5 h-5 rounded object-cover" loading="lazy" />
+                      ) : null}
+                      <div className="truncate">
+                        <div className="text-gray-200">{c._leagueView?.name}</div>
+                        <div className="text-xs text-gray-500">{c._leagueView?.sub}</div>
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-3 py-2">{c.manager ?? "-"}</td>
                   <td className="px-3 py-2">{formatSVC(c.value)}</td>
                   <td className="px-3 py-2">{formatSVC(c.balance)}</td>
@@ -842,17 +1117,27 @@ function ClubsTab() {
       <Drawer
         open={open}
         onClose={() => setOpen(false)}
-        title={selected?.name || `Club ${selected?.id ?? ""}`}
+        title={selected?._clubView?.name || `Club ${selected?.id ?? ""}`}
         loading={detail.loading}
         error={detail.error}
         data={detail.data}
         renderSummary={
           selected ? (
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-gray-400">Club ID</span><div className="text-gray-200">{selected.id ?? "-"}</div></div>
-              <div><span className="text-gray-400">Nom</span><div className="text-gray-200">{selected.name ?? "-"}</div></div>
+              <div className="col-span-2">
+                <span className="text-gray-400">Club</span>
+                <div className="flex items-center gap-2 mt-1">
+                  {selected._clubView?.logoUrl ? (
+                    <img src={selected._clubView.logoUrl} alt="" className="h-6 w-6 rounded" />
+                  ) : null}
+                  <div>
+                    <div className="text-gray-200">{selected._clubView?.name ?? selected.id}</div>
+                    <div className="text-xs text-gray-500">{selected._clubView?.sub}</div>
+                  </div>
+                </div>
+              </div>
               <div><span className="text-gray-400">Manager</span><div className="text-gray-200">{selected.manager ?? "-"}</div></div>
-              <div><span className="text-gray-400">League/Division</span><div className="text-gray-200">{selected.league_id ?? "-"} / {selected.division ?? "-"}</div></div>
+              <div><span className="text-gray-400">League</span><div className="text-gray-200">{selected._leagueView?.name ?? selected.leagueId ?? "-"}</div></div>
               <div><span className="text-gray-400">Valeur</span><div className="text-gray-200">{formatSVC(selected.value)}</div></div>
               <div><span className="text-gray-400">Solde</span><div className="text-gray-200">{formatSVC(selected.balance)}</div></div>
               <div className="col-span-2"><span className="text-gray-400">Fans</span><div className="text-gray-200">{formatInt(selected.fans)}</div></div>
@@ -865,8 +1150,9 @@ function ClubsTab() {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Onglet: Trades (structure générique)
-function TradesTab() {
+// Onglet: Trades
+function TradesTab({ packIndex }) {
+  const { clubsById, leaguesById, playersById } = packIndex || {};
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
   const [serverSortOrder, setServerSortOrder] = useState("desc");
@@ -877,21 +1163,21 @@ function TradesTab() {
     serverSortOrder,
   });
 
-  // Normalisation minimale d’un trade
   const normalized = useMemo(() => {
-    return (items || []).map((t) => ({
-      id: t.id ?? t.trade_id ?? t.tx_id ?? null,
-      date: t.date ?? t.created_at ?? t.timestamp ?? t.time ?? null,
-      buyer: t.buyer ?? t.buyer_name ?? t.to ?? "-",
-      seller: t.seller ?? t.seller_name ?? t.from ?? "-",
-      amount: t.amount ?? t.value ?? t.price ?? null,
-      asset: t.asset ?? t.type ?? t.item ?? "-",
-      meta: t.meta ?? t.details ?? null,
-      _raw: t,
-    }));
-  }, [items]);
+    return (items || []).map((t) => {
+      const id = t.id ?? t.trade_id ?? t.tx_id ?? null;
+      const date = t.date ?? t.created_at ?? t.timestamp ?? t.time ?? null;
+      const buyer = t.buyer ?? t.buyer_name ?? t.to ?? "-";
+      const seller = t.seller ?? t.seller_name ?? t.from ?? "-";
+      const amount = t.amount ?? t.value ?? t.price ?? null;
+      const asset = t.asset ?? t.type ?? t.item ?? "-";
+      // Enrichit l’actif si possible
+      const assetView = guessTradeAssetLabel(asset, { clubsById, leaguesById, playersById });
 
-  // Filtres / tri client
+      return { id, date, buyer, seller, amount, asset, _assetView: assetView, _raw: t };
+    });
+  }, [items, clubsById, leaguesById, playersById]);
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search, 300);
   const [clientSort, setClientSort] = useState({ key: "date", dir: "desc" });
@@ -900,7 +1186,7 @@ function TradesTab() {
     const s = debouncedSearch.trim().toLowerCase();
     if (!s) return normalized;
     return normalized.filter((t) =>
-      [t.id, t.buyer, t.seller, t.asset, t.amount, t.date]
+      [t.id, t.buyer, t.seller, t.asset, t._assetView?.name, t.amount, t.date]
         .map((x) => (x == null ? "" : String(x)))
         .join(" ")
         .toLowerCase()
@@ -913,6 +1199,11 @@ function TradesTab() {
     const { key, dir } = clientSort;
     const sign = dir === "asc" ? 1 : -1;
     arr.sort((a, b) => {
+      if (key === "asset") {
+        const va = a._assetView?.name || String(a.asset ?? "");
+        const vb = b._assetView?.name || String(b.asset ?? "");
+        return va.localeCompare(vb) * sign;
+      }
       const va = resolveValue(a, key);
       const vb = resolveValue(b, key);
       if (key === "date") {
@@ -926,7 +1217,16 @@ function TradesTab() {
     return arr;
   }, [filtered, clientSort]);
 
-  // Drawer détails
+  const headers = [
+    { key: "id", label: "Trade ID" },
+    { key: "date", label: "Date" },
+    { key: "buyer", label: "Acheteur" },
+    { key: "seller", label: "Vendeur" },
+    { key: "asset", label: "Actif" },
+    { key: "amount", label: "Montant" },
+  ];
+
+  // Drawer
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState({ loading: false, error: "", data: null });
@@ -950,15 +1250,6 @@ function TradesTab() {
       aborted = true;
     };
   }, [open, selected]);
-
-  const headers = [
-    { key: "id", label: "Trade ID" },
-    { key: "date", label: "Date" },
-    { key: "buyer", label: "Acheteur" },
-    { key: "seller", label: "Vendeur" },
-    { key: "asset", label: "Actif" },
-    { key: "amount", label: "Montant" },
-  ];
 
   function exportCSV() {
     downloadCSV(`trades_p${page}_pp${perPage}.csv`, sorted, headers);
@@ -1063,10 +1354,17 @@ function TradesTab() {
 
       {/* Table */}
       <div className="mt-4 overflow-auto rounded-2xl border border-gray-800">
-        <table className="min-w-[1000px] w-full text-sm">
+        <table className="min-w-[1050px] w-full text-sm">
           <thead className="bg-gray-800 sticky top-0 z-10">
             <tr className="text-left">
-              {headers.map((h) => {
+              {[
+                { key: "id", label: "Trade ID" },
+                { key: "date", label: "Date" },
+                { key: "buyer", label: "Acheteur" },
+                { key: "seller", label: "Vendeur" },
+                { key: "asset", label: "Actif" },
+                { key: "amount", label: "Montant" },
+              ].map((h) => {
                 const isActive = h.key === clientSort.key;
                 const arrow = isActive ? (clientSort.dir === "asc" ? "↑" : "↓") : "↕";
                 return (
@@ -1086,15 +1384,15 @@ function TradesTab() {
           </thead>
           <tbody>
             {error ? (
-              <tr><td colSpan={headers.length} className="p-6 text-rose-400">Erreur : {error}</td></tr>
+              <tr><td colSpan={6} className="p-6 text-rose-400">Erreur : {error}</td></tr>
             ) : loading && !(raw?.items?.length) ? (
               <>
-                <SkeletonRow cols={headers.length} />
-                <SkeletonRow cols={headers.length} />
-                <SkeletonRow cols={headers.length} />
+                <SkeletonRow cols={6} />
+                <SkeletonRow cols={6} />
+                <SkeletonRow cols={6} />
               </>
             ) : sorted.length === 0 ? (
-              <EmptyRow colSpan={headers.length} label="Aucun trade." />
+              <EmptyRow colSpan={6} label="Aucun trade." />
             ) : (
               sorted.map((t, idx) => (
                 <tr
@@ -1109,7 +1407,21 @@ function TradesTab() {
                   <td className="px-3 py-2">{formatISO(t.date)}</td>
                   <td className="px-3 py-2">{t.buyer}</td>
                   <td className="px-3 py-2">{t.seller}</td>
-                  <td className="px-3 py-2">{t.asset}</td>
+                  <td className="px-3 py-2">
+                    {t._assetView ? (
+                      <div className="flex items-center gap-2">
+                        {t._assetView.img ? (
+                          <img src={t._assetView.img} alt="" className="w-5 h-5 rounded object-cover" loading="lazy" />
+                        ) : null}
+                        <div className="truncate">
+                          <div className="text-gray-200">{t._assetView.name}</div>
+                          <div className="text-xs text-gray-500">{String(t.asset)}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      String(t.asset)
+                    )}
+                  </td>
                   <td className="px-3 py-2">{formatSVC(t.amount)}</td>
                 </tr>
               ))
@@ -1133,7 +1445,20 @@ function TradesTab() {
               <div><span className="text-gray-400">Montant</span><div className="text-gray-200">{formatSVC(selected.amount)}</div></div>
               <div><span className="text-gray-400">Acheteur</span><div className="text-gray-200">{selected.buyer}</div></div>
               <div><span className="text-gray-400">Vendeur</span><div className="text-gray-200">{selected.seller}</div></div>
-              <div className="col-span-2"><span className="text-gray-400">Actif</span><div className="text-gray-200">{selected.asset}</div></div>
+              <div className="col-span-2">
+                <span className="text-gray-400">Actif</span>
+                <div className="flex items-center gap-2 mt-1">
+                  {selected._assetView?.img ? (
+                    <img src={selected._assetView.img} alt="" className="h-6 w-6 rounded" />
+                  ) : null}
+                  <div>
+                    <div className="text-gray-200">{selected._assetView?.name ?? String(selected.asset)}</div>
+                    {selected._assetView ? (
+                      <div className="text-xs text-gray-500">{String(selected.asset)}</div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null
         }
@@ -1143,36 +1468,57 @@ function TradesTab() {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Page principale avec onglets
+// Page principale
 export default function DataBasePage() {
   const [tab, setTab] = useState("users"); // users | clubs | trades
+
+  // Charge pack (une seule fois)
+  const packState = useDataPack(PACK_URL);
+  const packIndex = useMemo(
+    () =>
+      packState.error || !packState.pack
+        ? null
+        : {
+            clubsById: packState.clubsById,
+            leaguesById: packState.leaguesById,
+            playersById: packState.playersById,
+          },
+    [packState]
+  );
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-7xl mx-auto px-4 pt-8 pb-4">
         <h1 className="text-2xl font-semibold">DataBase · Soccerverse</h1>
         <p className="text-gray-400 mt-1">
-          Exploration DATA (listes paginées) avec panneau détaillé. Sources&nbsp;
+          Exploration DATA avec panneau détaillé. Sources API + enrichissement{" "}
           <a
             className="underline hover:text-white"
-            href={USERS_LIST}
+            href={PACK_URL}
             target="_blank"
             rel="noreferrer"
           >
-            users/detailed
+            Data Pack
           </a>
-          {CLUBS_LIST ? (
-            <>
-              , <a className="underline hover:text-white" href={CLUBS_LIST} target="_blank" rel="noreferrer">clubs</a>
-            </>
-          ) : null}
-          {TRADES_LIST ? (
-            <>
-              , <a className="underline hover:text-white" href={TRADES_LIST} target="_blank" rel="noreferrer">trades</a>
-            </>
-          ) : null}
           .
         </p>
+
+        {/* État du pack */}
+        <div className="mt-3 text-xs">
+          {packState.loading ? (
+            <span className="text-gray-400">Chargement du Data Pack…</span>
+          ) : packState.error ? (
+            <span className="text-amber-400">
+              Data Pack indisponible ({packState.error}). L’affichage se fait sans enrichissement.
+            </span>
+          ) : (
+            <span className="text-gray-400">
+              Pack chargé · Clubs: <span className="text-gray-200">{formatInt(Object.keys(packState.clubsById || {}).length)}</span> ·
+              Leagues: <span className="text-gray-200">{formatInt(Object.keys(packState.leaguesById || {}).length)}</span> ·
+              Players: <span className="text-gray-200">{formatInt(Object.keys(packState.playersById || {}).length)}</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -1197,9 +1543,9 @@ export default function DataBasePage() {
         </div>
 
         <div className="mt-6">
-          {tab === "users" && <UsersTab />}
-          {tab === "clubs" && <ClubsTab />}
-          {tab === "trades" && <TradesTab />}
+          {tab === "users" && <UsersTab packIndex={packIndex} />}
+          {tab === "clubs" && <ClubsTab packIndex={packIndex} />}
+          {tab === "trades" && <TradesTab packIndex={packIndex} />}
         </div>
       </div>
     </div>
