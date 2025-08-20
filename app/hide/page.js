@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Analyse tactique (Formations & Styles) depuis Supabase + Conseillers
+ * Analyse tactique + Conseillers (UX réorganisée)
  * Requiert :
  *   NEXT_PUBLIC_SUPABASE_URL
  *   NEXT_PUBLIC_SUPABASE_KEY
@@ -22,7 +22,12 @@ const supabase = createClient(url, key);
 // i18n (fr par défaut)
 const TEXTS = {
   fr: {
+    // App
     title: "Analyse tactique",
+    step1: "Étape 1 — Filtres",
+    step2: "Étape 2 — Analyse",
+    step3: "Étape 3 — Conseiller",
+    // Filtres
     leagueIds: "Ligues (CSV ou *)",
     seasonId: "Saison",
     minN: "Seuil n",
@@ -34,33 +39,37 @@ const TEXTS = {
     formations: "Formations",
     styles: "Styles de jeu",
     load: "Charger",
+    fullTable: "Tableau complet",
+    exportCsv: "Exporter CSV",
+    // Analyse
+    tabsOverview: "Aperçu",
+    tabsMatrix: "Matrice",
+    bestMatchupsForm: "Meilleurs matchups (formations, n≥seuil)",
+    worstMatchupsForm: "Pires matchups (formations, n≥seuil)",
+    bestMatchupsStyle: "Meilleurs matchups (styles, n≥seuil)",
+    worstMatchupsStyle: "Pires matchups (styles, n≥seuil)",
     matrixForm: "Matrice formation vs formation",
     matrixStyle: "Matrice style vs style",
+    legend: "Code couleur : rouge = faible %V, vert = fort %V ; intensité = échantillon",
+    // Table headers
     formationFor: "Pour",
     formationAgainst: "Contre",
     count: "n",
     winrate: "%V",
     avgGf: "BMoy",
     avgGa: "EMoy",
-    bestMatchupsForm: "Meilleurs matchups (formations, n≥seuil)",
-    worstMatchupsForm: "Pires matchups (formations, n≥seuil)",
-    bestMatchupsStyle: "Meilleurs matchups (styles, n≥seuil)",
-    worstMatchupsStyle: "Pires matchups (styles, n≥seuil)",
-    noData: "Aucune donnée",
-    fullTable: "Tableau complet",
-    exportCsv: "Exporter CSV",
-    legend: "Légende : rouge = faible %V, vert = fort %V ; intensité = taille de l'échantillon",
-    // Conseiller (mono-dimension)
-    advisorTitle: "Conseiller tactique",
-    advisorMode: "Mode d’analyse",
+    // Conseiller
+    tabAdvisor: "Conseiller",
+    advisorHint: "Le conseiller utilise la matrice filtrée ci-dessus (saison, ligues, côté, n).",
+    advisorSingleTitle: "Conseiller (tactique OU style)",
+    advisorMode: "Dimension",
     advisorOpp: "Adversaire (attendu)",
     advisorMine: "Ma config actuelle (optionnel)",
     advisorRun: "Recommander",
-    advisorResults: "Recommandations (Top 3)",
+    advisorResults: "Top 3 recommandations",
     advisorGain: "Gain vs actuel",
     advisorPick: "Choisis au moins un adversaire",
-    advisorHint: "Le conseiller utilise la matrice filtrée ci-dessus (saison, ligues, côté, n).",
-    // Conseiller global (formation + style)
+    // Conseiller global
     comboTitle: "Conseiller global (tactique + style)",
     comboOppForm: "Tactique adverse (attendue)",
     comboOppStyle: "Style adverse (attendu)",
@@ -70,11 +79,16 @@ const TEXTS = {
     comboFormHeader: "Top 3 tactiques vs sa tactique",
     comboStyleHeader: "Top 3 styles vs son style",
     comboSuggestHeader: "Suggestion combinée",
-    comboNeedOpp: "Renseigne au moins la tactique **et** le style adverses.",
+    comboNeedOpp: "Renseigne la tactique ET le style adverses.",
     comboScore: "Score combiné estimé",
+    // Misc
+    noData: "Aucune donnée",
   },
   en: {
     title: "Tactical analysis",
+    step1: "Step 1 — Filters",
+    step2: "Step 2 — Analysis",
+    step3: "Step 3 — Advisor",
     leagueIds: "Leagues (CSV or *)",
     seasonId: "Season",
     minN: "Min n",
@@ -86,33 +100,33 @@ const TEXTS = {
     formations: "Formations",
     styles: "Play styles",
     load: "Load",
+    fullTable: "Full table",
+    exportCsv: "Export CSV",
+    tabsOverview: "Overview",
+    tabsMatrix: "Matrix",
+    bestMatchupsForm: "Best matchups (formations, n≥min)",
+    worstMatchupsForm: "Worst matchups (formations, n≥min)",
+    bestMatchupsStyle: "Best matchups (styles, n≥min)",
+    worstMatchupsStyle: "Worst matchups (styles, n≥min)",
     matrixForm: "Formation vs formation matrix",
     matrixStyle: "Style vs style matrix",
+    legend: "Color: red = low Win%, green = high Win%; intensity = sample size",
     formationFor: "For",
     formationAgainst: "Against",
     count: "n",
     winrate: "Win%",
     avgGf: "GF avg",
     avgGa: "GA avg",
-    bestMatchupsForm: "Best matchups (formations, n≥min)",
-    worstMatchupsForm: "Worst matchups (formations, n≥min)",
-    bestMatchupsStyle: "Best matchups (styles, n≥min)",
-    worstMatchupsStyle: "Worst matchups (styles, n≥min)",
-    noData: "No data",
-    fullTable: "Full table",
-    exportCsv: "Export CSV",
-    legend: "Legend: red = low Win%, green = high Win%; intensity = sample size",
-    // Advisor (single-dimension)
-    advisorTitle: "Tactical advisor",
-    advisorMode: "Analysis mode",
+    tabAdvisor: "Advisor",
+    advisorHint: "Advisor uses the filtered matrix above (season, leagues, side, n).",
+    advisorSingleTitle: "Advisor (tactic OR style)",
+    advisorMode: "Dimension",
     advisorOpp: "Opponent (expected)",
     advisorMine: "My current setup (optional)",
     advisorRun: "Recommend",
-    advisorResults: "Recommendations (Top 3)",
+    advisorResults: "Top 3 recommendations",
     advisorGain: "Gain vs current",
     advisorPick: "Pick at least an opponent",
-    advisorHint: "The advisor uses the filtered matrix above (season, leagues, side, n).",
-    // Global advisor
     comboTitle: "Global advisor (tactic + style)",
     comboOppForm: "Opponent tactic (expected)",
     comboOppStyle: "Opponent style (expected)",
@@ -122,65 +136,16 @@ const TEXTS = {
     comboFormHeader: "Top 3 tactics vs their tactic",
     comboStyleHeader: "Top 3 styles vs their style",
     comboSuggestHeader: "Combined suggestion",
-    comboNeedOpp: "Provide both opponent tactic **and** style.",
+    comboNeedOpp: "Provide both opponent tactic AND style.",
     comboScore: "Estimated combined score",
+    noData: "No data",
   },
 };
 
 // Mappings formations & styles
 const FORMATION_MAP = {
-  fr: {
-    0: "4-4-2",
-    1: "4-3-3",
-    2: "4-5-1",
-    3: "3-4-3",
-    4: "3-5-2",
-    5: "3-3-4",
-    6: "5-4-1",
-    7: "5-3-2",
-    8: "5-2-3",
-    9: "4-4-2 (Losange)",
-    10: "4-3-3 Ailiers",
-    11: "4-5-1 Défensif",
-    12: "4-2-3-1",
-    13: "4-1-2-2-1",
-    14: "4-4-1-1",
-    15: "4-3-1-2",
-    16: "3-4-1-2",
-    17: "5-3-2 Libéro",
-    18: "5-3-2 Défensif",
-    19: "4-2-4",
-    20: "4-2-2-2",
-    21: "3-4-2-1",
-    22: "4-1-3-2",
-    23: "3-2-2-2-1",
-  },
-  en: {
-    0: "4-4-2",
-    1: "4-3-3",
-    2: "4-5-1",
-    3: "3-4-3",
-    4: "3-5-2",
-    5: "3-3-4",
-    6: "5-4-1",
-    7: "5-3-2",
-    8: "5-2-3",
-    9: "4-4-2 (Diamond)",
-    10: "4-3-3 Wingers",
-    11: "4-5-1 Defensive",
-    12: "4-2-3-1",
-    13: "4-1-2-2-1",
-    14: "4-4-1-1",
-    15: "4-3-1-2",
-    16: "3-4-1-2",
-    17: "5-3-2 Libero",
-    18: "5-3-2 Defensive",
-    19: "4-2-4",
-    20: "4-2-2-2",
-    21: "3-4-2-1",
-    22: "4-1-3-2",
-    23: "3-2-2-2-1",
-  },
+  fr: { 0:"4-4-2",1:"4-3-3",2:"4-5-1",3:"3-4-3",4:"3-5-2",5:"3-3-4",6:"5-4-1",7:"5-3-2",8:"5-2-3",9:"4-4-2 (Losange)",10:"4-3-3 Ailiers",11:"4-5-1 Défensif",12:"4-2-3-1",13:"4-1-2-2-1",14:"4-4-1-1",15:"4-3-1-2",16:"3-4-1-2",17:"5-3-2 Libéro",18:"5-3-2 Défensif",19:"4-2-4",20:"4-2-2-2",21:"3-4-2-1",22:"4-1-3-2",23:"3-2-2-2-1" },
+  en: { 0:"4-4-2",1:"4-3-3",2:"4-5-1",3:"3-4-3",4:"3-5-2",5:"3-3-4",6:"5-4-1",7:"5-3-2",8:"5-2-3",9:"4-4-2 (Diamond)",10:"4-3-3 Wingers",11:"4-5-1 Defensive",12:"4-2-3-1",13:"4-1-2-2-1",14:"4-4-1-1",15:"4-3-1-2",16:"3-4-1-2",17:"5-3-2 Libero",18:"5-3-2 Defensive",19:"4-2-4",20:"4-2-2-2",21:"3-4-2-1",22:"4-1-3-2",23:"3-2-2-2-1" },
 };
 const STYLE_MAP = {
   fr: { 0: "Normale (N)", 1: "Défensive (D)", 2: "Offensive (O)", 3: "Passes (P)", 4: "Contre-attaque (C)", 5: "Ballons longs (L)" },
@@ -191,12 +156,10 @@ const STYLE_MAP = {
 // Utils
 const keyFn = (f) => (f ?? -1).toString();
 const formatPct = (x) => (x * 100).toFixed(0) + "%";
-const parseCsvIds = (s) =>
-  s.split(",").map((x) => x.trim()).filter(Boolean).map(Number).filter((n) => Number.isFinite(n));
+const parseCsvIds = (s) => s.split(",").map((x) => x.trim()).filter(Boolean).map(Number).filter((n) => Number.isFinite(n));
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 
 function aggregateMatrix(rows) {
-  // rows: { formation_id, opp_formation_id, goals_for, goals_against, result: 'W'|'D'|'L' }[]
   const map = new Map();
   for (const r of rows) {
     const k = `${keyFn(r.formation_id)}|${keyFn(r.opp_formation_id)}`;
@@ -225,11 +188,11 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(a.href);
 }
 
-// Couleurs (WR 0→1 : rouge→vert). Intensité ~ sqrt(n / maxN).
+// Couleurs
 const hueForWR = (wr) => Math.round(Math.max(0, Math.min(1, wr)) * 120); // 0=red,120=green
 const cellBg = (wr, n, maxN) => {
   const intensity = maxN > 0 ? Math.sqrt(n / maxN) : 0.5;
-  const alpha = 0.18 + 0.32 * intensity; // 0.18..0.50
+  const alpha = 0.18 + 0.32 * intensity;
   return `hsla(${hueForWR(wr)}, 85%, 45%, ${alpha})`;
 };
 const barColor = (wr) => `hsl(${hueForWR(wr)}, 80%, 45%)`;
@@ -238,21 +201,17 @@ const barColor = (wr) => `hsl(${hueForWR(wr)}, 80%, 45%)`;
 export default function AnalysisPage({ lang = "fr" }) {
   const t = TEXTS[lang] || TEXTS.fr;
 
-  // Filtres
-  const [leagueCsv, setLeagueCsv] = useState("*"); // ex: "548,549" ou "*"
+  // ── Filtres (Step 1)
+  const [leagueCsv, setLeagueCsv] = useState("*");
   const [seasonId, setSeasonId] = useState("2");
   const [minN, setMinN] = useState(5);
   const [sideFilter, setSideFilter] = useState("any"); // any|home|away
   const [view, setView] = useState("style"); // formation|style
-  const [showTable, setShowTable] = useState(false);
-  const [sortConfig, setSortConfig] = useState(null); // { styleId, asc }
-  const [filterStyle, setFilterStyle] = useState(null); // style id for combos
 
-  // État
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Matrices & domaines
+  // Données
   const [matrixForm, setMatrixForm] = useState(new Map());
   const [matrixStyle, setMatrixStyle] = useState(new Map());
   const [formationsPresent, setFormationsPresent] = useState([]);
@@ -261,39 +220,19 @@ export default function AnalysisPage({ lang = "fr" }) {
   const formationName = (id) => (id == null || id === -1 ? "—" : FORMATION_MAP[lang]?.[id] ?? String(id));
   const styleName = (id) => (id == null || id === -1 ? "—" : STYLE_MAP[lang]?.[id] ?? String(id));
 
-  // Vue en cours (unique source de vérité)
+  // Vue courante (Step 2)
   const currentMatrix = view === "formation" ? matrixForm : matrixStyle;
   const currentDomain = view === "formation" ? formationsPresent : stylesPresent;
   const nameFn = view === "formation" ? formationName : styleName;
-
-  const displayRows = useMemo(() => {
-    if (view !== "style" || !sortConfig) return currentDomain;
-    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
-    return [sortConfig.styleId, ...others];
-  }, [view, sortConfig, currentDomain]);
-
-  const displayCols = useMemo(() => {
-    if (view !== "style" || !sortConfig) return currentDomain;
-    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
-    others.sort((a, b) => {
-      const aData = currentMatrix.get(`${sortConfig.styleId}|${a}`);
-      const bData = currentMatrix.get(`${sortConfig.styleId}|${b}`);
-      const aWr = aData && aData.n >= minN ? aData.w / aData.n : -1;
-      const bWr = bData && bData.n >= minN ? bData.w / bData.n : -1;
-      return sortConfig.asc ? aWr - bWr : bWr - aWr;
-    });
-    return [...others, sortConfig.styleId];
-  }, [view, sortConfig, currentDomain, currentMatrix, minN]);
 
   async function loadData() {
     try {
       setLoading(true);
       setError(null);
-
       const season = Number(seasonId);
       if (!Number.isFinite(season)) throw new Error("Season invalide");
 
-      // 1) Matches (saison + ligues filtrées)
+      // 1) Fixtures filtrés
       const isAllLeagues = leagueCsv.trim() === "*";
       const leagueIds = isAllLeagues ? [] : parseCsvIds(leagueCsv);
 
@@ -321,14 +260,14 @@ export default function AnalysisPage({ lang = "fr" }) {
         return;
       }
 
-      // 2) Charger sides par batch
+      // 2) Sides batched
       const allSides = [];
       const CHUNK = 800;
       for (let i = 0; i < fids.length; i += CHUNK) {
         const part = fids.slice(i, i + CHUNK);
         const { data: sides, error: sErr } = await supabase
           .from("sv_match_sides")
-          .select("fixture_id, side, club_id, opponent_club_id, goals_for, goals_against, formation_id, play_style")
+          .select("fixture_id, side, goals_for, goals_against, formation_id, play_style")
           .in("fixture_id", part);
         if (sErr) throw sErr;
         allSides.push(...(sides || []));
@@ -342,7 +281,7 @@ export default function AnalysisPage({ lang = "fr" }) {
         byFixture.set(s.fixture_id, arr);
       }
 
-      // 4) Construire datasets formations & styles (2 côtés)
+      // 4) Datasets
       const rowsForm = [];
       const rowsStyle = [];
       const seenForm = new Set();
@@ -416,6 +355,12 @@ export default function AnalysisPage({ lang = "fr" }) {
     }
   }
 
+  // ── Analyse (Step 2)
+  const [analysisTab, setAnalysisTab] = useState("overview"); // overview | matrix
+  const [showTable, setShowTable] = useState(false);
+  const [sortConfig, setSortConfig] = useState(null); // { styleId, asc }
+  const [filterStyle, setFilterStyle] = useState(null);
+
   const handleSort = (id) => {
     if (view !== "style") return;
     setSortConfig((prev) =>
@@ -423,7 +368,25 @@ export default function AnalysisPage({ lang = "fr" }) {
     );
   };
 
-  // Info coloration (max n)
+  const displayRows = useMemo(() => {
+    if (view !== "style" || !sortConfig) return currentDomain;
+    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
+    return [sortConfig.styleId, ...others];
+  }, [view, sortConfig, currentDomain]);
+
+  const displayCols = useMemo(() => {
+    if (view !== "style" || !sortConfig) return currentDomain;
+    const others = currentDomain.filter((id) => id !== sortConfig.styleId);
+    others.sort((a, b) => {
+      const aData = currentMatrix.get(`${sortConfig.styleId}|${a}`);
+      const bData = currentMatrix.get(`${sortConfig.styleId}|${b}`);
+      const aWr = aData && aData.n >= minN ? aData.w / aData.n : -1;
+      const bWr = bData && bData.n >= minN ? bData.w / bData.n : -1;
+      return sortConfig.asc ? aWr - bWr : bWr - aWr;
+    });
+    return [...others, sortConfig.styleId];
+  }, [view, sortConfig, currentDomain, currentMatrix, minN]);
+
   const maxNInfo = useMemo(() => {
     let maxN = 0;
     for (const a of (view === "formation" ? matrixForm : matrixStyle).values())
@@ -431,7 +394,6 @@ export default function AnalysisPage({ lang = "fr" }) {
     return { maxN };
   }, [matrixForm, matrixStyle, minN, view]);
 
-  // Classements Top/Flop (vue courante)
   const ranked = useMemo(() => {
     const out = [];
     for (const [k, a] of currentMatrix.entries()) {
@@ -441,12 +403,11 @@ export default function AnalysisPage({ lang = "fr" }) {
       out.push({ f, g, n: a.n, wr: a.w / a.n, gf: a.gf / a.n, ga: a.ga / a.n });
     }
     const withMin = out.filter((r) => r.n >= minN);
-    const best = [...withMin].sort((x, y) => y.wr - x.wr || y.n - x.n).slice(0, 12);
-    const worst = [...withMin].sort((x, y) => x.wr - y.wr || y.n - x.n).slice(0, 12);
+    const best = [...withMin].sort((x, y) => y.wr - x.wr || y.n - x.n).slice(0, 10);
+    const worst = [...withMin].sort((x, y) => x.wr - y.wr || y.n - y.n).slice(0, 10);
     return { best, worst };
   }, [currentMatrix, minN, view]);
 
-  // Tableau complet
   const allRows = useMemo(() => {
     const out = [];
     for (const [k, a] of currentMatrix.entries()) {
@@ -466,11 +427,11 @@ export default function AnalysisPage({ lang = "fr" }) {
   const titleWorst = view === "formation" ? t.worstMatchupsForm : t.worstMatchupsStyle;
   const titleMatrix = view === "formation" ? t.matrixForm : t.matrixStyle;
 
-  // ───────────── Conseiller tactique (mono-dimension) ─────────────
+  // ── Conseillers (Step 3)
   const [advisorMode, setAdvisorMode] = useState("style"); // 'formation' | 'style'
-  const [oppChoice, setOppChoice] = useState("");          // id string
-  const [myChoice, setMyChoice] = useState("");            // id string
-  const [advise, setAdvise] = useState([]);                // results array
+  const [oppChoice, setOppChoice] = useState("");
+  const [myChoice, setMyChoice] = useState("");
+  const [advise, setAdvise] = useState([]);
 
   const matrixForAdvisor = advisorMode === "formation" ? matrixForm : matrixStyle;
   const domainForAdvisor = advisorMode === "formation" ? formationsPresent : stylesPresent;
@@ -512,7 +473,7 @@ export default function AnalysisPage({ lang = "fr" }) {
     setAdvise(enriched);
   }
 
-  // ───────────── Conseiller global (formation + style) ─────────────
+  // Global
   const [oppFormChoice, setOppFormChoice] = useState("");
   const [oppStyleChoice, setOppStyleChoice] = useState("");
   const [myFormChoice, setMyFormChoice] = useState("");
@@ -527,12 +488,9 @@ export default function AnalysisPage({ lang = "fr" }) {
       return;
     }
 
-    // Top 3 tactiques vs sa tactique
     const topForms = getTopCounters(matrixForm, oppF, minN);
-    // Top 3 styles vs son style
     const topStyles = getTopCounters(matrixStyle, oppS, minN);
 
-    // Bases actuelles (si fournies)
     const mineF = Number(myFormChoice);
     const mineS = Number(myStyleChoice);
     const baseForm = Number.isFinite(mineF) ? currentPairWR(matrixForm, mineF, oppF) : null;
@@ -551,8 +509,6 @@ export default function AnalysisPage({ lang = "fr" }) {
       baseN: baseStyle?.n ?? null,
     }));
 
-    // Suggestion combinée : meilleure paire (f, s) en score multiplicatif
-    // (approximation indépendante : wr_comb = wr_form * wr_style)
     let bestPair = null;
     for (const tf of topFormsEnriched) {
       for (const ts of topStylesEnriched) {
@@ -563,113 +519,311 @@ export default function AnalysisPage({ lang = "fr" }) {
       }
     }
 
-    setCombo({
-      oppF,
-      oppS,
-      forms: topFormsEnriched,
-      styles: topStylesEnriched,
-      bestPair,
-    });
+    setCombo({ oppF, oppS, forms: topFormsEnriched, styles: topStylesEnriched, bestPair });
   }
 
+  // ── UI
   return (
-    <div className="min-h-screen px-4 py-10 bg-neutral-950 text-gray-100" style={{ colorScheme: "dark" }}>
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl md:text-3xl font-bold mb-6">{t.title}</h1>
+    <div className="min-h-screen px-4 py-8 bg-neutral-950 text-gray-100" style={{ colorScheme: "dark" }}>
+      <div className="max-w-7xl mx-auto space-y-8">
+        <header className="flex items-center justify-between">
+          <h1 className="text-2xl md:text-3xl font-bold">{t.title}</h1>
+        </header>
 
-        {/* Filtres */}
-        <div className="grid grid-cols-2 md:grid-cols-8 gap-3 items-end mb-6">
-          <div className="md:col-span-3">
-            <label className="block text-xs text-gray-400 mb-1">{t.leagueIds}</label>
-            <input
-              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
-              value={leagueCsv}
-              onChange={(e) => setLeagueCsv(e.target.value)}
-              placeholder="548,549 ou *"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">{t.seasonId}</label>
-            <input
-              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
-              value={seasonId}
-              onChange={(e) => setSeasonId(e.target.value)}
-              placeholder="2"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">{t.minN}</label>
-            <input
-              type="number"
-              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100 placeholder-gray-400"
-              value={minN}
-              onChange={(e) => setMinN(Math.max(1, Number(e.target.value)))}
-              min={1}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">{t.side}</label>
-            <select
-              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
-              value={sideFilter}
-              onChange={(e) => setSideFilter(e.target.value)}
-            >
-              <option value="any">{t.any}</option>
-              <option value="home">{t.home}</option>
-              <option value="away">{t.away}</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">{t.view}</label>
-            <select
-              className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
-              value={view}
-              onChange={(e) => setView(e.target.value)}
-            >
-              <option value="formation">{t.formations}</option>
-              <option value="style">{t.styles}</option>
-            </select>
-          </div>
-          <div className="md:col-span-2 flex gap-3">
-            <button
-              onClick={loadData}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition text-white font-medium"
-              disabled={loading}
-            >
-              {loading ? "…" : t.load}
-            </button>
-
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={showTable} onChange={(e) => setShowTable(e.target.checked)} />
-              {t.fullTable}
-            </label>
-            <button
-              onClick={() => downloadCsv(view === "formation" ? "formations.csv" : "styles.csv", allRows)}
-              className="px-3 py-2 rounded-lg border border-gray-700 hover:bg-white/5 transition text-sm"
-              disabled={allRows.length === 0}
-              title="Export du tableau courant (vue/filtre actuels)"
-            >
-              {t.exportCsv}
-            </button>
-          </div>
-        </div>
-
-        {error && <div className="text-sm text-red-400 mb-4">{String(error)}</div>}
-
-        {/* Conseiller tactique (mono-dimension) */}
-        <div className="border border-gray-800 rounded-xl p-4 mb-8">
-          <div className="flex items-start justify-between gap-4 flex-col md:flex-row">
+        {/* STEP 1 — FILTRES */}
+        <section className="border border-gray-800 rounded-2xl p-4">
+          <h2 className="text-sm uppercase tracking-wider text-gray-400 mb-3">{t.step1}</h2>
+          <div className="grid grid-cols-2 md:grid-cols-8 gap-3 items-end">
+            <div className="md:col-span-3">
+              <label className="block text-xs text-gray-400 mb-1">{t.leagueIds}</label>
+              <input
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                value={leagueCsv}
+                onChange={(e) => setLeagueCsv(e.target.value)}
+                placeholder="548,549 ou *"
+              />
+            </div>
             <div>
-              <h2 className="font-semibold mb-1">{t.advisorTitle}</h2>
-              <p className="text-xs text-gray-400">{t.advisorHint}</p>
+              <label className="block text-xs text-gray-400 mb-1">{t.seasonId}</label>
+              <input
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                value={seasonId}
+                onChange={(e) => setSeasonId(e.target.value)}
+                placeholder="2"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.minN}</label>
+              <input
+                type="number"
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                value={minN}
+                onChange={(e) => setMinN(Math.max(1, Number(e.target.value)))}
+                min={1}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.side}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                value={sideFilter}
+                onChange={(e) => setSideFilter(e.target.value)}
+              >
+                <option value="any">{t.any}</option>
+                <option value="home">{t.home}</option>
+                <option value="away">{t.away}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t.view}</label>
+              <select
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                value={view}
+                onChange={(e) => setView(e.target.value)}
+              >
+                <option value="formation">{t.formations}</option>
+                <option value="style">{t.styles}</option>
+              </select>
+            </div>
+            <div className="md:col-span-2 flex gap-3">
+              <button
+                onClick={loadData}
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition text-white font-medium w-full md:w-auto"
+                disabled={loading}
+              >
+                {loading ? "…" : t.load}
+              </button>
+              <button
+                onClick={() => downloadCsv(view === "formation" ? "formations.csv" : "styles.csv", allRows)}
+                className="px-3 py-2 rounded-lg border border-gray-700 hover:bg-white/5 transition text-sm"
+                disabled={allRows.length === 0}
+                title="Export du tableau courant"
+              >
+                {t.exportCsv}
+              </button>
+            </div>
+          </div>
+          {error && <div className="text-sm text-red-400 mt-3">{String(error)}</div>}
+        </section>
+
+        {/* STEP 2 — ANALYSE */}
+        <section className="border border-gray-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h2 className="text-sm uppercase tracking-wider text-gray-400">{t.step2}</h2>
+            <div className="inline-flex rounded-lg overflow-hidden border border-gray-800">
+              <button
+                className={`px-3 py-2 text-sm ${analysisTab === "overview" ? "bg-gray-800" : "bg-transparent hover:bg-gray-900"}`}
+                onClick={() => setAnalysisTab("overview")}
+              >
+                {t.tabsOverview}
+              </button>
+              <button
+                className={`px-3 py-2 text-sm ${analysisTab === "matrix" ? "bg-gray-800" : "bg-transparent hover:bg-gray-900"}`}
+                onClick={() => setAnalysisTab("matrix")}
+              >
+                {t.tabsMatrix}
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4 items-end">
+          {analysisTab === "overview" ? (
+            <>
+              {/* Best / Worst */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="border border-gray-800 rounded-xl p-4">
+                  <h3 className="font-semibold mb-3">{titleBest}</h3>
+                  <table className="w-full text-sm">
+                    <thead className="text-gray-400">
+                      <tr>
+                        <th className="text-left py-1 pr-2">{t.formationFor}</th>
+                        <th className="text-left py-1 pr-2">{t.formationAgainst}</th>
+                        <th className="text-right py-1 pr-2">{t.count}</th>
+                        <th className="text-right py-1 pr-2">{t.winrate}</th>
+                        <th className="text-right py-1 pr-2">{t.avgGf}</th>
+                        <th className="text-right py-1 pr-2">{t.avgGa}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {ranked.best.length === 0 && (
+                        <tr><td colSpan={6} className="py-3 text-gray-500">{t.noData}</td></tr>
+                      )}
+                      {ranked.best.map((r, i) => (
+                        <tr key={`b-${i}`} className="hover:bg-white/5" style={{ borderLeft: `4px solid ${barColor(r.wr)}` }}>
+                          <td className="py-1 pr-2">{nameFn(r.f)}</td>
+                          <td className="py-1 pr-2">{nameFn(r.g)}</td>
+                          <td className="py-1 pr-2 text-right">{r.n}</td>
+                          <td className="py-1 pr-2 text-right">{formatPct(r.wr)}</td>
+                          <td className="py-1 pr-2 text-right">{r.gf.toFixed(2)}</td>
+                          <td className="py-1 pr-2 text-right">{r.ga.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="border border-gray-800 rounded-xl p-4">
+                  <h3 className="font-semibold mb-3">{titleWorst}</h3>
+                  <table className="w-full text-sm">
+                    <thead className="text-gray-400">
+                      <tr>
+                        <th className="text-left py-1 pr-2">{t.formationFor}</th>
+                        <th className="text-left py-1 pr-2">{t.formationAgainst}</th>
+                        <th className="text-right py-1 pr-2">{t.count}</th>
+                        <th className="text-right py-1 pr-2">{t.winrate}</th>
+                        <th className="text-right py-1 pr-2">{t.avgGf}</th>
+                        <th className="text-right py-1 pr-2">{t.avgGa}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {ranked.worst.length === 0 && (
+                        <tr><td colSpan={6} className="py-3 text-gray-500">{t.noData}</td></tr>
+                      )}
+                      {ranked.worst.map((r, i) => (
+                        <tr key={`w-${i}`} className="hover:bg-white/5" style={{ borderLeft: `4px solid ${barColor(r.wr)}` }}>
+                          <td className="py-1 pr-2">{nameFn(r.f)}</td>
+                          <td className="py-1 pr-2">{nameFn(r.g)}</td>
+                          <td className="py-1 pr-2 text-right">{r.n}</td>
+                          <td className="py-1 pr-2 text-right">{formatPct(r.wr)}</td>
+                          <td className="py-1 pr-2 text-right">{r.gf.toFixed(2)}</td>
+                          <td className="py-1 pr-2 text-right">{r.ga.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Tableau complet (toggle) */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={showTable} onChange={(e) => setShowTable(e.target.checked)} />
+                    {t.fullTable}
+                  </label>
+                </div>
+
+                {showTable && (
+                  <div className="border border-gray-800 rounded-xl p-4 mt-3 overflow-x-auto">
+                    {view === "style" && (
+                      <div className="mb-3">
+                        <label className="block text-xs text-gray-400 mb-1">Style</label>
+                        <select
+                          className="rounded-lg p-2 border border-gray-700 bg-gray-900"
+                          value={filterStyle == null ? "" : filterStyle}
+                          onChange={(e) => setFilterStyle(e.target.value === "" ? null : Number(e.target.value))}
+                        >
+                          <option value="">{t.any}</option>
+                          {stylesPresent.map((id) => (
+                            <option key={id} value={id}>{styleName(id)}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {allRows.length === 0 ? (
+                      <div className="text-sm text-gray-500">{t.noData}</div>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <thead className="text-gray-400">
+                          <tr>
+                            <th className="text-left py-1 pr-2">{t.formationFor}</th>
+                            <th className="text-left py-1 pr-2">{t.formationAgainst}</th>
+                            <th className="text-right py-1 pr-2">{t.count}</th>
+                            <th className="text-right py-1 pr-2">{t.winrate}</th>
+                            <th className="text-right py-1 pr-2">{t.avgGf}</th>
+                            <th className="text-right py-1 pr-2">{t.avgGa}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                          {allRows.map((r, i) => (
+                            <tr key={`all-${i}`} className="hover:bg-white/5" style={{ borderLeft: `4px solid ${barColor(r.wr)}` }}>
+                              <td className="py-1 pr-2">{r.nameF}</td>
+                              <td className="py-1 pr-2">{r.nameG}</td>
+                              <td className="py-1 pr-2 text-right">{r.n}</td>
+                              <td className="py-1 pr-2 text-right">{formatPct(r.wr)}</td>
+                              <td className="py-1 pr-2 text-right">{r.gf.toFixed(2)}</td>
+                              <td className="py-1 pr-2 text-right">{r.ga.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="border border-gray-800 rounded-xl p-4 overflow-x-auto">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold mb-1">{titleMatrix}</h3>
+                  <p className="text-xs text-gray-400">{t.legend}</p>
+                </div>
+              </div>
+              {currentDomain.length === 0 ? (
+                <div className="text-sm text-gray-500 mt-3">{t.noData}</div>
+              ) : (
+                <table className="text-xs mt-3">
+                  <thead>
+                    <tr>
+                      <th className="p-2 bg-gray-900 sticky left-0 z-10">
+                        {view === "formation" ? `${t.formationFor} ↓ / ${t.formationAgainst} →` : "Style ↓ / Style →"}
+                      </th>
+                      {displayCols.map((id) => (
+                        <th key={`col-${id}`} className="p-2 text-nowrap">{nameFn(id)}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayRows.map((rowId) => (
+                      <tr key={`row-${rowId}`}>
+                        <th
+                          className={`p-2 bg-gray-900 sticky left-0 z-10 text-left ${view === "style" ? "cursor-pointer hover:underline" : ""}`}
+                          onClick={() => handleSort(rowId)}
+                        >
+                          {nameFn(rowId)}
+                        </th>
+                        {displayCols.map((colId) => {
+                          const a = currentMatrix.get(`${rowId}|${colId}`);
+                          if (!a || a.n < minN)
+                            return <td key={`cell-${rowId}-${colId}`} className="p-2 text-center text-gray-600">—</td>;
+                          const wr = a.w / a.n;
+                          const gf = a.gf / a.n;
+                          const ga = a.ga / a.n;
+                          return (
+                            <td
+                              key={`cell-${rowId}-${colId}`}
+                              className="p-2 text-center align-top rounded"
+                              style={{ backgroundColor: cellBg(wr, a.n, maxNInfo.maxN) }}
+                              title={`n=${a.n} • ${formatPct(wr)} • ${gf.toFixed(2)} / ${ga.toFixed(2)}`}
+                            >
+                              <div className="font-mono">{formatPct(wr)}</div>
+                              <div className="text-[11px] text-gray-200/80">n={a.n}</div>
+                              <div className="text-[11px]">{gf.toFixed(2)} / {ga.toFixed(2)}</div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* STEP 3 — CONSEILLER */}
+        <section className="border border-gray-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm uppercase tracking-wider text-gray-400">{t.step3}</h2>
+            <p className="text-xs text-gray-400">{t.advisorHint}</p>
+          </div>
+
+          {/* Conseiller mono-dimension */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div>
               <label className="block text-xs text-gray-400 mb-1">{t.advisorMode}</label>
               <select
-                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
                 value={advisorMode}
                 onChange={(e) => { setAdvisorMode(e.target.value); setAdvise([]); }}
               >
@@ -681,15 +835,13 @@ export default function AnalysisPage({ lang = "fr" }) {
             <div className="md:col-span-2">
               <label className="block text-xs text-gray-400 mb-1">{t.advisorOpp}</label>
               <select
-                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
                 value={oppChoice}
                 onChange={(e) => setOppChoice(e.target.value)}
               >
                 <option value="">{t.any}</option>
                 {domainForAdvisor.map((id) => (
-                  <option key={`opp-${id}`} value={id}>
-                    {nameForAdvisor(id)}
-                  </option>
+                  <option key={`opp-${id}`} value={id}>{nameForAdvisor(id)}</option>
                 ))}
               </select>
             </div>
@@ -697,15 +849,13 @@ export default function AnalysisPage({ lang = "fr" }) {
             <div className="md:col-span-2">
               <label className="block text-xs text-gray-400 mb-1">{t.advisorMine}</label>
               <select
-                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
+                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
                 value={myChoice}
                 onChange={(e) => setMyChoice(e.target.value)}
               >
                 <option value="">{t.any}</option>
                 {domainForAdvisor.map((id) => (
-                  <option key={`mine-${id}`} value={id}>
-                    {nameForAdvisor(id)}
-                  </option>
+                  <option key={`mine-${id}`} value={id}>{nameForAdvisor(id)}</option>
                 ))}
               </select>
             </div>
@@ -721,8 +871,7 @@ export default function AnalysisPage({ lang = "fr" }) {
             </div>
           </div>
 
-          {/* Résultats mono-dimension */}
-          <div className="mt-4">
+          <div className="mt-3">
             <h3 className="font-semibold mb-2">{t.advisorResults}</h3>
             {advise.length === 0 ? (
               <div className="text-sm text-gray-500">{t.noData}</div>
@@ -739,9 +888,7 @@ export default function AnalysisPage({ lang = "fr" }) {
                       <div className="text-sm tabular-nums">
                         <span className="mr-3">{formatPct(r.wr)}</span>
                         <span className="mr-3 text-gray-400">n={r.n}</span>
-                        <span className="text-gray-400">
-                          {r.gf.toFixed(2)} / {r.ga.toFixed(2)}
-                        </span>
+                        <span className="text-gray-400">{r.gf.toFixed(2)} / {r.ga.toFixed(2)}</span>
                       </div>
                     </div>
                     {r.deltaWr != null && (
@@ -754,380 +901,183 @@ export default function AnalysisPage({ lang = "fr" }) {
                       </div>
                     )}
                     <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
-                      <div
-                        className="h-2"
-                        style={{
-                          width: `${Math.max(2, Math.min(100, r.wr * 100))}%`,
-                          backgroundColor: barColor(r.wr),
-                        }}
-                        aria-hidden
-                      />
+                      <div className="h-2" style={{ width: `${Math.max(2, Math.min(100, r.wr * 100))}%`, backgroundColor: barColor(r.wr) }} />
                     </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-        </div>
 
-        {/* Conseiller global (formation + style) */}
-        <div className="border border-gray-800 rounded-xl p-4 mb-8">
-          <h2 className="font-semibold mb-1">{t.comboTitle}</h2>
-          <p className="text-xs text-gray-400">{t.advisorHint}</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mt-4 items-end">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">{t.comboOppForm}</label>
-              <select
-                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
-                value={oppFormChoice}
-                onChange={(e) => setOppFormChoice(e.target.value)}
-              >
-                <option value="">{t.any}</option>
-                {formationsPresent.map((id) => (
-                  <option key={`oppf-${id}`} value={id}>{formationName(id)}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">{t.comboOppStyle}</label>
-              <select
-                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
-                value={oppStyleChoice}
-                onChange={(e) => setOppStyleChoice(e.target.value)}
-              >
-                <option value="">{t.any}</option>
-                {stylesPresent.map((id) => (
-                  <option key={`opps-${id}`} value={id}>{styleName(id)}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">{t.comboMineForm}</label>
-              <select
-                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
-                value={myFormChoice}
-                onChange={(e) => setMyFormChoice(e.target.value)}
-              >
-                <option value="">{t.any}</option>
-                {formationsPresent.map((id) => (
-                  <option key={`myf-${id}`} value={id}>{formationName(id)}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">{t.comboMineStyle}</label>
-              <select
-                className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
-                value={myStyleChoice}
-                onChange={(e) => setMyStyleChoice(e.target.value)}
-              >
-                <option value="">{t.any}</option>
-                {stylesPresent.map((id) => (
-                  <option key={`mys-${id}`} value={id}>{styleName(id)}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="md:col-span-2">
-              <button
-                onClick={runCombinedAdvisor}
-                className="mt-2 w-full px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 transition text-white font-medium"
-                disabled={formationsPresent.length === 0 || stylesPresent.length === 0}
-              >
-                {t.comboRun}
-              </button>
-            </div>
-          </div>
-
-          {/* Résultats combo */}
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Bloc tactiques */}
-            <div className="border border-gray-800 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">{t.comboFormHeader}</h3>
-              {!combo ? (
-                <div className="text-sm text-gray-500">{t.noData}</div>
-              ) : combo.error ? (
-                <div className="text-sm text-amber-400">{combo.error}</div>
-              ) : combo.forms?.length ? (
-                <ul className="space-y-2">
-                  {combo.forms.map((r, idx) => (
-                    <li key={`combo-form-${idx}`} className="p-3 rounded-lg bg-gray-900/40 border border-gray-800">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="font-medium">{formationName(r.f)} <span className="text-gray-400">vs</span> {formationName(combo.oppF)}</div>
-                        <div className="text-sm tabular-nums">
-                          <span className="mr-3">{formatPct(r.wr)}</span>
-                          <span className="mr-3 text-gray-400">n={r.n}</span>
-                          <span className="text-gray-400">{r.gf.toFixed(2)} / {r.ga.toFixed(2)}</span>
-                        </div>
-                      </div>
-                      {r.deltaWr != null && (
-                        <div className="mt-2 text-xs text-gray-300">
-                          {t.advisorGain}: <b>{(r.deltaWr * 100).toFixed(1)} pts</b>{" "}
-                          <span className="text-gray-500">
-                            (actuel {r.baseWr != null ? formatPct(r.baseWr) : "—"}
-                            {r.baseN != null ? `, n=${r.baseN}` : ""})
-                          </span>
-                        </div>
-                      )}
-                      <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
-                        <div className="h-2" style={{ width: `${Math.max(2, Math.min(100, r.wr * 100))}%`, backgroundColor: barColor(r.wr) }} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-sm text-gray-500">{t.noData}</div>
-              )}
-            </div>
-
-            {/* Bloc styles */}
-            <div className="border border-gray-800 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">{t.comboStyleHeader}</h3>
-              {!combo ? (
-                <div className="text-sm text-gray-500">{t.noData}</div>
-              ) : combo.error ? (
-                <div className="text-sm text-amber-400">{combo.error}</div>
-              ) : combo.styles?.length ? (
-                <ul className="space-y-2">
-                  {combo.styles.map((r, idx) => (
-                    <li key={`combo-style-${idx}`} className="p-3 rounded-lg bg-gray-900/40 border border-gray-800">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="font-medium">{styleName(r.f)} <span className="text-gray-400">vs</span> {styleName(combo.oppS)}</div>
-                        <div className="text-sm tabular-nums">
-                          <span className="mr-3">{formatPct(r.wr)}</span>
-                          <span className="mr-3 text-gray-400">n={r.n}</span>
-                          <span className="text-gray-400">{r.gf.toFixed(2)} / {r.ga.toFixed(2)}</span>
-                        </div>
-                      </div>
-                      {r.deltaWr != null && (
-                        <div className="mt-2 text-xs text-gray-300">
-                          {t.advisorGain}: <b>{(r.deltaWr * 100).toFixed(1)} pts</b>{" "}
-                          <span className="text-gray-500">
-                            (actuel {r.baseWr != null ? formatPct(r.baseWr) : "—"}
-                            {r.baseN != null ? `, n=${r.baseN}` : ""})
-                          </span>
-                        </div>
-                      )}
-                      <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
-                        <div className="h-2" style={{ width: `${Math.max(2, Math.min(100, r.wr * 100))}%`, backgroundColor: barColor(r.wr) }} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-sm text-gray-500">{t.noData}</div>
-              )}
-            </div>
-
-            {/* Suggestion combinée */}
-            <div className="border border-gray-800 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">{t.comboSuggestHeader}</h3>
-              {!combo || combo.error ? (
-                <div className="text-sm text-gray-500">{!combo ? t.noData : combo.error}</div>
-              ) : combo.bestPair ? (
-                <div className="space-y-2">
-                  <div className="text-sm">
-                    <div>
-                      <span className="text-gray-400">Tactique :</span> <b>{formationName(combo.bestPair.f)}</b>{" "}
-                      <span className="text-gray-500">(WR ~ {formatPct(combo.bestPair.wrF)})</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Style :</span> <b>{styleName(combo.bestPair.s)}</b>{" "}
-                      <span className="text-gray-500">(WR ~ {formatPct(combo.bestPair.wrS)})</span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-300">
-                    {t.comboScore}: <b>{formatPct((combo.bestPair.wrF || 0) * (combo.bestPair.wrS || 0))}</b>
-                    <div className="text-gray-500 mt-1">
-                      Heuristique indépendante (WR tactique × WR style). Ajuste <span className="italic">n</span> avec le seuil si besoin.
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">{t.noData}</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Best / Worst */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="border border-gray-800 rounded-xl p-4">
-            <h2 className="font-semibold mb-3">{titleBest}</h2>
-            <table className="w-full text-sm">
-              <thead className="text-gray-400">
-                <tr>
-                  <th className="text-left py-1 pr-2">{t.formationFor}</th>
-                  <th className="text-left py-1 pr-2">{t.formationAgainst}</th>
-                  <th className="text-right py-1 pr-2">{t.count}</th>
-                  <th className="text-right py-1 pr-2">{t.winrate}</th>
-                  <th className="text-right py-1 pr-2">{t.avgGf}</th>
-                  <th className="text-right py-1 pr-2">{t.avgGa}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {ranked.best.length === 0 && (
-                  <tr><td colSpan={6} className="py-3 text-gray-500">{t.noData}</td></tr>
-                )}
-                {ranked.best.map((r, i) => (
-                  <tr key={`b-${i}`} className="hover:bg-white/5" style={{ borderLeft: `4px solid ${barColor(r.wr)}` }}>
-                    <td className="py-1 pr-2">{nameFn(r.f)}</td>
-                    <td className="py-1 pr-2">{nameFn(r.g)}</td>
-                    <td className="py-1 pr-2 text-right">{r.n}</td>
-                    <td className="py-1 pr-2 text-right">{formatPct(r.wr)}</td>
-                    <td className="py-1 pr-2 text-right">{r.gf.toFixed(2)}</td>
-                    <td className="py-1 pr-2 text-right">{r.ga.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="border border-gray-800 rounded-xl p-4">
-            <h2 className="font-semibold mb-3">{titleWorst}</h2>
-            <table className="w-full text-sm">
-              <thead className="text-gray-400">
-                <tr>
-                  <th className="text-left py-1 pr-2">{t.formationFor}</th>
-                  <th className="text-left py-1 pr-2">{t.formationAgainst}</th>
-                  <th className="text-right py-1 pr-2">{t.count}</th>
-                  <th className="text-right py-1 pr-2">{t.winrate}</th>
-                  <th className="text-right py-1 pr-2">{t.avgGf}</th>
-                  <th className="text-right py-1 pr-2">{t.avgGa}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {ranked.worst.length === 0 && (
-                  <tr><td colSpan={6} className="py-3 text-gray-500">{t.noData}</td></tr>
-                )}
-                {ranked.worst.map((r, i) => (
-                  <tr key={`w-${i}`} className="hover:bg-white/5" style={{ borderLeft: `4px solid ${barColor(r.wr)}` }}>
-                    <td className="py-1 pr-2">{nameFn(r.f)}</td>
-                    <td className="py-1 pr-2">{nameFn(r.g)}</td>
-                    <td className="py-1 pr-2 text-right">{r.n}</td>
-                    <td className="py-1 pr-2 text-right">{formatPct(r.wr)}</td>
-                    <td className="py-1 pr-2 text-right">{r.gf.toFixed(2)}</td>
-                    <td className="py-1 pr-2 text-right">{r.ga.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Matrice compacte */}
-        <div className="border border-gray-800 rounded-xl p-4 overflow-x-auto">
-          <h2 className="font-semibold mb-1">{titleMatrix}</h2>
-          <p className="text-xs text-gray-400 mb-3">{t.legend}</p>
-          {displayRows.length === 0 ? (
-            <div className="text-sm text-gray-500">{t.noData}</div>
-          ) : (
-            <table className="text-xs">
-              <thead>
-                <tr>
-                  <th className="p-2 bg-gray-900 sticky left-0 z-10">
-                    {view === "formation" ? `${t.formationFor} ↓ / ${t.formationAgainst} →` : "Style ↓ / Style →"}
-                  </th>
-                  {displayCols.map((id) => (
-                    <th key={`col-${id}`} className="p-2 text-nowrap">{nameFn(id)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {displayRows.map((rowId) => (
-                  <tr key={`row-${rowId}`}>
-                    <th
-                      className={`p-2 bg-gray-900 sticky left-0 z-10 text-left ${view === "style" ? "cursor-pointer hover:underline" : ""}`}
-                      onClick={() => handleSort(rowId)}
-                    >
-                      {nameFn(rowId)}
-                    </th>
-                    {displayCols.map((colId) => {
-                      const a = currentMatrix.get(`${rowId}|${colId}`);
-                      if (!a || a.n < minN)
-                        return <td key={`cell-${rowId}-${colId}`} className="p-2 text-center text-gray-600">—</td>;
-                      const wr = a.w / a.n;
-                      const gf = a.gf / a.n;
-                      const ga = a.ga / a.n;
-                      return (
-                        <td
-                          key={`cell-${rowId}-${colId}`}
-                          className="p-2 text-center align-top rounded"
-                          style={{ backgroundColor: cellBg(wr, a.n, maxNInfo.maxN) }}
-                          title={`n=${a.n} • ${formatPct(wr)} • ${gf.toFixed(2)} / ${ga.toFixed(2)}`}
-                        >
-                          <div className="font-mono">{formatPct(wr)}</div>
-                          <div className="text-[11px] text-gray-200/80">n={a.n}</div>
-                          <div className="text-[11px]">{gf.toFixed(2)} / {ga.toFixed(2)}</div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Tableau complet */}
-        {showTable && (
-          <div className="border border-gray-800 rounded-xl p-4 mt-8 overflow-x-auto">
-            <h2 className="font-semibold mb-3">
-              {view === "formation" ? "Toutes les combinaisons (formations)" : "Toutes les combinaisons (styles)"}
-            </h2>
-            {view === "style" && (
-              <div className="mb-3">
-                <label className="block text-xs text-gray-400 mb-1">Style</label>
+          {/* Conseiller global */}
+          <div className="mt-8">
+            <h3 className="font-semibold mb-2">{t.comboTitle}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">{t.comboOppForm}</label>
                 <select
-                  className="rounded-lg p-2 border border-gray-700 bg-gray-900 text-gray-100"
-                  value={filterStyle == null ? "" : filterStyle}
-                  onChange={(e) =>
-                    setFilterStyle(e.target.value === "" ? null : Number(e.target.value))
-                  }
+                  className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                  value={oppFormChoice}
+                  onChange={(e) => setOppFormChoice(e.target.value)}
                 >
                   <option value="">{t.any}</option>
-                  {stylesPresent.map((id) => (
-                    <option key={id} value={id}>
-                      {styleName(id)}
-                    </option>
+                  {formationsPresent.map((id) => (
+                    <option key={`oppf-${id}`} value={id}>{formationName(id)}</option>
                   ))}
                 </select>
               </div>
-            )}
-            {allRows.length === 0 ? (
-              <div className="text-sm text-gray-500">{t.noData}</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="text-gray-400">
-                  <tr>
-                    <th className="text-left py-1 pr-2">{t.formationFor}</th>
-                    <th className="text-left py-1 pr-2">{t.formationAgainst}</th>
-                    <th className="text-right py-1 pr-2">{t.count}</th>
-                    <th className="text-right py-1 pr-2">{t.winrate}</th>
-                    <th className="text-right py-1 pr-2">{t.avgGf}</th>
-                    <th className="text-right py-1 pr-2">{t.avgGa}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {allRows.map((r, i) => (
-                    <tr key={`all-${i}`} className="hover:bg-white/5" style={{ borderLeft: `4px solid ${barColor(r.wr)}` }}>
-                      <td className="py-1 pr-2">{r.nameF}</td>
-                      <td className="py-1 pr-2">{r.nameG}</td>
-                      <td className="py-1 pr-2 text-right">{r.n}</td>
-                      <td className="py-1 pr-2 text-right">{formatPct(r.wr)}</td>
-                      <td className="py-1 pr-2 text-right">{r.gf.toFixed(2)}</td>
-                      <td className="py-1 pr-2 text-right">{r.ga.toFixed(2)}</td>
-                    </tr>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">{t.comboOppStyle}</label>
+                <select
+                  className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                  value={oppStyleChoice}
+                  onChange={(e) => setOppStyleChoice(e.target.value)}
+                >
+                  <option value="">{t.any}</option>
+                  {stylesPresent.map((id) => (
+                    <option key={`opps-${id}`} value={id}>{styleName(id)}</option>
                   ))}
-                </tbody>
-              </table>
-            )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">{t.comboMineForm}</label>
+                <select
+                  className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                  value={myFormChoice}
+                  onChange={(e) => setMyFormChoice(e.target.value)}
+                >
+                  <option value="">{t.any}</option>
+                  {formationsPresent.map((id) => (
+                    <option key={`myf-${id}`} value={id}>{formationName(id)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">{t.comboMineStyle}</label>
+                <select
+                  className="w-full rounded-lg p-2 border border-gray-700 bg-gray-900"
+                  value={myStyleChoice}
+                  onChange={(e) => setMyStyleChoice(e.target.value)}
+                >
+                  <option value="">{t.any}</option>
+                  {stylesPresent.map((id) => (
+                    <option key={`mys-${id}`} value={id}>{styleName(id)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <button
+                  onClick={runCombinedAdvisor}
+                  className="mt-2 w-full px-4 py-2 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 transition text-white font-medium"
+                  disabled={formationsPresent.length === 0 || stylesPresent.length === 0}
+                >
+                  {t.comboRun}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Tactiques */}
+              <div className="border border-gray-800 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">{t.comboFormHeader}</h4>
+                {!combo ? (
+                  <div className="text-sm text-gray-500">{t.noData}</div>
+                ) : combo.error ? (
+                  <div className="text-sm text-amber-400">{combo.error}</div>
+                ) : combo.forms?.length ? (
+                  <ul className="space-y-2">
+                    {combo.forms.map((r, idx) => (
+                      <li key={`combo-form-${idx}`} className="p-3 rounded-lg bg-gray-900/40 border border-gray-800">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="font-medium">{formationName(r.f)}</div>
+                          <div className="text-sm tabular-nums">
+                            <span className="mr-3">{formatPct(r.wr)}</span>
+                            <span className="mr-3 text-gray-400">n={r.n}</span>
+                            <span className="text-gray-400">{r.gf.toFixed(2)} / {r.ga.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        {r.deltaWr != null && (
+                          <div className="mt-2 text-xs text-gray-300">
+                            {t.advisorGain}: <b>{(r.deltaWr * 100).toFixed(1)} pts</b>{" "}
+                            <span className="text-gray-500">
+                              (actuel {r.baseWr != null ? formatPct(r.baseWr) : "—"}
+                              {r.baseN != null ? `, n=${r.baseN}` : ""})
+                            </span>
+                          </div>
+                        )}
+                        <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
+                          <div className="h-2" style={{ width: `${Math.max(2, Math.min(100, r.wr * 100))}%`, backgroundColor: barColor(r.wr) }} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-sm text-gray-500">{t.noData}</div>
+                )}
+              </div>
+
+              {/* Styles */}
+              <div className="border border-gray-800 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">{t.comboStyleHeader}</h4>
+                {!combo ? (
+                  <div className="text-sm text-gray-500">{t.noData}</div>
+                ) : combo.error ? (
+                  <div className="text-sm text-amber-400">{combo.error}</div>
+                ) : combo.styles?.length ? (
+                  <ul className="space-y-2">
+                    {combo.styles.map((r, idx) => (
+                      <li key={`combo-style-${idx}`} className="p-3 rounded-lg bg-gray-900/40 border border-gray-800">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="font-medium">{styleName(r.f)}</div>
+                          <div className="text-sm tabular-nums">
+                            <span className="mr-3">{formatPct(r.wr)}</span>
+                            <span className="mr-3 text-gray-400">n={r.n}</span>
+                            <span className="text-gray-400">{r.gf.toFixed(2)} / {r.ga.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        {r.deltaWr != null && (
+                          <div className="mt-2 text-xs text-gray-300">
+                            {t.advisorGain}: <b>{(r.deltaWr * 100).toFixed(1)} pts</b>{" "}
+                            <span className="text-gray-500">
+                              (actuel {r.baseWr != null ? formatPct(r.baseWr) : "—"}
+                              {r.baseN != null ? `, n=${r.baseN}` : ""})
+                            </span>
+                          </div>
+                        )}
+                        <div className="mt-2 h-2 w-full rounded bg-gray-800 overflow-hidden">
+                          <div className="h-2" style={{ width: `${Math.max(2, Math.min(100, r.wr * 100))}%`, backgroundColor: barColor(r.wr) }} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-sm text-gray-500">{t.noData}</div>
+                )}
+              </div>
+
+              {/* Suggestion combinée */}
+              <div className="border border-gray-800 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">{t.comboSuggestHeader}</h4>
+                {!combo || combo.error ? (
+                  <div className="text-sm text-gray-500">{!combo ? t.noData : combo.error}</div>
+                ) : combo.bestPair ? (
+                  <div className="space-y-2">
+                    <div className="text-sm">
+                      <div><span className="text-gray-400">Tactique :</span> <b>{formationName(combo.bestPair.f)}</b> <span className="text-gray-500">(WR ~ {formatPct(combo.bestPair.wrF)})</span></div>
+                      <div><span className="text-gray-400">Style :</span> <b>{styleName(combo.bestPair.s)}</b> <span className="text-gray-500">(WR ~ {formatPct(combo.bestPair.wrS)})</span></div>
+                    </div>
+                    <div className="text-xs text-gray-300">
+                      {t.comboScore}: <b>{formatPct((combo.bestPair.wrF || 0) * (combo.bestPair.wrS || 0))}</b>
+                      <div className="text-gray-500 mt-1">Heuristique indépendante (WR tactique × WR style).</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">{t.noData}</div>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </section>
       </div>
     </div>
   );
