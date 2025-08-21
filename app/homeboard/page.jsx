@@ -63,6 +63,24 @@ function mapCategory(type) {
   if (type.startsWith("dividend (")) return "dividend_other";
   return "unknown";
 }
+function labelCategory(key) {
+  const MAP = {
+    club_matchday: "Club · Matchday (1%)",
+    club_league_prize: "Club · Prime championnat",
+    club_cup_prize: "Club · Prime coupe",
+    player_wage: "Joueur · Salaire (0,2%)",
+    player_bonus: "Joueur · Bonus (titulaire/but/passe/CS)",
+    manager_fee: "Manager (TV ~0,0004%)",
+    agent_fee: "Agent (0,002%)",
+    dividend_other: "Dividende (autre)",
+    trade: "Trade (vente/achat)",
+    mint: "Mint (freebench)",
+    vault: "Vault (hors ROI)",
+    user_tx: "Transfert utilisateur (hors ROI)",
+    unknown: "Inconnu",
+  };
+  return MAP[key] || key;
+}
 function isInvestmentOutflow(item) {
   const cat = mapCategory(item.type);
   return (cat === "trade" || cat === "mint") && item.amount < 0;
