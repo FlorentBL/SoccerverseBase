@@ -1,5 +1,15 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+
+/**
+ * Analyse tactique – version robuste
+ * - Mapping IDs string/number
+ * - Proxy Next.js pour tactics (évite CORS)
+ * - Garde-fou input vide
+ * - Locale dates par langue
+ * - Affichages protégés (évite NaN)
+ * - Clés React stables si fixture_id absent
+ */
 
 export default function AnalyseTactiquePage({ lang = "fr" }) {
   const [clubId, setClubId] = useState("");
@@ -71,36 +81,57 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       tackles: "Contrasti",
       noData: "Nessun dato disponibile",
     },
+    es: {
+      title: "Análisis táctico",
+      placeholder: "ID del club",
+      analyze: "Analizar",
+      loading: "Cargando...",
+      error: "Error durante las llamadas API",
+      nextMatchAgainst: "Próximo partido contra",
+      recentForm: "Forma reciente",
+      date: "Fecha",
+      match: "Partido",
+      score: "Marcador",
+      formation: "Formación",
+      style: "Estilo",
+      avgTempo: "Tempo medio",
+      avgTackles: "Entradas medias",
+      player: "Jugador",
+      tempo: "Tempo",
+      tackles: "Entradas",
+      noData: "Sin datos disponibles",
+    },
   };
   const t = TEXTS[lang] || TEXTS.fr;
+  const LOCALE = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" }[lang] ?? "fr-FR";
 
   const FORMATION_MAP = {
     fr: {
-  0: "4-4-2",
-  1: "4-3-3",
-  2: "4-5-1",
-  3: "3-4-3",
-  4: "3-5-2",
-  5: "3-3-4",
-  6: "5-4-1",
-  7: "5-3-2",
-  8: "5-2-3",
-  9: "4-4-2 (Losange)",
- 10: "4-3-3 Ailiers",
- 11: "4-5-1 Défensif",
- 12: "4-2-3-1",
- 13: "4-1-2-2-1",   // manquante
- 14: "4-4-1-1",
- 15: "4-3-1-2",
- 16: "3-4-1-2",
- 17: "5-3-2 Libéro",
- 18: "5-3-2 Défensif",
- 19: "4-2-4",
- 20: "4-2-2-2",
- 21: "3-4-2-1",
- 22: "4-1-3-2",
- 23: "3-2-2-2-1",
-},
+      0: "4-4-2",
+      1: "4-3-3",
+      2: "4-5-1",
+      3: "3-4-3",
+      4: "3-5-2",
+      5: "3-3-4",
+      6: "5-4-1",
+      7: "5-3-2",
+      8: "5-2-3",
+      9: "4-4-2 (Losange)",
+      10: "4-3-3 Ailiers",
+      11: "4-5-1 Défensif",
+      12: "4-2-3-1",
+      13: "4-1-2-2-1",
+      14: "4-4-1-1",
+      15: "4-3-1-2",
+      16: "3-4-1-2",
+      17: "5-3-2 Libéro",
+      18: "5-3-2 Défensif",
+      19: "4-2-4",
+      20: "4-2-2-2",
+      21: "3-4-2-1",
+      22: "4-1-3-2",
+      23: "3-2-2-2-1",
+    },
     en: {
       0: "4-4-2",
       1: "4-3-3",
@@ -114,18 +145,18 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       9: "4-4-2 (Diamond)",
       10: "4-3-3 Wingers",
       11: "4-5-1 Defensive",
- 12: "4-2-3-1",
- 13: "4-1-2-2-1",   // manquante
- 14: "4-4-1-1",
- 15: "4-3-1-2",
- 16: "3-4-1-2",
+      12: "4-2-3-1",
+      13: "4-1-2-2-1",
+      14: "4-4-1-1",
+      15: "4-3-1-2",
+      16: "3-4-1-2",
       17: "5-3-2 Libero",
       18: "5-3-2 Defensive",
- 19: "4-2-4",
- 20: "4-2-2-2",
- 21: "3-4-2-1",
- 22: "4-1-3-2",
- 23: "3-2-2-2-1",
+      19: "4-2-4",
+      20: "4-2-2-2",
+      21: "3-4-2-1",
+      22: "4-1-3-2",
+      23: "3-2-2-2-1",
     },
     it: {
       0: "4-4-2",
@@ -140,18 +171,44 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       9: "4-4-2 (a rombo)",
       10: "4-3-3 Ali",
       11: "4-5-1 Difensivo",
- 12: "4-2-3-1",
- 13: "4-1-2-2-1",   // manquante
- 14: "4-4-1-1",
- 15: "4-3-1-2",
- 16: "3-4-1-2",
+      12: "4-2-3-1",
+      13: "4-1-2-2-1",
+      14: "4-4-1-1",
+      15: "4-3-1-2",
+      16: "3-4-1-2",
       17: "5-3-2 Libero",
       18: "5-3-2 Difensivo",
- 19: "4-2-4",
- 20: "4-2-2-2",
- 21: "3-4-2-1",
- 22: "4-1-3-2",
- 23: "3-2-2-2-1",
+      19: "4-2-4",
+      20: "4-2-2-2",
+      21: "3-4-2-1",
+      22: "4-1-3-2",
+      23: "3-2-2-2-1",
+    },
+    es: {
+      0: "4-4-2",
+      1: "4-3-3",
+      2: "4-5-1",
+      3: "3-4-3",
+      4: "3-5-2",
+      5: "3-3-4",
+      6: "5-4-1",
+      7: "5-3-2",
+      8: "5-2-3",
+      9: "4-4-2 (Diamante)",
+      10: "4-3-3 Extremos",
+      11: "4-5-1 Defensivo",
+      12: "4-2-3-1",
+      13: "4-1-2-2-1",
+      14: "4-4-1-1",
+      15: "4-3-1-2",
+      16: "3-4-1-2",
+      17: "5-3-2 Líbero",
+      18: "5-3-2 Defensivo",
+      19: "4-2-4",
+      20: "4-2-2-2",
+      21: "3-4-2-1",
+      22: "4-1-3-2",
+      23: "3-2-2-2-1",
     },
   };
 
@@ -180,30 +237,37 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       4: "Contropiede (C)",
       5: "Palle lunghe (L)",
     },
+    es: {
+      0: "Normal (N)",
+      1: "Defensivo (D)",
+      2: "Ofensivo (O)",
+      3: "Pases (P)",
+      4: "Contraataque (C)",
+      5: "Balones largos (L)",
+    },
   };
 
-  useEffect(() => {
-    fetch("/club_mapping.json")
-      .then(res => res.json())
-      .then(data => setClubMap(data))
-      .catch(() => {});
-    fetch("/player_mapping.json")
-      .then(res => res.json())
-      .then(data => setPlayerMap(data))
-      .catch(() => {});
-  }, []);
-
-  const getClubName = id => clubMap[id]?.name || clubMap[id]?.n || String(id);
-  const getClubLogo = id =>
-    clubMap[id]?.logo || `https://elrincondeldt.com/sv/photos/teams/${id}.png`;
-  const getPlayerName = id => playerMap[id]?.name || String(id);
-
-  const toggleExpand = id =>
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  // ────────────────────────────────────────────────────────────────────────────
+  // Utils robustes
+  const byId = (map, id) => map?.[id] ?? map?.[String(id)];
+  const getClubName = (id) => byId(clubMap, id)?.name || byId(clubMap, id)?.n || String(id);
+  const getClubLogo = (id) =>
+    byId(clubMap, id)?.logo || `https://elrincondeldt.com/sv/photos/teams/${id}.png`;
+  const getPlayerName = (id) => byId(playerMap, id)?.name || String(id);
+  const toggleExpand = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  const formatDate = (unix) => new Date(unix * 1000).toLocaleDateString(LOCALE);
 
   const RPC_URL = "https://gsppub.soccerverse.io/";
 
-  const getClubForm = async id => {
+  // ────────────────────────────────────────────────────────────────────────────
+  // Bootstraps mapping (non bloquant)
+  useEffect(() => {
+    fetch("/club_mapping.json").then(r => r.ok ? r.json() : {}).then(setClubMap).catch(() => {});
+    fetch("/player_mapping.json").then(r => r.ok ? r.json() : {}).then(setPlayerMap).catch(() => {});
+  }, []);
+
+  // Forme du club
+  const getClubForm = async (id) => {
     try {
       const res = await fetch(RPC_URL, {
         method: "POST",
@@ -223,12 +287,17 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
     }
   };
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Récupération planning + 5 derniers de l'adversaire
   const fetchSchedule = async () => {
+    if (!clubId) return; // garde-fou
     setError("");
     setMatches([]);
     setExpanded({});
     setLoading(true);
+
     try {
+      // Prochains matchs du club
       const scheduleRes = await fetch(RPC_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -241,25 +310,27 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
       });
       if (!scheduleRes.ok) throw new Error("schedule_failed");
       const scheduleJson = await scheduleRes.json();
+
       const upcoming = (scheduleJson.result?.data || [])
-        .filter(m => m.played === 0)
+        .filter((m) => m.played === 0)
         .sort((a, b) => a.date - b.date)
         .slice(0, 3)
-        .map(match => ({
+        .map((match) => ({
           ...match,
-          opponentId:
-            match.home_club === Number(clubId) ? match.away_club : match.home_club,
+          opponentId: match.home_club === Number(clubId) ? match.away_club : match.home_club,
           lastFive: [],
           form: null,
         }));
 
       setMatches(upcoming);
 
+      // Pour chaque adversaire : forme + 5 derniers (avec tactics)
       await Promise.all(
         upcoming.map(async (match, idx) => {
           let form = null;
           try {
             form = await getClubForm(match.opponentId);
+
             const oppScheduleRes = await fetch(RPC_URL, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -272,12 +343,14 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
             });
             if (!oppScheduleRes.ok) throw new Error("opp_schedule_failed");
             const oppScheduleJson = await oppScheduleRes.json();
+
             const lastFive = (oppScheduleJson.result?.data || [])
-              .filter(m => m.played === 1)
+              .filter((m) => m.played === 1)
               .sort((a, b) => b.date - a.date)
               .slice(0, 5);
+
             const details = await Promise.all(
-              lastFive.map(async gm => {
+              lastFive.map(async (gm) => {
                 try {
                   const fixtureRes = await fetch(RPC_URL, {
                     method: "POST",
@@ -293,24 +366,29 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   const fixtureJson = await fixtureRes.json();
                   const fixture = fixtureJson.result || {};
 
-                  const tacticRes = await fetch(
-                    `https://services.soccerverse.com/api/fixture_history/tactics/${gm.fixture_id}`
-                  );
+                  // TACTICS via proxy Next.js pour éviter CORS
+                  const tacticRes = await fetch(`/api/tactics/${gm.fixture_id}`);
                   if (!tacticRes.ok) throw new Error("tactic_failed");
                   const tacticJson = await tacticRes.json();
-                  const clubTactic = tacticJson.find(
-                    t => t.club_id === match.opponentId
-                  );
-                  if (!clubTactic || !clubTactic.tactic_actions?.length)
-                    return null;
+
+                  const clubTactic = Array.isArray(tacticJson)
+                    ? tacticJson.find((t) => t.club_id === match.opponentId)
+                    : null;
+
+                  if (!clubTactic || !clubTactic.tactic_actions?.length) return null;
+
                   const action = clubTactic.tactic_actions[0];
                   const lineup = action.lineup || [];
+
                   const avgTempo =
-                    lineup.reduce((sum, p) => sum + (p.tempo || 0), 0) /
-                    (lineup.length || 1);
+                    lineup.length > 0
+                      ? lineup.reduce((sum, p) => sum + (p.tempo || 0), 0) / lineup.length
+                      : 0;
+
                   const avgTackle =
-                    lineup.reduce((sum, p) => sum + (p.tackling_style || 0), 0) /
-                    (lineup.length || 1);
+                    lineup.length > 0
+                      ? lineup.reduce((sum, p) => sum + (p.tackling_style || 0), 0) / lineup.length
+                      : 0;
 
                   return {
                     fixture_id: gm.fixture_id,
@@ -331,17 +409,13 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
               })
             );
 
-            setMatches(prev => {
+            setMatches((prev) => {
               const updated = [...prev];
-              updated[idx] = {
-                ...prev[idx],
-                form,
-                lastFive: details.filter(Boolean),
-              };
+              updated[idx] = { ...prev[idx], form, lastFive: details.filter(Boolean) };
               return updated;
             });
           } catch {
-            setMatches(prev => {
+            setMatches((prev) => {
               const updated = [...prev];
               updated[idx] = { ...prev[idx], form };
               return updated;
@@ -357,30 +431,33 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
     }
   };
 
+  // ────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen pt-24 px-4">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold text-center mb-8">{t.title}</h1>
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
           <input
             type="number"
             value={clubId}
-            onChange={e => setClubId(e.target.value)}
+            onChange={(e) => setClubId(e.target.value)}
             placeholder={t.placeholder}
             className="input-field w-full sm:w-64"
+            min={1}
           />
           <button onClick={fetchSchedule} className="btn-primary">
             {t.analyze}
           </button>
         </div>
-        {loading && (
-          <p className="text-center text-sm text-gray-300 mb-4">{t.loading}</p>
-        )}
+
+        {loading && <p className="text-center text-sm text-gray-300 mb-4">{t.loading}</p>}
         {error && <p className="text-center text-red-400 mb-4">{error}</p>}
+
         <div className="space-y-8">
-          {matches.map(m => (
+          {matches.map((m) => (
             <div
-              key={m.fixture_id}
+              key={m.fixture_id ?? `${m.date}-${m.home_club}-${m.away_club}`}
               className="rounded-xl bg-gray-900 p-6 border border-gray-700 text-gray-100 shadow-lg hover:border-indigo-500 transition-colors"
             >
               <h3 className="text-xl font-semibold mb-2">
@@ -394,6 +471,7 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                   {getClubName(m.opponentId)}
                 </a>
               </h3>
+
               <div className="flex items-center gap-3 mb-4">
                 <span className="inline-flex items-center gap-1">
                   <img
@@ -426,15 +504,15 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                     {getClubName(m.away_club)}
                   </a>
                 </span>
-                <span className="ml-auto text-sm text-gray-400">
-                  {new Date(m.date * 1000).toLocaleDateString()}
-                </span>
+                <span className="ml-auto text-sm text-gray-400">{formatDate(m.date)}</span>
               </div>
+
               {m.form && (
                 <p className="mb-4 text-sm text-gray-300">
                   {t.recentForm} : <span className="font-mono">{m.form}</span>
                 </p>
               )}
+
               {m.lastFive.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
@@ -450,15 +528,13 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {m.lastFive.map(l => (
+                      {m.lastFive.map((l) => (
                         <React.Fragment key={l.fixture_id}>
                           <tr
                             className="hover:bg-white/5 cursor-pointer"
                             onClick={() => toggleExpand(l.fixture_id)}
                           >
-                            <td className="py-2 pr-4">
-                              {new Date(l.date * 1000).toLocaleDateString()}
-                            </td>
+                            <td className="py-2 pr-4">{formatDate(l.date)}</td>
                             <td className="py-2 pr-4">
                               <span className="inline-flex items-center gap-1">
                                 <img
@@ -508,10 +584,15 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                             <td className="py-2 pr-4">
                               {STYLE_MAP[lang]?.[l.play_style] ?? l.play_style}
                             </td>
-                            <td className="py-2 pr-4">{l.avg_tempo.toFixed(2)}</td>
-                            <td className="py-2 pr-4">{l.avg_tackling.toFixed(2)}</td>
+                            <td className="py-2 pr-4">
+                              {Number.isFinite(l.avg_tempo) ? l.avg_tempo.toFixed(2) : "-"}
+                            </td>
+                            <td className="py-2 pr-4">
+                              {Number.isFinite(l.avg_tackling) ? l.avg_tackling.toFixed(2) : "-"}
+                            </td>
                           </tr>
-                          {expanded[l.fixture_id] && l.lineup && l.lineup.length > 0 && (
+
+                          {expanded[l.fixture_id] && Array.isArray(l.lineup) && l.lineup.length > 0 && (
                             <tr>
                               <td colSpan={7} className="py-2">
                                 <div className="overflow-x-auto">
@@ -524,13 +605,11 @@ export default function AnalyseTactiquePage({ lang = "fr" }) {
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
-                                      {l.lineup.map(p => (
+                                      {l.lineup.map((p) => (
                                         <tr key={p.player_id}>
-                                          <td className="py-1 pr-4">
-                                            {getPlayerName(p.player_id)}
-                                          </td>
-                                          <td className="py-1 pr-4">{p.tempo}</td>
-                                          <td className="py-1 pr-4">{p.tackling_style}</td>
+                                          <td className="py-1 pr-4">{getPlayerName(p.player_id)}</td>
+                                          <td className="py-1 pr-4">{p.tempo ?? "-"}</td>
+                                          <td className="py-1 pr-4">{p.tackling_style ?? "-"}</td>
                                         </tr>
                                       ))}
                                     </tbody>
