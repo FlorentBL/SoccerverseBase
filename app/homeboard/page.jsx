@@ -186,7 +186,16 @@ export default function HomeBoard() {
       }
       const j = await res.json();
       const items = Array.isArray(j?.result) ? j.result : [];
-      setRows(items.map(normalizeRow));
+ const normalized = items.map(normalizeRow);
+ const uniq = [];
+ const seen = new Set();
+ for (const r of normalized) {
+   const k = [r.name, r.type, r.amount, r.other_name, r.other_type, r.other_id, r.unix_time].join("|");
+   if (seen.has(k)) continue;
+   seen.add(k);
+   uniq.push(r);
+ }
+ setRows(uniq);
     } catch (err) {
       setError(err?.message || "Erreur lors du chargement.");
     } finally {
