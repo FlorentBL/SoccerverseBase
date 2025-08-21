@@ -213,10 +213,15 @@ export default function HomeBoard() {
   }
 
   // KPI & views
-  const { totalInvestedSVC, totalGainsSVC, roi, buyRows, sellRows, payoutsAgg } = useMemo(
-    () => aggregate(rows),
-    [rows]
-  );
+  const {
+    totalInvestedSVC,
+    totalGainsSVC,
+    roi,
+    buyRows,
+    sellRows,
+    payoutsAgg,
+    investmentRows,
+  } = useMemo(() => aggregate(rows), [rows]);
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
@@ -308,6 +313,42 @@ export default function HomeBoard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {searched && (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-3">ROI par investissement</h2>
+            {investmentRows.length === 0 ? (
+              <div className="text-gray-400">Aucun investissement sur la période.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-800 text-gray-300">
+                      <tr>
+                        <th className="text-left py-2 px-3">Référence</th>
+                        <th className="text-right py-2 px-3">Investi</th>
+                        <th className="text-right py-2 px-3">Gains</th>
+                        <th className="text-right py-2 px-3">ROI</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {investmentRows.map((r, i) => (
+                        <tr key={`inv-${i}`} className="hover:bg-white/5">
+                          <td className="py-2 px-3">{renderRef(r, clubMap, playerMap)}</td>
+                          <td className="py-2 px-3 text-right">{fmtSVC(r.invested)}</td>
+                          <td className="py-2 px-3 text-right">{fmtSVC(r.gains)}</td>
+                          <td className="py-2 px-3 text-right">
+                            {isFinite(r.roi) ? `${(r.roi * 100).toFixed(2)} %` : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </section>
@@ -432,28 +473,53 @@ function aggregate(rows) {
   const buyRows = [];
   const sellRows = [];
   const payoutsAgg = {};
+  const perInvestment = {};
 
   for (const r of rows) {
+    const key = r.other_type && r.other_id ? `${r.other_type}:${r.other_id}` : null;
+
     if (isInvestmentOutflow(r)) {
       invested += Math.abs(r.amount);
       buyRows.push(r);
+      if (key) {
+        if (!perInvestment[key]) perInvestment[key] = { other_type: r.other_type, other_id: r.other_id, invested: 0, gains: 0 };
+        perInvestment[key].invested += Math.abs(r.amount);
+      }
       continue;
     }
     if (isRealizedInflow(r)) {
       gains += r.amount;
       payoutsAgg[r.category] = (payoutsAgg[r.category] ?? 0) + r.amount;
       if (r.category === "trade") sellRows.push(r);
+      if (key) {
+        if (!perInvestment[key]) perInvestment[key] = { other_type: r.other_type, other_id: r.other_id, invested: 0, gains: 0 };
+        perInvestment[key].gains += r.amount;
+      }
       continue;
     }
     if (r.category === "trade" && r.amount > 0) {
       gains += r.amount;
       payoutsAgg[r.category] = (payoutsAgg[r.category] ?? 0) + r.amount;
       sellRows.push(r);
+      if (key) {
+        if (!perInvestment[key]) perInvestment[key] = { other_type: r.other_type, other_id: r.other_id, invested: 0, gains: 0 };
+        perInvestment[key].gains += r.amount;
+      }
     }
   }
 
   const denom = Math.max(invested, 1);
   const roi = (gains - invested) / denom;
+
+  const investmentRows = Object.values(perInvestment).map((p) => ({
+    other_type: p.other_type,
+    other_id: p.other_id,
+    invested: round2(p.invested),
+    gains: round2(p.gains),
+    roi: (p.gains - p.invested) / Math.max(p.invested, 1),
+  }));
+
+  investmentRows.sort((a, b) => (b.roi ?? 0) - (a.roi ?? 0));
 
   return {
     totalInvestedSVC: round2(invested),
@@ -462,6 +528,7 @@ function aggregate(rows) {
     buyRows,
     sellRows,
     payoutsAgg: mapObject(payoutsAgg, round2),
+    investmentRows,
   };
 }
 function round2(n) {
