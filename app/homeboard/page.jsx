@@ -1,50 +1,94 @@
 "use client";
 
 /**
- * HomeBoard — Positions & Payouts (Lifetime)
- *
- * - Récupère les positions actuelles via /api/user_share_balances (JSON-RPC get_user_share_balances)
- * - Récupère tout l’historique des mouvements via /api/user_balance_sheet
- * - Calcule le total des "payouts" (dividendes, salaires, bonus, manager/agent) UNIQUEMENT
- *   pour les actifs encore détenus aujourd’hui (clubs & joueurs).
- * - Montants upstream en base-unit → conversion SVC = amount / 10000
+ * HomeBoard — Positions & Revenus (lifetime)
+ * - Positions actuelles via /api/user_share_balances
+ * - Historique complet via /api/user_balance_sheet
+ * - Payouts lifetime filtrés sur actifs détenus
+ * - ROI par joueur = payouts / |mint| (si base connue)
+ * - Mapping noms clubs/joueurs
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const BASE_UNIT = 10000;
 const toSVC = (x) => (typeof x === "number" ? x / BASE_UNIT : 0);
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
-function fmtSVC(n) {
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Helpers format & UI */
+
+function fmtSVC(n, digits = 4) {
   if (typeof n !== "number" || !isFinite(n)) return "-";
   return `${n.toLocaleString("fr-FR", {
-    minimumFractionDigits: 4,
-    maximumFractionDigits: 4,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   })} SVC`;
 }
-
-function fmtQty(n) {
+function fmtInt(n) {
   if (typeof n !== "number" || !isFinite(n)) return "-";
   return n.toLocaleString("fr-FR");
 }
-
-function labelCategory(key) {
-  const MAP = {
-    "dividend (match day income)": "Gains · Revenus du match",
-    "dividend (league prize)": "Gains · Prime championnat",
-    "dividend (cup prize)": "Gains · Prime coupe",
-    "dividend (players wage)": "Joueur · Salaire",
-    "dividend (playing bonus)": "Joueur · Bonus (jeu)",
-    "dividend (goal bonus)": "Joueur · Bonus (but)",
-    "dividend (assist bonus)": "Joueur · Bonus (passe)",
-    "dividend (clean sheet bonus)": "Joueur · Bonus (clean sheet)",
-    "manager wage": "Manager",
-    "agent wage": "Agent",
-  };
-  if (MAP[key]) return MAP[key];
-  if (key?.startsWith("dividend (")) return "Dividende (autre)";
-  return key || "Inconnu";
+function assetLink(type, id, label) {
+  const href =
+    type === "club"
+      ? `https://play.soccerverse.com/club/${id}`
+      : type === "player"
+      ? `https://play.soccerverse.com/player/${id}`
+      : "";
+  if (!href) return label || `${type} #${id}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="text-indigo-400 hover:underline"
+    >
+      {label || `${type} #${id}`}
+    </a>
+  );
 }
+function KpiCard({ title, value, accent }) {
+  const ring =
+    accent === "pos"
+      ? "ring-emerald-500/30"
+      : accent === "neg"
+      ? "ring-red-500/30"
+      : "ring-gray-500/20";
+  return (
+    <div className={`rounded-xl border border-gray-700 bg-gray-900/40 p-4 ring-1 ${ring}`}>
+      <div className="text-sm text-gray-400">{title}</div>
+      <div className="text-2xl font-semibold mt-1">{value}</div>
+    </div>
+  );
+}
+function RoiBar({ roi }) {
+  // roi en décimal (ex: 0.35 = 35%). Barre bornée à 200%.
+  if (roi == null || !isFinite(roi)) {
+    return <span className="text-gray-400">—</span>;
+  }
+  const pct = roi * 100;
+  const width = clamp(pct, 0, 200); // borne visuelle
+  const tone =
+    pct >= 100 ? "from-emerald-500/70 to-emerald-400/70"
+    : pct > 0 ? "from-indigo-500/70 to-indigo-400/70"
+    : "from-red-500/70 to-red-400/70";
+  return (
+    <div className="min-w-[180px]">
+      <div className="text-right text-xs text-gray-300 mb-1">{pct.toFixed(1)}%</div>
+      <div className="h-2 rounded bg-gray-800 overflow-hidden">
+        <div
+          className={`h-full rounded bg-gradient-to-r ${tone}`}
+          style={{ width: `${width}%` }}
+          aria-hidden
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Types de payouts */
 
 function isPayout(type) {
   if (!type) return false;
@@ -52,36 +96,7 @@ function isPayout(type) {
   return type === "manager wage" || type === "agent wage";
 }
 
-function renderRef(other_type, other_id) {
-  if (!other_type || !other_id) return "-";
-  if (other_type === "club") {
-    const href = `https://play.soccerverse.com/club/${other_id}`;
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="text-indigo-400 hover:underline"
-      >
-        Club #{other_id}
-      </a>
-    );
-  }
-  if (other_type === "player") {
-    const href = `https://play.soccerverse.com/player/${other_id}`;
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="text-indigo-400 hover:underline"
-      >
-        Joueur #{other_id}
-      </a>
-    );
-  }
-  return `${other_type} #${other_id}`;
-}
+/* ────────────────────────────────────────────────────────────────────────── */
 
 export default function HomeBoard() {
   const [username, setUsername] = useState("");
@@ -89,8 +104,35 @@ export default function HomeBoard() {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
 
-  const [positions, setPositions] = useState([]); // [{type:"club"|"player", id:number, qty:{total,available,reserved}}]
-  const [sheet, setSheet] = useState([]); // raw items (balance sheet)
+  const [clubMap, setClubMap] = useState({});
+  const [playerMap, setPlayerMap] = useState({});
+
+  const [positions, setPositions] = useState([]); // [{type,id,qty:{total,available,reserved}}]
+  const [sheet, setSheet] = useState([]); // balance sheet items
+
+  // mapping (noms)
+  useEffect(() => {
+    (async () => {
+      try {
+        const [c, p] = await Promise.all([
+          fetch("/club_mapping.json"),
+          fetch("/player_mapping.json"),
+        ]);
+        const [cj, pj] = await Promise.all([c.json(), p.json()]);
+        setClubMap(cj || {});
+        setPlayerMap(pj || {});
+      } catch {
+        /* ok */
+      }
+    })();
+  }, []);
+
+  const getClubName = (id) => clubMap?.[id]?.name || clubMap?.[id]?.n || `Club #${id}`;
+  const getPlayerName = (id) => {
+    const p = playerMap?.[id];
+    if (!p) return `Joueur #${id}`;
+    return p.name || [p.f, p.s].filter(Boolean).join(" ") || `Joueur #${id}`;
+  };
 
   async function handleSubmit(e) {
     e?.preventDefault();
@@ -104,7 +146,7 @@ export default function HomeBoard() {
     setSheet([]);
 
     try {
-      // 1) positions actuelles
+      // positions
       const pRes = await fetch("/api/user_share_balances", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,13 +157,13 @@ export default function HomeBoard() {
         throw new Error(j?.error || j?.message || `Erreur positions (${pRes.status})`);
       }
       const pJson = await pRes.json();
-      const pos = Array.isArray(pJson?.result?.data) ? pJson.result.data : [];
-      const normPos = [];
-      for (const it of pos) {
+      const posRaw = Array.isArray(pJson?.result?.data) ? pJson.result.data : [];
+      const pos = [];
+      for (const it of posRaw) {
         const share = it?.share || {};
         const bal = it?.balance || {};
         if (share.club) {
-          normPos.push({
+          pos.push({
             type: "club",
             id: Number(share.club),
             qty: {
@@ -131,7 +173,7 @@ export default function HomeBoard() {
             },
           });
         } else if (share.player) {
-          normPos.push({
+          pos.push({
             type: "player",
             id: Number(share.player),
             qty: {
@@ -142,9 +184,9 @@ export default function HomeBoard() {
           });
         }
       }
-      setPositions(normPos);
+      setPositions(pos);
 
-      // 2) historique complet (défile toutes les pages côté route)
+      // historique complet
       const sRes = await fetch("/api/user_balance_sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,8 +197,7 @@ export default function HomeBoard() {
         throw new Error(j?.error || j?.message || `Erreur historique (${sRes.status})`);
       }
       const sJson = await sRes.json();
-      const items = Array.isArray(sJson?.result) ? sJson.result : [];
-      setSheet(items);
+      setSheet(Array.isArray(sJson?.result) ? sJson.result : []);
     } catch (err) {
       setError(err?.message || "Erreur lors du chargement.");
     } finally {
@@ -164,54 +205,100 @@ export default function HomeBoard() {
     }
   }
 
-  // Sets utilitaires
-  const posSet = useMemo(() => {
-    const s = new Set();
-    for (const p of positions) s.add(`${p.type}:${p.id}`);
-    return s;
-  }, [positions]);
+  /* ──────────────────────────────────────────────────────────────────────── */
+  /* Agrégation payouts + base (mint) par actif détenu */
 
-  // Payouts lifetime filtrés sur positions actuelles
-  const { totalPayoutsSVC, breakdownRows } = useMemo(() => {
-    if (!sheet.length || !posSet.size) {
-      return { totalPayoutsSVC: 0, breakdownRows: [] };
-    }
+  const perAsset = useMemo(() => {
+    if (!positions.length) return { clubs: [], players: [], totals: { clubs: 0, players: 0 } };
 
-    const byKey = new Map(); // key asset → montant cumulé
-    let total = 0;
+    // set des actifs détenus
+    const have = new Set(positions.map((p) => `${p.type}:${p.id}`));
+
+    // montants SVC
+    const payouts = new Map();   // key -> SVC
+    const mintBase = new Map();  // player:<id> -> SVC absolu (somme des mints négatifs)
 
     for (const r of sheet) {
-      const { type, other_type, other_id } = r || {};
-      if (!isPayout(type)) continue;
-      if (!other_type || !other_id) continue;
+      const t = r?.type;
+      const otype = r?.other_type;
+      const oid = r?.other_id;
 
-      const key = `${other_type}:${other_id}`;
-      if (!posSet.has(key)) continue; // on ne garde que si on détient l’actif aujourd’hui
+      // payouts (clubs & joueurs)
+      if (isPayout(t) && otype && oid) {
+        const key = `${otype}:${oid}`;
+        if (!have.has(key)) continue; // on ne garde que les actifs encore détenus
+        const v = toSVC(r.amount);
+        payouts.set(key, (payouts.get(key) || 0) + v);
+      }
 
-      const v = toSVC(r.amount);
-      total += v;
-      byKey.set(key, (byKey.get(key) || 0) + v);
+      // base (mint) pour joueurs
+      if (t === "mint" && r?.other_type === "player" && r?.other_id) {
+        const key = `player:${r.other_id}`;
+        const invested = Math.abs(toSVC(r.amount)); // montant négatif en base-unit
+        mintBase.set(key, (mintBase.get(key) || 0) + invested);
+      }
     }
 
-    // rows pour table
-    const rows = [...byKey.entries()]
-      .map(([key, amt]) => {
-        const [t, idStr] = key.split(":");
-        return { key, other_type: t, other_id: Number(idStr), amount_svc: Math.round(amt * 1e4) / 1e4 };
-      })
-      .sort((a, b) => b.amount_svc - a.amount_svc);
+    // assemble par actif détenu
+    const clubs = [];
+    const players = [];
 
-    return {
-      totalPayoutsSVC: Math.round(total * 1e4) / 1e4,
-      breakdownRows: rows,
+    for (const p of positions) {
+      const key = `${p.type}:${p.id}`;
+      const pay = payouts.get(key) || 0;
+
+      if (p.type === "club") {
+        clubs.push({
+          key,
+          type: p.type,
+          id: p.id,
+          name: getClubName(p.id),
+          qty: p.qty,
+          payouts: round4(pay),
+          roi: null, // base club via trades manquante pour l’instant
+          base: null,
+        });
+      } else {
+        const base = mintBase.get(key) || 0; // SVC
+        const roi = base > 0 ? pay / base : null;
+        players.push({
+          key,
+          type: p.type,
+          id: p.id,
+          name: getPlayerName(p.id),
+          qty: p.qty,
+          payouts: round4(pay),
+          base: round4(base),
+          roi,
+        });
+      }
+    }
+
+    // tri: plus rémunérateurs d'abord
+    clubs.sort((a, b) => b.payouts - a.payouts);
+    players.sort((a, b) => b.payouts - a.payouts);
+
+    const totals = {
+      clubs: round4(clubs.reduce((s, x) => s + x.payouts, 0)),
+      players: round4(players.reduce((s, x) => s + x.payouts, 0)),
+      playersBase: round4(players.reduce((s, x) => s + (x.base || 0), 0)),
+      playersRoi: (() => {
+        const base = players.reduce((s, x) => s + (x.base || 0), 0);
+        const gains = players.reduce((s, x) => s + (x.payouts || 0), 0);
+        return base > 0 ? gains / base : null;
+      })(),
     };
-  }, [sheet, posSet]);
+
+    return { clubs, players, totals };
+  }, [positions, sheet, clubMap, playerMap]);
+
+  /* ──────────────────────────────────────────────────────────────────────── */
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold mb-6">
-          HomeBoard — Payouts “lifetime” sur positions actuelles
+          HomeBoard — Revenus “lifetime” & ROI (positions actuelles)
         </h1>
 
         <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
@@ -238,40 +325,55 @@ export default function HomeBoard() {
         )}
 
         {searched && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <KpiCard title="Positions suivies" value={positions.length} />
-            <KpiCard title="Payouts cumulés (lifetime)" value={fmtSVC(totalPayoutsSVC)} accent="pos" />
-            <KpiCard title="Dernier bloc (source)" value="gsppub + balance_sheet" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <KpiCard title="Clubs détenus" value={positions.filter(p => p.type==="club").length} />
+            <KpiCard title="Joueurs détenus" value={positions.filter(p => p.type==="player").length} />
+            <KpiCard title="Payouts Clubs (lifetime)" value={fmtSVC(perAsset.totals.clubs)} />
+            <KpiCard
+              title="Payouts Joueurs / ROI global"
+              value={
+                perAsset.totals.playersBase > 0
+                  ? `${fmtSVC(perAsset.totals.players)} · ${(perAsset.totals.playersRoi*100).toFixed(1)}%`
+                  : `${fmtSVC(perAsset.totals.players)} · ROI n/a`
+              }
+              accent="pos"
+            />
           </div>
         )}
 
-        {/* Positions actuelles */}
+        {/* ── Clubs ───────────────────────────────────────────────────────── */}
         {searched && (
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-3">Positions actuelles</h2>
-            {positions.length === 0 ? (
-              <div className="text-gray-400">Aucune position.</div>
+            <h2 className="text-2xl font-semibold mb-3">Clubs</h2>
+            {perAsset.clubs.length === 0 ? (
+              <div className="text-gray-400">Aucun club détenu.</div>
             ) : (
               <div className="overflow-x-auto">
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                <div className="rounded-xl border border-gray-700 overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-800 text-gray-300">
                       <tr>
-                        <th className="text-left py-2 px-3">Actif</th>
-                        <th className="text-right py-2 px-3">Total</th>
-                        <th className="text-right py-2 px-3">Disponible</th>
-                        <th className="text-right py-2 px-3">Réservé</th>
+                        <th className="text-left py-2 px-3">Club</th>
+                        <th className="text-right py-2 px-3">Quantité</th>
+                        <th className="text-right py-2 px-3">Payouts cumulés</th>
+                        <th className="text-left py-2 px-3">ROI</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                      {positions.map((p) => (
-                        <tr key={`${p.type}:${p.id}`} className="hover:bg-white/5">
-                          <td className="py-2 px-3">{renderRef(p.type, p.id)}</td>
-                          <td className="py-2 px-3 text-right">{fmtQty(p.qty.total)}</td>
-                          <td className="py-2 px-3 text-right">{fmtQty(p.qty.available)}</td>
-                          <td className="py-2 px-3 text-right">{fmtQty(p.qty.reserved)}</td>
+                      {perAsset.clubs.map((c) => (
+                        <tr key={c.key} className="hover:bg-white/5">
+                          <td className="py-2 px-3">{assetLink("club", c.id, c.name)}</td>
+                          <td className="py-2 px-3 text-right">{fmtInt(c.qty.total)}</td>
+                          <td className="py-2 px-3 text-right">{fmtSVC(c.payouts)}</td>
+                          <td className="py-2 px-3"><span className="text-gray-400">n/a (base trade)</span></td>
                         </tr>
                       ))}
+                      <tr className="bg-gray-900/40 font-semibold">
+                        <td className="py-2 px-3">Total</td>
+                        <td className="py-2 px-3 text-right">—</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(perAsset.totals.clubs)}</td>
+                        <td className="py-2 px-3">—</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -280,32 +382,43 @@ export default function HomeBoard() {
           </section>
         )}
 
-        {/* Payouts lifetime ventilés par actif détenu */}
+        {/* ── Joueurs ─────────────────────────────────────────────────────── */}
         {searched && (
           <section className="mb-12">
-            <h2 className="text-xl font-semibold mb-3">Payouts cumulés (uniquement sur actifs détenus)</h2>
-            {breakdownRows.length === 0 ? (
-              <div className="text-gray-400">Aucun payout lié aux positions actuelles.</div>
+            <h2 className="text-2xl font-semibold mb-3">Joueurs</h2>
+            {perAsset.players.length === 0 ? (
+              <div className="text-gray-400">Aucun joueur détenu.</div>
             ) : (
               <div className="overflow-x-auto">
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                <div className="rounded-xl border border-gray-700 overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-800 text-gray-300">
                       <tr>
-                        <th className="text-left py-2 px-3">Actif</th>
-                        <th className="text-right py-2 px-3">Montant cumulé</th>
+                        <th className="text-left py-2 px-3">Joueur</th>
+                        <th className="text-right py-2 px-3">Quantité</th>
+                        <th className="text-right py-2 px-3">Base (mint)</th>
+                        <th className="text-right py-2 px-3">Payouts cumulés</th>
+                        <th className="text-left py-2 px-3 w-[220px]">ROI</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                      {breakdownRows.map((r) => (
-                        <tr key={r.key} className="hover:bg-white/5">
-                          <td className="py-2 px-3">{renderRef(r.other_type, r.other_id)}</td>
-                          <td className="py-2 px-3 text-right">{fmtSVC(r.amount_svc)}</td>
+                      {perAsset.players.map((p) => (
+                        <tr key={p.key} className="hover:bg-white/5">
+                          <td className="py-2 px-3">{assetLink("player", p.id, p.name)}</td>
+                          <td className="py-2 px-3 text-right">{fmtInt(p.qty.total)}</td>
+                          <td className="py-2 px-3 text-right">{p.base != null ? fmtSVC(p.base) : "—"}</td>
+                          <td className="py-2 px-3 text-right">{fmtSVC(p.payouts)}</td>
+                          <td className="py-2 px-3"><RoiBar roi={p.roi} /></td>
                         </tr>
                       ))}
                       <tr className="bg-gray-900/40 font-semibold">
                         <td className="py-2 px-3">Total</td>
-                        <td className="py-2 px-3 text-right">{fmtSVC(totalPayoutsSVC)}</td>
+                        <td className="py-2 px-3 text-right">—</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(perAsset.totals.playersBase)}</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(perAsset.totals.players)}</td>
+                        <td className="py-2 px-3">
+                          <RoiBar roi={perAsset.totals.playersRoi} />
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -319,13 +432,8 @@ export default function HomeBoard() {
   );
 }
 
-function KpiCard({ title, value, accent }) {
-  const ring =
-    accent === "pos" ? "ring-emerald-500/30" : accent === "neg" ? "ring-red-500/30" : "ring-gray-500/20";
-  return (
-    <div className={`rounded-xl border border-gray-700 bg-gray-900/40 p-4 ring-1 ${ring}`}>
-      <div className="text-sm text-gray-400">{title}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-    </div>
-  );
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function round4(n) {
+  return Math.round((n + Number.EPSILON) * 1e4) / 1e4;
 }
