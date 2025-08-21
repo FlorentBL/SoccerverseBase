@@ -52,6 +52,7 @@ export default function RootLayout({ children }) {
     <html lang="fr">
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
+    <meta name="google-site-verification" content="Ekuk9GChtpzyyarhtQ6qxW49q1zNsJh5tEahU-EFCfw" />
       </head>
       <body className="font-sans min-h-screen antialiased">
         <Navbar />
