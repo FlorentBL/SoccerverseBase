@@ -42,6 +42,12 @@ const shareLink = (type, id) =>
 
 const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
 
+// Les montants du balance_sheet sont en dix-millièmes de SVC
+const UNIT = 10000;
+const toSVC = (n) => (Number(n) || 0) / UNIT;
+const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const round4 = (n) => Math.round((Number(n) + Number.EPSILON) * 10000) / 10000;
+
 // ───────────────────────────────────────────────────────────────────────────────
 // Agrégation
 
@@ -60,41 +66,40 @@ function indexTradesByTimeAndCounterparty(txs) {
 function aggregateForever({ balanceSheet, transactions, balances, clubMap, playerMap }) {
   const tradeIdx = indexTradesByTimeAndCounterparty(transactions);
 
-  const payoutsClub = new Map();    // clubId -> SVC
-  const payoutsPlayer = new Map();  // playerId -> SVC
-  const baseMintPlayer = new Map(); // playerId -> SVC
-  const baseTradeClub = new Map();  // clubId  -> SVC
+  const payoutsClub = new Map();
+  const payoutsPlayer = new Map();
+  const baseMintPlayer = new Map();
+  const baseTradeClub = new Map();
 
   for (const it of balanceSheet || []) {
-    const amt = Number(it?.amount) || 0;
+    const amtSVC = toSVC(it?.amount); // <-- conversion en SVC
 
-    // Payouts
+    // Payouts (dividendes) en SVC
     if (it?.type?.startsWith("dividend")) {
       if (it?.other_type === "club" && it?.other_id != null) {
-        payoutsClub.set(it.other_id, (payoutsClub.get(it.other_id) || 0) + amt);
+        payoutsClub.set(it.other_id, (payoutsClub.get(it.other_id) || 0) + amtSVC);
       } else if (it?.other_type === "player" && it?.other_id != null) {
-        payoutsPlayer.set(it.other_id, (payoutsPlayer.get(it.other_id) || 0) + amt);
+        payoutsPlayer.set(it.other_id, (payoutsPlayer.get(it.other_id) || 0) + amtSVC);
       }
       continue;
     }
 
-    // Base mint (joueurs)
-    if (it?.type === "mint" && it?.other_type === "player" && it?.other_id != null && amt < 0) {
-      baseMintPlayer.set(it.other_id, (baseMintPlayer.get(it.other_id) || 0) + Math.abs(amt));
+    // Base mint (joueurs) en SVC
+    if (it?.type === "mint" && it?.other_type === "player" && it?.other_id != null && amtSVC < 0) {
+      baseMintPlayer.set(it.other_id, (baseMintPlayer.get(it.other_id) || 0) + Math.abs(amtSVC));
       continue;
     }
 
-    // Base trade (clubs) — joindre via (time, other_name) → id de club
-    if (it?.type === "share trade" && amt < 0) {
-      const k = tradeKey(it?.other_name, it?.unix_time);
+    // Base trade (clubs) en SVC — join via (other_name, unix_time) -> id club
+    if (it?.type === "share trade" && amtSVC < 0) {
+      const k = `${it?.other_name || ""}|${Number(it?.unix_time) || 0}`;
       const share = tradeIdx.get(k);
       if (share?.type === "club") {
-        baseTradeClub.set(share.id, (baseTradeClub.get(share.id) || 0) + Math.abs(amt));
+        baseTradeClub.set(share.id, (baseTradeClub.get(share.id) || 0) + Math.abs(amtSVC));
       }
     }
   }
 
-  // Construire les lignes d’affichage à partir des positions actuelles
   const clubs = [];
   const players = [];
 
@@ -105,15 +110,7 @@ function aggregateForever({ balanceSheet, transactions, balances, clubMap, playe
     const payouts = round4(payoutsClub.get(id) || 0);
     const base = round2(baseTradeClub.get(id) || 0);
     const roi = base > 0 ? payouts / base : null;
-    clubs.push({
-      id,
-      name,
-      qty,
-      payouts,
-      base,
-      roi,
-      link: shareLink("club", id),
-    });
+    clubs.push({ id, name, qty, payouts, base, roi, link: `https://play.soccerverse.com/club/${id}` });
   }
 
   for (const b of balances?.players || []) {
@@ -124,23 +121,15 @@ function aggregateForever({ balanceSheet, transactions, balances, clubMap, playe
     const payouts = round4(payoutsPlayer.get(id) || 0);
     const base = round2(baseMintPlayer.get(id) || 0);
     const roi = base > 0 ? payouts / base : null;
-    players.push({
-      id,
-      name,
-      qty,
-      payouts,
-      base,
-      roi,
-      link: shareLink("player", id),
-    });
+    players.push({ id, name, qty, payouts, base, roi, link: `https://play.soccerverse.com/player/${id}` });
   }
 
-  // Tri (payouts desc puis quantité)
   clubs.sort((a, b) => (b.payouts - a.payouts) || (b.qty - a.qty));
   players.sort((a, b) => (b.payouts - a.payouts) || (b.qty - a.qty));
 
   return { clubs, players };
 }
+
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Page
