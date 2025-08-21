@@ -17,7 +17,7 @@ export async function POST(req) {
     }
 
     const base = "https://services.soccerverse.com/api/user_balance_sheet";
-    const per_page = 500;   // gros batch pour limiter les allers-retours
+    const per_page = 100;   // gros batch pour limiter les allers-retours
     const maxPages = 20;    // garde-fou
 
     let page = 1;
