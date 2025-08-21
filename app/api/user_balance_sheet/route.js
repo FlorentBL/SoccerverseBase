@@ -1,4 +1,3 @@
-// app/api/user_balance_sheet/route.js
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
@@ -12,12 +11,12 @@ export async function POST(req) {
     }
 
     const base = "https://services.soccerverse.com/api/user_balance_sheet";
-    const PER_PAGE = 100;     // valeurs autorisées: 5,10,20,50,100
-    const MAX_PAGES = 100;    // garde-fou
+    const PER_PAGE = 100;      // valeurs acceptées: 5,10,20,50,100
+    const MAX_PAGES = 400;     // large marge
 
     const all = [];
-    const seen = new Set();   // dédup globale par signature
-    let lastFirstSig = null;  // pour détecter les pages identiques
+    const seen = new Set();
+    let lastFirstSig = null;
 
     for (let page = 1; page <= MAX_PAGES; page += 1) {
       const url = new URL(base);
@@ -41,16 +40,11 @@ export async function POST(req) {
       const json = await res.json();
       const items = Array.isArray(json?.items) ? json.items : [];
 
-      // signature de la page (premier item)
       const first = items[0];
       const firstSig = first ? sig(first) : `empty-${page}`;
-      if (lastFirstSig && firstSig === lastFirstSig) {
-        // La page renvoyée est identique à la précédente → on arrête la pagination
-        break;
-      }
+      if (lastFirstSig && firstSig === lastFirstSig) break;
       lastFirstSig = firstSig;
 
-      // push dédupliqué
       for (const it of items) {
         const k = sig(it);
         if (seen.has(k)) continue;
@@ -58,7 +52,7 @@ export async function POST(req) {
         all.push(it);
       }
 
-      if (items.length < PER_PAGE) break; // fin pagination normale
+      if (items.length < PER_PAGE) break;
     }
 
     return NextResponse.json({ result: all });
@@ -67,7 +61,6 @@ export async function POST(req) {
   }
 }
 
-// Signature stable pour dédup/détection
 function sig(it) {
   return [
     it?.name ?? "",
