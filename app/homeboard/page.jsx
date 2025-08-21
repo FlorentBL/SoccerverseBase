@@ -32,6 +32,8 @@ const fmtSVC = (n) =>
 const fmtInt = (n) =>
   typeof n === "number" ? n.toLocaleString("fr-FR") : "-";
 
+const UNIT = 10000;
+const toSVC = (n) => (Number(n) || 0) / UNIT;
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const round4 = (n) => Math.round((Number(n) + Number.EPSILON) * 10000) / 10000;
 
@@ -42,11 +44,6 @@ const shareLink = (type, id) =>
 
 const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
 
-// Les montants du balance_sheet sont en dix-millièmes de SVC
-const UNIT = 10000;
-const toSVC = (n) => (Number(n) || 0) / UNIT;
-const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
-const round4 = (n) => Math.round((Number(n) + Number.EPSILON) * 10000) / 10000;
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Agrégation
