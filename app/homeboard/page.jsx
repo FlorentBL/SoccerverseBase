@@ -1,104 +1,151 @@
+// app/roi/page.jsx
 "use client";
 
 /**
- * HomeBoard — Positions & Revenus (lifetime)
- * - Positions actuelles via /api/user_share_balances
- * - Historique complet via /api/user_balance_sheet
- * - Payouts lifetime filtrés sur actifs détenus
- * - ROI par joueur = payouts / |mint| (si base connue)
- * - Mapping noms clubs/joueurs
+ * HomeBoard — ROI (définitif, "depuis toujours")
+ *
+ * Données consommées :
+ * - /api/user_balance_sheet  → historique SVC (trades, mints, dividends, etc.)
+ * - /api/transactions        → mêmes événements avec l’ID de part (club/joueur)
+ * - JSON-RPC gsppub          → positions actuelles (quantités détenues)
+ * - /club_mapping.json & /player_mapping.json → libellés
+ *
+ * Règles :
+ * - Payouts (revenus) = somme des "dividend (...)" par club/joueur.
+ * - Base Joueurs = somme absolue des "mint" négatifs (freebench) par joueur.
+ * - Base Clubs   = somme absolue des "share trade" négatifs JOIN
+ *                  (unix_time, other_name) ↔ /api/transactions → id de club.
+ * - ROI = Payouts / Base (si Base > 0). Sinon “n/a (base trade/mint)”.
+ * - “Depuis toujours” : aucune borne de date, on agrège l’historique complet.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
 
-const BASE_UNIT = 10000;
-const toSVC = (x) => (typeof x === "number" ? x / BASE_UNIT : 0);
-const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+// ───────────────────────────────────────────────────────────────────────────────
+// Utils
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Helpers format & UI */
+const fmtSVC = (n) =>
+  typeof n === "number"
+    ? `${n.toLocaleString("fr-FR", { maximumFractionDigits: 4 })} SVC`
+    : "-";
 
-function fmtSVC(n, digits = 4) {
-  if (typeof n !== "number" || !isFinite(n)) return "-";
-  return `${n.toLocaleString("fr-FR", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })} SVC`;
-}
-function fmtInt(n) {
-  if (typeof n !== "number" || !isFinite(n)) return "-";
-  return n.toLocaleString("fr-FR");
-}
-function assetLink(type, id, label) {
-  const href =
-    type === "club"
-      ? `https://play.soccerverse.com/club/${id}`
-      : type === "player"
-      ? `https://play.soccerverse.com/player/${id}`
-      : "";
-  if (!href) return label || `${type} #${id}`;
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="text-indigo-400 hover:underline"
-    >
-      {label || `${type} #${id}`}
-    </a>
-  );
-}
-function KpiCard({ title, value, accent }) {
-  const ring =
-    accent === "pos"
-      ? "ring-emerald-500/30"
-      : accent === "neg"
-      ? "ring-red-500/30"
-      : "ring-gray-500/20";
-  return (
-    <div className={`rounded-xl border border-gray-700 bg-gray-900/40 p-4 ring-1 ${ring}`}>
-      <div className="text-sm text-gray-400">{title}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-    </div>
-  );
-}
-function RoiBar({ roi }) {
-  // roi en décimal (ex: 0.35 = 35%). Barre bornée à 200%.
-  if (roi == null || !isFinite(roi)) {
-    return <span className="text-gray-400">—</span>;
+const fmtInt = (n) =>
+  typeof n === "number" ? n.toLocaleString("fr-FR") : "-";
+
+const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const round4 = (n) => Math.round((Number(n) + Number.EPSILON) * 10000) / 10000;
+
+const shareLink = (type, id) =>
+  type === "club"
+    ? `https://play.soccerverse.com/club/${id}`
+    : `https://play.soccerverse.com/player/${id}`;
+
+const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Agrégation
+
+function indexTradesByTimeAndCounterparty(txs) {
+  const idx = new Map();
+  for (const t of txs || []) {
+    if (t?.type !== "share trade") continue;
+    const share = t?.share;
+    if (!share?.type || !share?.id) continue;
+    const k = tradeKey(t?.other_name, t?.date);
+    if (!idx.has(k)) idx.set(k, { type: share.type, id: share.id });
   }
-  const pct = roi * 100;
-  const width = clamp(pct, 0, 200); // borne visuelle
-  const tone =
-    pct >= 100 ? "from-emerald-500/70 to-emerald-400/70"
-    : pct > 0 ? "from-indigo-500/70 to-indigo-400/70"
-    : "from-red-500/70 to-red-400/70";
-  return (
-    <div className="min-w-[180px]">
-      <div className="text-right text-xs text-gray-300 mb-1">{pct.toFixed(1)}%</div>
-      <div className="h-2 rounded bg-gray-800 overflow-hidden">
-        <div
-          className={`h-full rounded bg-gradient-to-r ${tone}`}
-          style={{ width: `${width}%` }}
-          aria-hidden
-        />
-      </div>
-    </div>
-  );
+  return idx;
 }
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Types de payouts */
+function aggregateForever({ balanceSheet, transactions, balances, clubMap, playerMap }) {
+  const tradeIdx = indexTradesByTimeAndCounterparty(transactions);
 
-function isPayout(type) {
-  if (!type) return false;
-  if (type.startsWith("dividend (")) return true;
-  return type === "manager wage" || type === "agent wage";
+  const payoutsClub = new Map();    // clubId -> SVC
+  const payoutsPlayer = new Map();  // playerId -> SVC
+  const baseMintPlayer = new Map(); // playerId -> SVC
+  const baseTradeClub = new Map();  // clubId  -> SVC
+
+  for (const it of balanceSheet || []) {
+    const amt = Number(it?.amount) || 0;
+
+    // Payouts
+    if (it?.type?.startsWith("dividend")) {
+      if (it?.other_type === "club" && it?.other_id != null) {
+        payoutsClub.set(it.other_id, (payoutsClub.get(it.other_id) || 0) + amt);
+      } else if (it?.other_type === "player" && it?.other_id != null) {
+        payoutsPlayer.set(it.other_id, (payoutsPlayer.get(it.other_id) || 0) + amt);
+      }
+      continue;
+    }
+
+    // Base mint (joueurs)
+    if (it?.type === "mint" && it?.other_type === "player" && it?.other_id != null && amt < 0) {
+      baseMintPlayer.set(it.other_id, (baseMintPlayer.get(it.other_id) || 0) + Math.abs(amt));
+      continue;
+    }
+
+    // Base trade (clubs) — joindre via (time, other_name) → id de club
+    if (it?.type === "share trade" && amt < 0) {
+      const k = tradeKey(it?.other_name, it?.unix_time);
+      const share = tradeIdx.get(k);
+      if (share?.type === "club") {
+        baseTradeClub.set(share.id, (baseTradeClub.get(share.id) || 0) + Math.abs(amt));
+      }
+    }
+  }
+
+  // Construire les lignes d’affichage à partir des positions actuelles
+  const clubs = [];
+  const players = [];
+
+  for (const b of balances?.clubs || []) {
+    const id = b.id;
+    const qty = Number(b.total ?? b.balance?.total ?? 0);
+    const name = clubMap?.[id]?.name || clubMap?.[id]?.n || `Club #${id}`;
+    const payouts = round4(payoutsClub.get(id) || 0);
+    const base = round2(baseTradeClub.get(id) || 0);
+    const roi = base > 0 ? payouts / base : null;
+    clubs.push({
+      id,
+      name,
+      qty,
+      payouts,
+      base,
+      roi,
+      link: shareLink("club", id),
+    });
+  }
+
+  for (const b of balances?.players || []) {
+    const id = b.id;
+    const qty = Number(b.total ?? b.balance?.total ?? 0);
+    const p = playerMap?.[id];
+    const name = p?.name || [p?.f, p?.s].filter(Boolean).join(" ") || `Joueur #${id}`;
+    const payouts = round4(payoutsPlayer.get(id) || 0);
+    const base = round2(baseMintPlayer.get(id) || 0);
+    const roi = base > 0 ? payouts / base : null;
+    players.push({
+      id,
+      name,
+      qty,
+      payouts,
+      base,
+      roi,
+      link: shareLink("player", id),
+    });
+  }
+
+  // Tri (payouts desc puis quantité)
+  clubs.sort((a, b) => (b.payouts - a.payouts) || (b.qty - a.qty));
+  players.sort((a, b) => (b.payouts - a.payouts) || (b.qty - a.qty));
+
+  return { clubs, players };
 }
 
-/* ────────────────────────────────────────────────────────────────────────── */
+// ───────────────────────────────────────────────────────────────────────────────
+// Page
 
-export default function HomeBoard() {
+export default function RoiForever() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -107,34 +154,86 @@ export default function HomeBoard() {
   const [clubMap, setClubMap] = useState({});
   const [playerMap, setPlayerMap] = useState({});
 
-  const [positions, setPositions] = useState([]); // [{type,id,qty:{total,available,reserved}}]
-  const [sheet, setSheet] = useState([]); // balance sheet items
+  const [balanceSheet, setBalanceSheet] = useState([]); // /api/user_balance_sheet
+  const [transactions, setTransactions] = useState([]); // /api/transactions
+  const [positions, setPositions] = useState({ clubs: [], players: [] }); // JSON-RPC
 
-  // mapping (noms)
+  // Charger les mappings (noms)
   useEffect(() => {
     (async () => {
       try {
-        const [c, p] = await Promise.all([
+        const [clubRes, playerRes] = await Promise.all([
           fetch("/club_mapping.json"),
           fetch("/player_mapping.json"),
         ]);
-        const [cj, pj] = await Promise.all([c.json(), p.json()]);
-        setClubMap(cj || {});
-        setPlayerMap(pj || {});
+        const [clubData, playerData] = await Promise.all([
+          clubRes.json(),
+          playerRes.json(),
+        ]);
+        setClubMap(clubData || {});
+        setPlayerMap(playerData || {});
       } catch {
-        /* ok */
+        /* ignore */
       }
     })();
   }, []);
 
-  const getClubName = (id) => clubMap?.[id]?.name || clubMap?.[id]?.n || `Club #${id}`;
-  const getPlayerName = (id) => {
-    const p = playerMap?.[id];
-    if (!p) return `Joueur #${id}`;
-    return p.name || [p.f, p.s].filter(Boolean).join(" ") || `Joueur #${id}`;
-  };
+  async function fetchUserBalanceSheet(name) {
+    const res = await fetch("/api/user_balance_sheet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }), // pas de dates → “depuis toujours”
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.error || `Erreur balance_sheet (${res.status})`);
+    }
+    const j = await res.json();
+    return Array.isArray(j?.result) ? j.result : [];
+  }
 
-  async function handleSubmit(e) {
+  async function fetchTransactions(name) {
+    const res = await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.error || `Erreur transactions (${res.status})`);
+    }
+    const j = await res.json();
+    return Array.isArray(j?.result) ? j.result : [];
+  }
+
+  // Appel direct JSON-RPC (si CORS bloque chez toi, proxifie via un /api/*)
+  async function fetchShareBalances(name) {
+    const res = await fetch("https://gsppub.soccerverse.io/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "get_user_share_balances",
+        params: { name },
+        id: 1,
+      }),
+    });
+    if (!res.ok) throw new Error(`Erreur gsppub (${res.status})`);
+    const j = await res.json();
+    const data = j?.result?.data || [];
+    // normalise → { clubs:[{id,total}], players:[{id,total}] }
+    const clubs = [];
+    const players = [];
+    for (const row of data) {
+      const total = Number(row?.balance?.total || 0);
+      const share = row?.share || {};
+      if (share.club != null) clubs.push({ id: Number(share.club), total });
+      else if (share.player != null) players.push({ id: Number(share.player), total });
+    }
+    return { clubs, players };
+  }
+
+  async function handleSearch(e) {
     e?.preventDefault();
     const name = username.trim();
     if (!name) return;
@@ -142,166 +241,47 @@ export default function HomeBoard() {
     setLoading(true);
     setError("");
     setSearched(true);
-    setPositions([]);
-    setSheet([]);
 
     try {
-      // positions
-      const pRes = await fetch("/api/user_share_balances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (!pRes.ok) {
-        const j = await pRes.json().catch(() => ({}));
-        throw new Error(j?.error || j?.message || `Erreur positions (${pRes.status})`);
-      }
-      const pJson = await pRes.json();
-      const posRaw = Array.isArray(pJson?.result?.data) ? pJson.result.data : [];
-      const pos = [];
-      for (const it of posRaw) {
-        const share = it?.share || {};
-        const bal = it?.balance || {};
-        if (share.club) {
-          pos.push({
-            type: "club",
-            id: Number(share.club),
-            qty: {
-              total: Number(bal.total ?? 0),
-              available: Number(bal.available ?? 0),
-              reserved: Number(bal.reserved ?? 0),
-            },
-          });
-        } else if (share.player) {
-          pos.push({
-            type: "player",
-            id: Number(share.player),
-            qty: {
-              total: Number(bal.total ?? 0),
-              available: Number(bal.available ?? 0),
-              reserved: Number(bal.reserved ?? 0),
-            },
-          });
-        }
-      }
-      setPositions(pos);
+      const [bs, txs, pos] = await Promise.all([
+        fetchUserBalanceSheet(name),
+        fetchTransactions(name),
+        fetchShareBalances(name),
+      ]);
 
-      // historique complet
-      const sRes = await fetch("/api/user_balance_sheet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (!sRes.ok) {
-        const j = await sRes.json().catch(() => ({}));
-        throw new Error(j?.error || j?.message || `Erreur historique (${sRes.status})`);
-      }
-      const sJson = await sRes.json();
-      setSheet(Array.isArray(sJson?.result) ? sJson.result : []);
+      setBalanceSheet(bs);
+      setTransactions(txs);
+      setPositions(pos);
     } catch (err) {
       setError(err?.message || "Erreur lors du chargement.");
+      setBalanceSheet([]);
+      setTransactions([]);
+      setPositions({ clubs: [], players: [] });
     } finally {
       setLoading(false);
     }
   }
 
-  /* ──────────────────────────────────────────────────────────────────────── */
-  /* Agrégation payouts + base (mint) par actif détenu */
-
-  const perAsset = useMemo(() => {
-    if (!positions.length) return { clubs: [], players: [], totals: { clubs: 0, players: 0 } };
-
-    // set des actifs détenus
-    const have = new Set(positions.map((p) => `${p.type}:${p.id}`));
-
-    // montants SVC
-    const payouts = new Map();   // key -> SVC
-    const mintBase = new Map();  // player:<id> -> SVC absolu (somme des mints négatifs)
-
-    for (const r of sheet) {
-      const t = r?.type;
-      const otype = r?.other_type;
-      const oid = r?.other_id;
-
-      // payouts (clubs & joueurs)
-      if (isPayout(t) && otype && oid) {
-        const key = `${otype}:${oid}`;
-        if (!have.has(key)) continue; // on ne garde que les actifs encore détenus
-        const v = toSVC(r.amount);
-        payouts.set(key, (payouts.get(key) || 0) + v);
-      }
-
-      // base (mint) pour joueurs
-      if (t === "mint" && r?.other_type === "player" && r?.other_id) {
-        const key = `player:${r.other_id}`;
-        const invested = Math.abs(toSVC(r.amount)); // montant négatif en base-unit
-        mintBase.set(key, (mintBase.get(key) || 0) + invested);
-      }
-    }
-
-    // assemble par actif détenu
-    const clubs = [];
-    const players = [];
-
-    for (const p of positions) {
-      const key = `${p.type}:${p.id}`;
-      const pay = payouts.get(key) || 0;
-
-      if (p.type === "club") {
-        clubs.push({
-          key,
-          type: p.type,
-          id: p.id,
-          name: getClubName(p.id),
-          qty: p.qty,
-          payouts: round4(pay),
-          roi: null, // base club via trades manquante pour l’instant
-          base: null,
-        });
-      } else {
-        const base = mintBase.get(key) || 0; // SVC
-        const roi = base > 0 ? pay / base : null;
-        players.push({
-          key,
-          type: p.type,
-          id: p.id,
-          name: getPlayerName(p.id),
-          qty: p.qty,
-          payouts: round4(pay),
-          base: round4(base),
-          roi,
-        });
-      }
-    }
-
-    // tri: plus rémunérateurs d'abord
-    clubs.sort((a, b) => b.payouts - a.payouts);
-    players.sort((a, b) => b.payouts - a.payouts);
-
-    const totals = {
-      clubs: round4(clubs.reduce((s, x) => s + x.payouts, 0)),
-      players: round4(players.reduce((s, x) => s + x.payouts, 0)),
-      playersBase: round4(players.reduce((s, x) => s + (x.base || 0), 0)),
-      playersRoi: (() => {
-        const base = players.reduce((s, x) => s + (x.base || 0), 0);
-        const gains = players.reduce((s, x) => s + (x.payouts || 0), 0);
-        return base > 0 ? gains / base : null;
-      })(),
-    };
-
-    return { clubs, players, totals };
-  }, [positions, sheet, clubMap, playerMap]);
-
-  /* ──────────────────────────────────────────────────────────────────────── */
+  const { clubs, players } = useMemo(
+    () =>
+      aggregateForever({
+        balanceSheet,
+        transactions,
+        balances: positions,
+        clubMap,
+        playerMap,
+      }),
+    [balanceSheet, transactions, positions, clubMap, playerMap]
+  );
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold mb-6">
-          HomeBoard — Revenus “lifetime” & ROI (positions actuelles)
+          HomeBoard — ROI (depuis toujours)
         </h1>
 
-        <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
+        <form onSubmit={handleSearch} className="mb-6 flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={username}
@@ -324,105 +304,101 @@ export default function HomeBoard() {
           </div>
         )}
 
+        {/* Clubs */}
         {searched && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <KpiCard title="Clubs détenus" value={positions.filter(p => p.type==="club").length} />
-            <KpiCard title="Joueurs détenus" value={positions.filter(p => p.type==="player").length} />
-            <KpiCard title="Payouts Clubs (lifetime)" value={fmtSVC(perAsset.totals.clubs)} />
-            <KpiCard
-              title="Payouts Joueurs / ROI global"
-              value={
-                perAsset.totals.playersBase > 0
-                  ? `${fmtSVC(perAsset.totals.players)} · ${(perAsset.totals.playersRoi*100).toFixed(1)}%`
-                  : `${fmtSVC(perAsset.totals.players)} · ROI n/a`
-              }
-              accent="pos"
-            />
-          </div>
-        )}
-
-        {/* ── Clubs ───────────────────────────────────────────────────────── */}
-        {searched && (
-          <section className="mb-8">
+          <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-3">Clubs</h2>
-            {perAsset.clubs.length === 0 ? (
-              <div className="text-gray-400">Aucun club détenu.</div>
+            {clubs.length === 0 ? (
+              <div className="text-gray-400">Aucune position club.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <div className="rounded-xl border border-gray-700 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-800 text-gray-300">
-                      <tr>
-                        <th className="text-left py-2 px-3">Club</th>
-                        <th className="text-right py-2 px-3">Quantité</th>
-                        <th className="text-right py-2 px-3">Payouts cumulés</th>
-                        <th className="text-left py-2 px-3">ROI</th>
+              <div className="rounded-xl border border-gray-700 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800 text-gray-300">
+                    <tr>
+                      <th className="text-left py-2 px-3">Club</th>
+                      <th className="text-right py-2 px-3">Quantité</th>
+                      <th className="text-right py-2 px-3">Base (trade)</th>
+                      <th className="text-right py-2 px-3">Payouts cumulés</th>
+                      <th className="text-left py-2 px-3">ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {clubs.map((row) => (
+                      <tr key={`c-${row.id}`} className="hover:bg-white/5">
+                        <td className="py-2 px-3">
+                          <a
+                            href={row.link}
+                            className="text-indigo-400 hover:underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {row.name}
+                          </a>
+                        </td>
+                        <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(row.base)}</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(row.payouts)}</td>
+                        <td className="py-2 px-3">
+                          {row.base > 0 ? (
+                            <RoiBar pct={row.roi * 100} />
+                          ) : (
+                            <span className="text-gray-500">n/a (base trade)</span>
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700">
-                      {perAsset.clubs.map((c) => (
-                        <tr key={c.key} className="hover:bg-white/5">
-                          <td className="py-2 px-3">{assetLink("club", c.id, c.name)}</td>
-                          <td className="py-2 px-3 text-right">{fmtInt(c.qty.total)}</td>
-                          <td className="py-2 px-3 text-right">{fmtSVC(c.payouts)}</td>
-                          <td className="py-2 px-3"><span className="text-gray-400">n/a (base trade)</span></td>
-                        </tr>
-                      ))}
-                      <tr className="bg-gray-900/40 font-semibold">
-                        <td className="py-2 px-3">Total</td>
-                        <td className="py-2 px-3 text-right">—</td>
-                        <td className="py-2 px-3 text-right">{fmtSVC(perAsset.totals.clubs)}</td>
-                        <td className="py-2 px-3">—</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
         )}
 
-        {/* ── Joueurs ─────────────────────────────────────────────────────── */}
+        {/* Joueurs */}
         {searched && (
-          <section className="mb-12">
+          <section className="mb-20">
             <h2 className="text-2xl font-semibold mb-3">Joueurs</h2>
-            {perAsset.players.length === 0 ? (
-              <div className="text-gray-400">Aucun joueur détenu.</div>
+            {players.length === 0 ? (
+              <div className="text-gray-400">Aucune position joueur.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <div className="rounded-xl border border-gray-700 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-800 text-gray-300">
-                      <tr>
-                        <th className="text-left py-2 px-3">Joueur</th>
-                        <th className="text-right py-2 px-3">Quantité</th>
-                        <th className="text-right py-2 px-3">Base (mint)</th>
-                        <th className="text-right py-2 px-3">Payouts cumulés</th>
-                        <th className="text-left py-2 px-3 w-[220px]">ROI</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700">
-                      {perAsset.players.map((p) => (
-                        <tr key={p.key} className="hover:bg-white/5">
-                          <td className="py-2 px-3">{assetLink("player", p.id, p.name)}</td>
-                          <td className="py-2 px-3 text-right">{fmtInt(p.qty.total)}</td>
-                          <td className="py-2 px-3 text-right">{p.base != null ? fmtSVC(p.base) : "—"}</td>
-                          <td className="py-2 px-3 text-right">{fmtSVC(p.payouts)}</td>
-                          <td className="py-2 px-3"><RoiBar roi={p.roi} /></td>
-                        </tr>
-                      ))}
-                      <tr className="bg-gray-900/40 font-semibold">
-                        <td className="py-2 px-3">Total</td>
-                        <td className="py-2 px-3 text-right">—</td>
-                        <td className="py-2 px-3 text-right">{fmtSVC(perAsset.totals.playersBase)}</td>
-                        <td className="py-2 px-3 text-right">{fmtSVC(perAsset.totals.players)}</td>
+              <div className="rounded-xl border border-gray-700 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800 text-gray-300">
+                    <tr>
+                      <th className="text-left py-2 px-3">Joueur</th>
+                      <th className="text-right py-2 px-3">Quantité</th>
+                      <th className="text-right py-2 px-3">Base (mint)</th>
+                      <th className="text-right py-2 px-3">Payouts cumulés</th>
+                      <th className="text-left py-2 px-3">ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {players.map((row) => (
+                      <tr key={`p-${row.id}`} className="hover:bg-white/5">
                         <td className="py-2 px-3">
-                          <RoiBar roi={perAsset.totals.playersRoi} />
+                          <a
+                            href={row.link}
+                            className="text-indigo-400 hover:underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {row.name}
+                          </a>
+                        </td>
+                        <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(row.base)}</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(row.payouts)}</td>
+                        <td className="py-2 px-3">
+                          {row.base > 0 ? (
+                            <RoiBar pct={row.roi * 100} />
+                          ) : (
+                            <span className="text-gray-500">n/a (base mint)</span>
+                          )}
                         </td>
                       </tr>
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
@@ -432,8 +408,20 @@ export default function HomeBoard() {
   );
 }
 
-/* ────────────────────────────────────────────────────────────────────────── */
+// ───────────────────────────────────────────────────────────────────────────────
+// UI: barre de ROI
 
-function round4(n) {
-  return Math.round((n + Number.EPSILON) * 1e4) / 1e4;
+function RoiBar({ pct }) {
+  const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+  return (
+    <div className="flex items-center gap-3 min-w-[180px]">
+      <div className="flex-1 h-2 rounded bg-gray-800 overflow-hidden">
+        <div
+          className="h-full bg-indigo-500 transition-[width] duration-300"
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
+      <span className="tabular-nums">{clamped.toFixed(1)}%</span>
+    </div>
+  );
 }
