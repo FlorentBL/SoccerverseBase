@@ -1,21 +1,25 @@
 "use client";
 /**
- * HomeBoard — ROI via /api/user_balance_sheet
- * - Dédup + tri par date desc
- * - Libellés Club/Joueur comme la page Transactions
+ * HomeBoard — ROI (réalisé) + Positions actuelles
+ * Sources:
+ *  - /api/user_balance_sheet  → flux (achats/ventes, payouts)
+ *  - /api/gsp_share_balances  → positions (quantités club/joueur)
+ *
+ * ROI (réalisé) sur la période = (Gains - Investi) / Investi
+ *   Investi: sorties SVC pour "share trade" (<0) et "mint" (<0)
+ *   Gains:   entrées SVC (dividends, manager/agent wage, "share trade" >0)
+ *
+ * Dédup + tri date desc pour aligner avec la page Transactions.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Utils dates (Europe/Paris)
-
+// ───────────── Utils dates (Europe/Paris)
 function startOfNDaysAgoUTC(days) {
   const now = new Date();
   const tzNow = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
   tzNow.setHours(0, 0, 0, 0);
-  const ms = tzNow.getTime() - days * 24 * 3600 * 1000;
-  return Math.floor(ms / 1000);
+  return Math.floor((tzNow.getTime() - days * 86400000) / 1000);
 }
 function endOfTodayUTC() {
   const now = new Date();
@@ -29,10 +33,14 @@ function toEpoch(dateStr) {
   if (Number.isNaN(d.getTime())) return null;
   return Math.floor(d.getTime() / 1000);
 }
+function toISODate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Mapping & calculs
-
+// ───────────── Mapping catégories
 const CATEGORY_GROUPS = {
   "dividend (match day income)": "club_matchday",
   "dividend (league prize)": "club_league_prize",
@@ -74,24 +82,6 @@ function isRealizedInflow(item) {
     "dividend_other",
   ].includes(cat);
 }
-function labelCategory(key) {
-  const MAP = {
-    club_matchday: "Club · Matchday (1%)",
-    club_league_prize: "Club · Prime championnat",
-    club_cup_prize: "Club · Prime coupe",
-    player_wage: "Joueur · Salaire (0,2%)",
-    player_bonus: "Joueur · Bonus (titulaire/but/passe/CS)",
-    manager_fee: "Manager (TV ~0,0004%)",
-    agent_fee: "Agent (0,002%)",
-    dividend_other: "Dividende (autre)",
-    trade: "Trade (vente/achat)",
-    mint: "Mint (freebench)",
-    vault: "Vault (hors ROI)",
-    user_tx: "Transfert utilisateur (hors ROI)",
-    unknown: "Inconnu",
-  };
-  return MAP[key] || key;
-}
 function fmtSVC(n) {
   if (typeof n !== "number") return "-";
   return `${n.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} SVC`;
@@ -103,8 +93,6 @@ function fmtDate(ts) {
   return d.toLocaleString("fr-FR");
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-
 export default function HomeBoard() {
   const [username, setUsername] = useState("");
   const [fromStr, setFromStr] = useState("");
@@ -112,9 +100,11 @@ export default function HomeBoard() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
-  const [rows, setRows] = useState([]);
 
-  // mappings (pour affichage noms)
+  const [rows, setRows] = useState([]);       // flux
+  const [positions, setPositions] = useState([]); // positions actuelles
+
+  // mapping noms (comme Transactions)
   const [clubMap, setClubMap] = useState({});
   const [playerMap, setPlayerMap] = useState({});
 
@@ -135,24 +125,15 @@ export default function HomeBoard() {
     loadMaps();
   }, []);
 
-  // Par défaut: 7 derniers jours
+  // défaut: 7 derniers jours
   useEffect(() => {
     if (!fromStr && !toStr) {
       const from = startOfNDaysAgoUTC(6);
       const to = endOfTodayUTC();
-      const toD = new Date(to * 1000);
-      const fromD = new Date(from * 1000);
-      setFromStr(toISODate(fromD));
-      setToStr(toISODate(toD));
+      setFromStr(toISODate(new Date(from * 1000)));
+      setToStr(toISODate(new Date(to * 1000)));
     }
   }, [fromStr, toStr]);
-
-  function toISODate(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const da = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${da}`;
-  }
 
   async function handleSubmit(e) {
     e?.preventDefault();
@@ -160,30 +141,39 @@ export default function HomeBoard() {
     if (!name) return;
 
     const from_time = toEpoch(fromStr);
-    const to_time = toEpoch(toStr) ? toEpoch(toStr) + 86399 : null; // inclure fin de journée
+    const to_time = toEpoch(toStr) ? toEpoch(toStr) + 86399 : null;
 
     setLoading(true);
     setError("");
     setSearched(true);
     setRows([]);
+    setPositions([]);
 
     try {
-      const res = await fetch("/api/user_balance_sheet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, from_time, to_time }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || `Erreur serveur (${res.status})`);
-      }
-      const j = await res.json();
-      const items = Array.isArray(j?.result) ? j.result : [];
+      // flux + positions en parallèle
+      const [bsRes, posRes] = await Promise.all([
+        fetch("/api/user_balance_sheet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, from_time, to_time }),
+        }),
+        fetch("/api/gsp_share_balances", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        }),
+      ]);
 
-      // normalisation
+      // ---- balance sheet
+      if (!bsRes.ok) {
+        const j = await bsRes.json().catch(() => ({}));
+        throw new Error(j?.error || `Erreur balance_sheet (${bsRes.status})`);
+      }
+      const j1 = await bsRes.json();
+      const items = Array.isArray(j1?.result) ? j1.result : [];
       const normalized = items.map(normalizeRow);
 
-      // dédup
+      // dédup stricte
       const seen = new Set();
       const uniq = [];
       for (const r of normalized) {
@@ -200,11 +190,19 @@ export default function HomeBoard() {
         seen.add(k);
         uniq.push(r);
       }
-
-      // tri date desc (comme la page Transactions)
+      // tri desc par date
       uniq.sort((a, b) => (b.unix_time ?? 0) - (a.unix_time ?? 0));
-
       setRows(uniq);
+
+      // ---- positions
+      if (!posRes.ok) {
+        const j = await posRes.json().catch(() => ({}));
+        throw new Error(j?.error || `Erreur share_balances (${posRes.status})`);
+      }
+      const j2 = await posRes.json();
+      const pos = Array.isArray(j2?.result) ? j2.result : [];
+      // garde: on n’affiche que les positions non nulles
+      setPositions(pos.filter((p) => (p?.balance?.total ?? 0) > 0));
     } catch (err) {
       setError(err?.message || "Erreur lors du chargement.");
     } finally {
@@ -212,7 +210,7 @@ export default function HomeBoard() {
     }
   }
 
-  // KPI & views
+  // KPI
   const { totalInvestedSVC, totalGainsSVC, roi, buyRows, sellRows, payoutsAgg } = useMemo(
     () => aggregate(rows),
     [rows]
@@ -220,8 +218,8 @@ export default function HomeBoard() {
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-6">HomeBoard — ROI (Balance Sheet)</h1>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">HomeBoard — ROI & Positions</h1>
 
         <form
           onSubmit={handleSubmit}
@@ -237,7 +235,6 @@ export default function HomeBoard() {
               className="rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
             />
           </div>
-
           <div className="flex flex-col">
             <label className="text-sm text-gray-300 mb-1">Du</label>
             <input
@@ -247,7 +244,6 @@ export default function HomeBoard() {
               className="rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
             />
           </div>
-
           <div className="flex flex-col">
             <label className="text-sm text-gray-300 mb-1">Au</label>
             <input
@@ -257,7 +253,6 @@ export default function HomeBoard() {
               className="rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
             />
           </div>
-
           <button
             type="submit"
             disabled={loading || !username.trim()}
@@ -285,6 +280,42 @@ export default function HomeBoard() {
           </div>
         )}
 
+        {/* Positions actuelles */}
+        {searched && (
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold mb-3">Positions actuelles (influence détenue)</h2>
+            {positions.length === 0 ? (
+              <div className="text-gray-400">Aucune position.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-800 text-gray-300">
+                      <tr>
+                        <th className="text-left py-2 px-3">Actif</th>
+                        <th className="text-right py-2 px-3">Total</th>
+                        <th className="text-right py-2 px-3">Disponible</th>
+                        <th className="text-right py-2 px-3">Réservé</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {positions.map((p, i) => (
+                        <tr key={`${p.type}-${p.id}-${i}`} className="hover:bg-white/5">
+                          <td className="py-2 px-3">{renderShareLabel(p, clubMap, playerMap)}</td>
+                          <td className="py-2 px-3 text-right">{p.balance.total.toLocaleString("fr-FR")}</td>
+                          <td className="py-2 px-3 text-right">{p.balance.available.toLocaleString("fr-FR")}</td>
+                          <td className="py-2 px-3 text-right">{p.balance.reserved.toLocaleString("fr-FR")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Breakdown gains */}
         {searched && (
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-3">Répartition des gains (payouts)</h2>
@@ -313,81 +344,26 @@ export default function HomeBoard() {
           </section>
         )}
 
+        {/* Achats */}
         {searched && (
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-3">Achats (share trade / mint)</h2>
             {buyRows.length === 0 ? (
               <div className="text-gray-400">Aucun achat sur la période.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-800 text-gray-300">
-                      <tr>
-                        <th className="text-left py-2 px-3">Type</th>
-                        <th className="text-right py-2 px-3">Montant</th>
-                        <th className="text-left py-2 px-3">Référence</th>
-                        <th className="text-left py-2 px-3">Autre</th>
-                        <th className="text-left py-2 px-3">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700">
-                      {buyRows.map((r, i) => (
-                        <tr key={`b-${i}`} className="hover:bg-white/5">
-                          <td className="py-2 px-3">{r.type}</td>
-                          <td className="py-2 px-3 text-right">{fmtSVC(r.amount)}</td>
-                          <td className="py-2 px-3">{renderRef(r, clubMap, playerMap)}</td>
-                          <td className="py-2 px-3">{r.other_name || "-"}</td>
-                          <td className="py-2 px-3">{fmtDate(r.unix_time)}</td>
-                        </tr>
-                      ))}
-                      <tr className="bg-gray-900/40 font-semibold">
-                        <td className="py-2 px-3">Total investi</td>
-                        <td className="py-2 px-3 text-right">{fmtSVC(totalInvestedSVC)}</td>
-                        <td className="py-2 px-3">—</td>
-                        <td className="py-2 px-3">—</td>
-                        <td className="py-2 px-3">—</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <TableFlux rows={buyRows} footerLabel="Total investi" footerValue={fmtSVC(totalInvestedSVC)} clubMap={clubMap} playerMap={playerMap} />
             )}
           </section>
         )}
 
+        {/* Ventes */}
         {searched && (
           <section className="mb-12">
             <h2 className="text-xl font-semibold mb-3">Ventes (share trade)</h2>
             {sellRows.length === 0 ? (
               <div className="text-gray-400">Aucune vente sur la période.</div>
             ) : (
-              <div className="overflow-x-auto">
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-800 text-gray-300">
-                      <tr>
-                        <th className="text-left py-2 px-3">Type</th>
-                        <th className="text-right py-2 px-3">Montant</th>
-                        <th className="text-left py-2 px-3">Référence</th>
-                        <th className="text-left py-2 px-3">Autre</th>
-                        <th className="text-left py-2 px-3">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700">
-                      {sellRows.map((r, i) => (
-                        <tr key={`s-${i}`} className="hover:bg-white/5">
-                          <td className="py-2 px-3">{r.type}</td>
-                          <td className="py-2 px-3 text-right">{fmtSVC(r.amount)}</td>
-                          <td className="py-2 px-3">{renderRef(r, clubMap, playerMap)}</td>
-                          <td className="py-2 px-3">{r.other_name || "-"}</td>
-                          <td className="py-2 px-3">{fmtDate(r.unix_time)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <TableFlux rows={sellRows} clubMap={clubMap} playerMap={playerMap} />
             )}
           </section>
         )}
@@ -396,8 +372,7 @@ export default function HomeBoard() {
   );
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Petits composants
+// ───────────── UI helpers
 
 function KpiCard({ title, value, accent }) {
   const ring =
@@ -410,8 +385,47 @@ function KpiCard({ title, value, accent }) {
   );
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Normalisation & agrégation
+function TableFlux({ rows, footerLabel, footerValue, clubMap, playerMap }) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="rounded-lg border border-gray-700 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-800 text-gray-300">
+            <tr>
+              <th className="text-left py-2 px-3">Type</th>
+              <th className="text-right py-2 px-3">Montant</th>
+              <th className="text-left py-2 px-3">Référence</th>
+              <th className="text-left py-2 px-3">Autre</th>
+              <th className="text-left py-2 px-3">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
+            {rows.map((r, i) => (
+              <tr key={i} className="hover:bg-white/5">
+                <td className="py-2 px-3">{r.type}</td>
+                <td className="py-2 px-3 text-right">{fmtSVC(r.amount)}</td>
+                <td className="py-2 px-3">{renderRef(r, clubMap, playerMap)}</td>
+                <td className="py-2 px-3">{r.other_name || "-"}</td>
+                <td className="py-2 px-3">{fmtDate(r.unix_time)}</td>
+              </tr>
+            ))}
+            {footerLabel && (
+              <tr className="bg-gray-900/40 font-semibold">
+                <td className="py-2 px-3">{footerLabel}</td>
+                <td className="py-2 px-3 text-right">{footerValue}</td>
+                <td className="py-2 px-3">—</td>
+                <td className="py-2 px-3">—</td>
+                <td className="py-2 px-3">—</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ───────────── Normalisation & agrégation
 
 function normalizeRow(r) {
   return {
@@ -445,11 +459,6 @@ function aggregate(rows) {
       if (r.category === "trade") sellRows.push(r);
       continue;
     }
-    if (r.category === "trade" && r.amount > 0) {
-      gains += r.amount;
-      payoutsAgg[r.category] = (payoutsAgg[r.category] ?? 0) + r.amount;
-      sellRows.push(r);
-    }
   }
 
   const denom = Math.max(invested, 1);
@@ -461,19 +470,20 @@ function aggregate(rows) {
     roi,
     buyRows,
     sellRows,
-    payoutsAgg: mapObject(payoutsAgg, round2),
+    payoutsAgg: mapVals(payoutsAgg, round2),
   };
 }
 function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
-function mapObject(obj, fn) {
+function mapVals(obj, fn) {
   const out = {};
   for (const [k, v] of Object.entries(obj)) out[k] = fn(v);
   return out;
 }
 
-// Affichage d'une référence (club / player) si présente (avec libellés)
+// ───────────── Rendu références + positions
+
 function renderRef(r, clubMap, playerMap) {
   if (!r.other_type || !r.other_id) return "-";
   const id = r.other_id;
@@ -497,4 +507,28 @@ function renderRef(r, clubMap, playerMap) {
     );
   }
   return `${r.other_type} #${id}`;
+}
+
+function renderShareLabel(p, clubMap, playerMap) {
+  const id = p.id;
+  if (p.type === "club") {
+    const label = clubMap?.[id]?.name || clubMap?.[id]?.n || `Club #${id}`;
+    const href = `https://play.soccerverse.com/club/${id}`;
+    return (
+      <a href={href} className="text-indigo-400 hover:underline" target="_blank" rel="noreferrer">
+        {label}
+      </a>
+    );
+  }
+  if (p.type === "player") {
+    const pl = playerMap?.[id];
+    const label = pl?.name || [pl?.f, pl?.s].filter(Boolean).join(" ") || `Joueur #${id}`;
+    const href = `https://play.soccerverse.com/player/${id}`;
+    return (
+      <a href={href} className="text-indigo-400 hover:underline" target="_blank" rel="noreferrer">
+        {label}
+      </a>
+    );
+  }
+  return `${p.type} #${id}`;
 }
