@@ -62,6 +62,21 @@ const LABELS = {
     position: "Posición",
     noClub: "Ningún club encontrado",
   },
+  ko: {
+    title: "사용자 대시보드",
+    name: "이름",
+    placeholder: "예: klo",
+    submit: "검색",
+    loading: "로딩 중…",
+    error: "불러오기 오류",
+    club: "클럽",
+    shares: "지분",
+    lastMatch: "마지막 경기",
+    matchDate: "날짜",
+    coach: "감독",
+    position: "순위",
+    noClub: "클럽을 찾을 수 없습니다",
+  },
 };
 
 const CLUB_MAPPING_URL = "/club_mapping.json";

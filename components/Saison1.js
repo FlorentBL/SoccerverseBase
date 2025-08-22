@@ -23,6 +23,11 @@ const LABELS = {
     show: "Mostrar detalle por jornada",
     hide: "Ocultar detalle por jornada",
   },
+  ko: {
+    title: "시즌 1 결산",
+    show: "라운드별 상세 보기",
+    hide: "라운드별 상세 숨기기",
+  },
 };
 
 export default function Saison1({ bilan, weeks, details, lang = "fr" }) {

@@ -214,6 +214,46 @@ const LABELS = {
       },
     ],
   },
+  ko: {
+    hero1: "SoccerverseBase",
+    hero2: (
+      <>Soccerverse를 시작하고 성장하기 위한 실용 가이드.<br />리소스와 정보, 한국 커뮤니티에 빠르게 접근하세요.</>
+    ),
+    signup: "Soccerverse 가입",
+    patch: "이름과 로고 패치. Cipone에게 감사!",
+    discordTitle: "한국어 K-SOCIOS 커뮤니티",
+    discordText: (
+      <>도움, 토론 및 정보 공유 공간입니다.<br />질문하거나 다른 플레이어와 소통하려면 Discord에 참여하세요.</>
+    ),
+    discordBtn: "K-SOCIOS Discord 참여",
+    sectionsTitle: "사이트 섹션",
+    sections: [
+      {
+        href: "/comment-debuter",
+        title: "시작하기",
+        desc: "잘 시작하기 위한 가이드",
+        featured: true,
+      },
+      { href: "/dashboard", title: "대시보드", desc: "응원하는 클럽의 결과를 한눈에" },
+      { href: "/scouting", title: "스카우팅", desc: "선수·클럽·리그 세부 정보" },
+      {
+        href: "/recompenses",
+        title: "보상 시뮬레이터",
+        desc: "클럽 또는 인플루언서의 시즌 보상 시뮬레이션",
+      },
+      {
+        href: "/finance",
+        title: "재정 분석",
+        desc: "클럽 재정 확인, 시즌 말 예측, 영입 시뮬레이션",
+      },
+      { href: "/analyse-tactique", title: "전술 분석", desc: "다음 3명의 상대 분석" },
+      {
+        href: "/revenus",
+        title: "선수 수익",
+        desc: "선수 급여와 수익을 자세히 보는 표",
+      },
+    ],
+  },
 };
 
 export default function HomePage({ lang = "fr" }) {

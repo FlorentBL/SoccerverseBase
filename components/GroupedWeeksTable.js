@@ -34,6 +34,14 @@ const TYPE_LABELS = {
     injection: "🏦 Inyecciones de efectivo",
     competition: "🏆 Competiciones",
     autre: "❓ Otros eventos",
+  },
+  ko: {
+    match_domicile: "📘 홈 경기",
+    match_exterieur: "🚌 원정 경기",
+    transfert: "💰 이적",
+    injection: "🏦 자금 투입",
+    competition: "🏆 대회",
+    autre: "❓ 기타 이벤트",
   }
 };
 

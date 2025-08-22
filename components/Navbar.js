@@ -64,6 +64,20 @@ const MENU_LABELS = {
       ],
     },
   ],
+  ko: [
+    { href: "/comment-debuter", label: "시작하기" },
+    { href: "/dashboard", label: "대시보드" },
+    { href: "/scouting", label: "스카우팅" },
+    { href: "/recompenses", label: "보상 시뮬레이터" },
+    {
+      label: "분석",
+      children: [
+        { href: "/finance", label: "클럽 재정" },
+        { href: "/analyse-tactique", label: "전술" },
+        { href: "/revenus", label: "선수 수익" },
+      ],
+    },
+  ],
 };
 
 const LANGS = [
@@ -71,6 +85,7 @@ const LANGS = [
   { code: "en", label: "EN" },
   { code: "it", label: "IT" },
   { code: "es", label: "ES" },
+  { code: "ko", label: "KO" },
 ];
 
 export default function Navbar() {
@@ -86,9 +101,10 @@ export default function Navbar() {
       pathname.startsWith("/fr") ||
       pathname.startsWith("/en") ||
       pathname.startsWith("/it") ||
-      pathname.startsWith("/es")
+      pathname.startsWith("/es") ||
+      pathname.startsWith("/ko")
     ) {
-      return pathname.replace(/^\/(fr|en|it|es)/, "/" + targetLang);
+      return pathname.replace(/^\/(fr|en|it|es|ko)/, "/" + targetLang);
     }
     return "/" + targetLang + pathname;
   }

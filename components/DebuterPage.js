@@ -364,7 +364,91 @@ const translations = {
       },
       {
         href: "https://soccerverse.com/soccerverse-litepaper/",
-        label: "El litepaper: siempre interesante de conocer",
+      label: "El litepaper: siempre interesante de conocer",
+      },
+    ],
+  },
+  ko: {
+    heroTitle: "Soccerverse 시작하기",
+    heroDesc:
+      "Soccerverse는 블록체인과 연결된 축구 시뮬레이션 게임으로, 클럽과 선수들이 있는 역동적인 시장에서 상호작용합니다.",
+    intro: [
+      "감독(전술, 스쿼드, 재정), 에이전트(계약, 이적, 사기), 영향력자(소유자이자 전략 결정권자), 트레이더(지분 가치 투기), 스카우트(유망주 발굴) 등 하나 이상의 역할을 맡을 수 있습니다.",
+      "매주 클럽이나 선수의 성과에 따라 수익을 얻고 시즌 종료 시 보너스를 받습니다.",
+      "선수의 실제 경기력과 이적은 게임 내 능력치와 가치에 직접 영향을 미쳐 현실 축구와 계속 연결됩니다.",
+      "모든 거래는 토큰으로 이루어지며, 당신의 결정은 수입과 경기 결과에 영향을 줍니다.",
+    ],
+    callout:
+      "계정에는 달러와 SVC가 있으며, SVC 가치는 로고 옆에 표시되고 2차 시장에서 모든 구매에 사용됩니다.",
+    outroIntro: [
+      "게임은 리그, 컵, 토너먼트 등 경쟁 일정과 강한 사회적·협력적 요소를 따릅니다.",
+      "잘 시작하려면 공식 가이드와 소개 영상이 단계별로 안내합니다.",
+    ],
+    rolesHeading: "역할",
+    coach: {
+      title: "감독 (FREE TO PLAY)",
+      description:
+        "아래 이미지에서 klo가 RAAL La Louvière의 감독이며, 아래에는 클럽 영향력자 목록이 보입니다. 이들은 클럽 지분을 보유하고 감독 권한을 부여할 수 있습니다. 당신이 최대 영향력자라면 스스로에게 권한을 줄 수 있습니다.",
+      imageAlt: "감독 인터페이스 예시",
+      bullets: [
+        "팀을 관리하고 전술을 설정하며 선수 매매와 계약을 진행합니다.",
+        "클럽의 성적과 재정 상태를 책임집니다.",
+        "수입: 감독 급여 (일부 영향력자는 보너스를 제공합니다)",
+      ],
+    },
+    influencer: {
+      title: "클럽 또는 선수 영향력자",
+      bullets: [
+        "클럽이나 선수의 지분을 소유합니다.",
+        "전략적 의사결정에 참여하고 감독이나 에이전트를 임명/해임합니다.",
+        "수입: 경기마다 배당금을 받습니다. 분석 → 선수 수익에서 확인하세요. 클럽은 시즌 최종 순위에 따라 보너스가 추가됩니다. 보상 시뮬레이터에서 이를 시뮬레이션할 수 있습니다.",
+      ],
+    },
+    agent: {
+      title: "에이전트",
+      bullets: [
+        "선수의 계약, 이적, 사기를 관리합니다.",
+        "감독과 영향력자 사이의 중개자 역할을 합니다.",
+        "수입: 에이전트 급여, 자세한 내용은 분석 → 선수 수익에서 확인하세요.",
+      ],
+    },
+    trader: {
+      title: "트레이더",
+      bullets: [
+        "지분을 사고팔아 가격 변동으로 이익을 얻는 시장 전문가입니다.",
+        "결과에 따라 클럽과 선수의 가치가 변하므로 적절한 시기에 매매하세요.",
+      ],
+    },
+    scout: {
+      title: "스카우트",
+      bullets: [
+        "폭발적 성장 전에 유망주를 발굴합니다.",
+        "감독, 에이전트, 영향력자 또는 트레이더로서 이를 활용할 수 있습니다.",
+        "수입: 선수 지분을 보유하거나 에이전트가 되거나 다른 에이전트와 보상을 협상합니다.",
+      ],
+    },
+    afterRoles: [
+      "한 역할에만 제한되지 않습니다. 여러 역할을 조합해 기회를 늘려보세요.",
+      "게임은 역동적인 시장, 강한 플레이어 상호작용, 스포츠와 재정 전략의 결합으로 구성됩니다.",
+    ],
+    linksHeading: "유용한 링크",
+    links: [
+      {
+        href: "https://elrincondeldt.com/que-es-sv.html",
+        label: "El Rincon del DT: 이름 팩 제작 사이트. 제작자는 Discord에서 Cipone으로 활동합니다!",
+      },
+      {
+        href: "https://guide.soccerverse.com/french",
+        label: "공식 프랑스어 가이드: 매우 완전한 필독서",
+      },
+      { href: "https://hub.soccerverse.com/", label: "뉴스 허브: https://hub.soccerverse.com/" },
+      {
+        href: "https://soccerratings.org/players",
+        label: "선수 평점을 확인: https://soccerratings.org/players — 선수의 실제 상황을 확인하세요.",
+      },
+      {
+        href: "https://soccerverse.com/soccerverse-litepaper/",
+        label: "라이트페이퍼: 알아두면 유용합니다",
       },
     ],
   },

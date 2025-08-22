@@ -23,6 +23,11 @@ const LABELS = {
     title2: ": Ingresos Agente & Accionista",
     desc: "Conviértete en accionista o agente y gana recompensas reales según el rendimiento de tus jugadores. Aquí están todos los salarios, primas y comisiones por nota.",
   },
+  ko: {
+    title1: "Soccerverse",
+    title2: ": 에이전트 & 주주 수익",
+    desc: "주주나 에이전트가 되어 선수의 성과에 따라 실제 보상을 받으세요! 여기에서 모든 급여, 보너스, 커미션을 평점별로 확인하세요.",
+  },
 };
 
 export default function RevenusPage({ lang = "fr" }) {

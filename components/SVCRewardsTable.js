@@ -91,7 +91,29 @@ const LABELS = {
       <b>Portería a cero:</b> solo para porteros/defensores con al menos 70 min y 0 goles en contra.<br />
       <b>Prima de influencer:</b> proporcional a la parte poseída.<br />
       <b>Pago al agente:</b> se paga por cada partido jugado.
-    </>
+    </>,
+  },
+  ko: {
+    columns: [
+      { key: "rating", label: "평점", tip: "종합 평점" },
+      { key: "wage", label: "급여" },
+      { key: "infPay", label: "인플 보너스", tip: "보유 지분에 비례한 보너스" },
+      { key: "starter", label: "선발", tip: "최소 45분 출전" },
+      { key: "goal", label: "골" },
+      { key: "assist", label: "도움" },
+      { key: "cleanSheet", label: "무실점", tip: "골키퍼/수비수, 최소 70분" },
+      { key: "agentWage", label: "에이전트", tip: "경기당 에이전트 보수" }
+    ],
+    noteMin: "최소 평점",
+    noteMax: "최대 평점",
+    allSVC: "표의 모든 값은 SVC (Soccerverse Coin)로 표시됩니다",
+    scroll: "↔️ 표를 가로로 스크롤하세요",
+    legend: <>
+      <b>선발:</b> 최소 45분 이상 출전. <br />
+      <b>무실점:</b> 골키퍼/수비수, 최소 70분 출전 시 무실점.<br />
+      <b>인플 보너스:</b> 보유 지분에 비례.<br />
+      <b>에이전트 보수:</b> 경기마다 지급.
+    </>,
   }
 };
 
@@ -101,6 +123,8 @@ function formatSVC(val, lang) {
     return Number(val).toLocaleString("en-US", { minimumFractionDigits: 0 });
   } else if (lang === "it") {
     return Number(val).toLocaleString("it-IT", { minimumFractionDigits: 0 });
+  } else if (lang === "ko") {
+    return Number(val).toLocaleString("ko-KR", { minimumFractionDigits: 0 });
   } else {
     return Number(val).toLocaleString("fr-FR", { minimumFractionDigits: 0 });
   }

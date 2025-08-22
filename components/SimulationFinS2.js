@@ -40,6 +40,15 @@ const LABELS = {
     show: "Mostrar detalle por jornada",
     hide: "Ocultar detalle por jornada",
   },
+  ko: {
+    title: "영입 시뮬레이션",
+    transfert: "이적 금액",
+    salaire: "주급 (SVC/경기)",
+    placeholderTransfert: "예: 2000000",
+    placeholderSalaire: "예: 10000",
+    show: "라운드별 상세 보기",
+    hide: "라운드별 상세 숨기기",
+  },
 };
 
 export default function SimulationFinS2({

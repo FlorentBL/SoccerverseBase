@@ -4,7 +4,7 @@ const PLAYER_MAPPING_URL = "/player_mapping.json";
 const LEAGUE_MAPPING_URL = "/league_mapping.json";
 const SQUAD_RPC_URL = "https://gsppub.soccerverse.io/";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES", ko: "ko-KR" };
 
 const T = {
   fr: {
@@ -210,6 +210,57 @@ const T = {
     moraleGood: "Buena moral",
     moraleNeutral: "Moral neutra",
     moraleBad: "Mala moral",
+  },
+  ko: {
+    idLabel: "클럽 ID:",
+    idPlaceholder: "예: 5902",
+    showInfo: "정보 보기",
+    searching: "검색 중...",
+    errorNotFound: "해당 ID의 클럽을 찾을 수 없습니다.",
+    errorNetwork: "네트워크 또는 데이터 오류.",
+    squadLoading: "선수단 불러오는 중...",
+    squadError: "선수단에서 선수를 찾을 수 없습니다.",
+    squadErrorNetwork: "네트워크 또는 선수단 파싱 오류.",
+    manager: "매니저",
+    division: "디비전",
+    fans: "팬",
+    balance: "잔액",
+    stadium: "스타디움",
+    value: "가치",
+    avgWage: "평균 급여",
+    league: "리그",
+    teamRating: "⭑ 팀 평점",
+    top21: "⭑ Top 21",
+    shooting: "🏹 슈팅",
+    passing: "🎯 패스",
+    tackling: "🛡️ 태클",
+    gk: "🧤 GK",
+    topInfluencers: "최고 인플루언서",
+    squadTitle: "클럽 선수단",
+    columns: {
+      name: "이름",
+      positions: "포지션",
+      rating: "평점",
+      rating_gk: "GK",
+      rating_tackling: "태클",
+      rating_passing: "패스",
+      rating_shooting: "슈팅",
+      age: "나이",
+      form: "컨디션",
+      matches: "경기",
+      goals: "골",
+      assists: "도움",
+      value: "가치",
+      wages: "급여",
+      morale: "사기",
+      agent_name: "에이전트",
+      contract: "계약",
+      cartons: "카드",
+      country_id: "국가",
+    },
+    moraleGood: "좋음",
+    moraleNeutral: "보통",
+    moraleBad: "나쁨",
   },
 };
 
