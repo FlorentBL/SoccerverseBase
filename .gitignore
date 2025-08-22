@@ -1,2 +1,15 @@
-node_modules
+# env & secrets
+.env*
+!.env.example
+
+# private data
+data/private/*
+!data/private/.keep
+
+# build & node
 .next
+node_modules
+
+# misc
+*.xlsx
+*.csv
