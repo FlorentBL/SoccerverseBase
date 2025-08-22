@@ -90,9 +90,8 @@ const LABELS = {
       <b>Titular:</b> debe jugar al menos 45 minutos. <br />
       <b>Portería a cero:</b> solo para porteros/defensores con al menos 70 min y 0 goles en contra.<br />
       <b>Prima de influencer:</b> proporcional a la parte poseída.<br />
-    <b>Pago al agente:</b> se paga por cada partido jugado.
-  </>
-    }
+      <b>Pago al agente:</b> se paga por cada partido jugado.
+    </>,
   },
   ko: {
     columns: [
