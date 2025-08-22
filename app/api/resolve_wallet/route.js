@@ -1,89 +1,64 @@
-// app/api/pack_preview/route.js
+// app/api/resolve_wallet/route.js
 import { NextResponse } from "next/server";
 import { client } from "@/lib/polygon";
-import { SWAPPING_PACK_SALE } from "@/lib/contracts";
-import { parseAbi } from "viem";
+import { XAYA_ACCOUNTS, XAYA_ABI } from "@/lib/contracts";
 
-// ABI minimale : preview(clubId, numPacks)
-// renvoie (primaryClub, packs, priceUSDC, discountedUSDC, clubs[], amounts[])
-const abi = parseAbi([
-  "function preview(uint256 clubId, uint256 numPacks) view returns (uint256,uint256,uint256,uint256,uint256[],uint256[])",
-]);
+async function resolveOnChain(name) {
+  // Essaie plusieurs variantes : "klo", "sv:klo", "g/sv:klo"
+  const candidates = [name, `sv:${name}`, `g/sv:${name}`];
 
-function computeUnitUSDC(previewTuple) {
-  // indices basés sur l'ABI ci-dessus
-  const priceUSDC = Number(previewTuple[2]); // en micro-USDC (1e6)
-  const clubs = (previewTuple[4] || []).map(Number);
-  const amounts = (previewTuple[5] || []).map(Number);
+  for (const n of candidates) {
+    try {
+      const tokenId = await client.readContract({
+        address: XAYA_ACCOUNTS,
+        abi: XAYA_ABI,
+        functionName: "tokenIdForName",
+        args: [n],
+      });
+      // Si pas minté, ownerOf revert — on catch et on continue
+      const owner = await client.readContract({
+        address: XAYA_ACCOUNTS,
+        abi: XAYA_ABI,
+        functionName: "ownerOf",
+        args: [tokenId],
+      });
+      return { username: name, formatted: n, wallet: owner };
+    } catch {
+      // continue
+    }
+  }
+  return null;
+}
 
-  const totalInfluences = amounts.reduce((a, b) => a + Number(b || 0), 0);
-  if (!totalInfluences) return null;
+async function resolveFromLocal(name) {
+  try {
+    const res = await fetch(new URL("/user_wallets.json", process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"));
+    const map = await res.json();
+    const w = map?.[name];
+    if (typeof w === "string" && w.startsWith("0x") && w.length === 42) {
+      return { username: name, formatted: null, wallet: w, from: "local" };
+    }
+  } catch {}
+  return null;
+}
 
-  const priceUSD = priceUSDC / 1e6;
-  return {
-    priceUSD,
-    clubs,
-    amounts,
-    unitUSDC: priceUSD / totalInfluences, // USD / influence
-    totalInfluences,
-  };
+async function handle(name) {
+  if (!name || typeof name !== "string") {
+    return NextResponse.json({ error: "Missing 'name'" }, { status: 400 });
+  }
+  const onchain = await resolveOnChain(name);
+  if (onchain) return NextResponse.json(onchain);
+  const local = await resolveFromLocal(name);
+  if (local) return NextResponse.json(local);
+  return NextResponse.json({ error: "Wallet introuvable pour cet utilisateur" }, { status: 404 });
 }
 
 export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const clubId = Number(searchParams.get("clubId"));
-    const numPacks = Number(searchParams.get("numPacks") || 1);
-    const tierHint = Number(searchParams.get("tier") || 0);
+  const name = new URL(req.url).searchParams.get("name");
+  return handle(name?.trim());
+}
 
-    if (!clubId || clubId < 1) {
-      return NextResponse.json({ error: "Missing or invalid clubId" }, { status: 400 });
-    }
-
-    // Ordre d’essai : hint de tier (si fourni), puis 1→5
-    const order = [1, 2, 3, 4, 5].filter((t) => t !== tierHint);
-    if (tierHint >= 1 && tierHint <= 5) order.unshift(tierHint);
-
-    let lastErr = null;
-
-    for (const tier of order) {
-      const addr = SWAPPING_PACK_SALE[tier];
-      if (!addr) continue;
-
-      try {
-        const res = await client.readContract({
-          address: addr,
-          abi,
-          functionName: "preview",
-          args: [BigInt(clubId), BigInt(numPacks)],
-        });
-
-        const parsed = computeUnitUSDC(res);
-        if (!parsed) continue;
-
-        return NextResponse.json({
-          tier,
-          address: addr,
-          priceUSD: parsed.priceUSD,
-          unitUSDC: parsed.unitUSDC,
-          totalInfluences: parsed.totalInfluences,
-          clubs: parsed.clubs,
-          influences: parsed.amounts,
-        });
-      } catch (e) {
-        lastErr = e;
-        // on essaie le tier suivant
-      }
-    }
-
-    return NextResponse.json(
-      { error: "Pack introuvable pour ce club" },
-      { status: 404 }
-    );
-  } catch (e) {
-    return NextResponse.json(
-      { error: e?.message || "Unexpected error" },
-      { status: 500 }
-    );
-  }
+export async function POST(req) {
+  const { name } = await req.json().catch(() => ({}));
+  return handle((name || "").trim());
 }
