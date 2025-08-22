@@ -24,6 +24,11 @@ const LABELS = {
     show: "Mostrar detalle por jornada",
     hide: "Ocultar detalle por jornada",
   },
+  ko: {
+    title: "시즌 2 종료 예상",
+    show: "라운드별 상세 보기",
+    hide: "라운드별 상세 숨기기",
+  },
 };
 
 export default function ProjectionFinS2({ bilan, nbJoursTotal, detailProj, recap, lang = "fr" }) {

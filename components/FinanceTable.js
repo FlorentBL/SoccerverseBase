@@ -5,7 +5,8 @@ const TABLE_LABELS = {
   fr: { flux: "Flux", amount: "Montant", total: "total ", projection: "projection ", days: "journées" },
   en: { flux: "Flow", amount: "Amount", total: "total ", projection: "projection ", days: "days" },
   it: { flux: "Flusso", amount: "Importo", total: "totale ", projection: "proiezione ", days: "giornate" },
-  es: { flux: "Flujo", amount: "Monto", total: "total ", projection: "proyección ", days: "jornadas" }
+  es: { flux: "Flujo", amount: "Monto", total: "total ", projection: "proyección ", days: "jornadas" },
+  ko: { flux: "항목", amount: "금액", total: "총 ", projection: "예상 ", days: "경기" }
 };
 
 export default function FinanceTable({ bilan, weeks, isProj, lang = "fr" }) {

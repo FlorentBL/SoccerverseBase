@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 
 const PLAYER_MAPPING_URL = "/player_mapping.json";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES", ko: "ko-KR" };
 
 const T = {
   fr: {
@@ -88,6 +88,27 @@ const T = {
     openSoccerRatings: "Abrir en SoccerRatings.org",
     transfermarkt: "Ver en Transfermarkt",
     seePlayer: "Ver jugador en Soccerverse",
+  },
+  ko: {
+    idLabel: "선수 ID:",
+    idPlaceholder: "예: 17",
+    showInfo: "정보 보기",
+    searching: "검색 중...",
+    errorNotFound: "해당 ID의 선수를 찾을 수 없습니다.",
+    errorNetwork: "네트워크 또는 데이터 오류.",
+    allValues: "모든 값은 SVC",
+    notAvailable: "없음",
+    age: "나이:",
+    club: "클럽:",
+    rating: "평점:",
+    value: "가치:",
+    wages: "급여:",
+    analysis: "SoccerRatings.org 분석",
+    openAnalysis: "SoccerRatings.org에서 전체 분석 보기",
+    mobileUnavailable: "(모바일에서는 미리보기를 사용할 수 없습니다)",
+    openSoccerRatings: "SoccerRatings.org 열기",
+    transfermarkt: "Transfermarkt에서 보기",
+    seePlayer: "Soccerverse에서 선수 보기",
   },
 };
 

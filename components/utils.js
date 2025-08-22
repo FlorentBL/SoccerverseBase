@@ -71,6 +71,24 @@ export const FIELD_LABELS = {
     shareholder_payouts: "Dividendos",
     shareholder_prize_money: "Premios accionistas",
     other_outgoings: "Otros gastos"
+  },
+  ko: {
+    cash_injection: "현금 투입",
+    gate_receipts: "입장 수입",
+    tv_revenue: "TV 중계권",
+    sponsor: "스폰서",
+    merchandise: "상품 판매",
+    prize_money: "대회 상금",
+    transfers_in: "이적 수입",
+    other_income: "기타 수입",
+    player_wages: "선수 급여",
+    agent_wages: "에이전트 급여",
+    managers_wage: "감독 급여",
+    ground_maintenance: "구장 유지비",
+    transfers_out: "이적 지출",
+    shareholder_payouts: "배당금",
+    shareholder_prize_money: "주주 상금",
+    other_outgoings: "기타 지출"
   }
 };
 
@@ -94,7 +112,7 @@ export function isMatchWeek(week) {
   return typeof week.player_wages === "number" && Math.abs(week.player_wages) > 0;
 }
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES", ko: "ko-KR" };
 
 export function formatSVC(val, field, lang = "fr") {
   if (typeof val !== "number") return "-";

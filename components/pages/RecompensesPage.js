@@ -65,6 +65,21 @@ const LABELS = {
     alertDebt:
       "Las recompensas solo se distribuyen a los influencers si el club no tiene deudas.",
   },
+  ko: {
+    title: "리그 보상",
+    seasonLabel: "시즌 :",
+    seasonPlaceholder: "시즌 선택",
+    countryLabel: "국가 :",
+    countryPlaceholder: "국가 선택",
+    divisionLabel: "디비전 :",
+    divisionPlaceholder: "디비전 선택",
+    loading: "계산 중...",
+    error: "네트워크 오류 또는 데이터 부족",
+    columns: { rank: "#", club: "클럽", reward: "보상", influencers: "인플루언서" },
+    alertS1: "시즌 1에서는 시즌 2 예산이 사용됩니다.",
+    alertDebt:
+      "클럽에 부채가 없을 때만 인플루언서에게 보상이 지급됩니다.",
+  },
 };
 
 function codeFromFlag(flag) {

@@ -46,6 +46,15 @@ const LABELS = {
     loading: "Cargando…",
     errorClub: "Error saldo club",
     errorSeason: s => `Error balance S${s}`,
+  },
+  ko: {
+    title: "Soccerverse 클럽 재정 예측",
+    clubId: "클럽 ID",
+    placeholder: "예: 5902",
+    launch: "분석 시작",
+    loading: "로딩 중…",
+    errorClub: "클럽 잔액 오류",
+    errorSeason: s => `시즌 ${s} 결산 오류`,
   }
 };
 

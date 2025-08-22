@@ -3,20 +3,20 @@ import React, { useState, useRef } from "react";
 const CLUB_MAPPING_URL = "/club_mapping.json";
 const COUNTRY_MAPPING_URL = "/country_mapping2.json";
 
-const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES" };
+const LOCALES = { fr: "fr-FR", en: "en-US", it: "it-IT", es: "es-ES", ko: "ko-KR" };
 
 const GROUP_LABELS = {
-  AFR: { fr: "Afrique", en: "Africa", it: "Africa", es: "África" },
-  AME: { fr: "Amérique", en: "America", it: "America", es: "América" },
-  ASI: { fr: "Asie", en: "Asia", it: "Asia", es: "Asia" },
-  EUR: { fr: "Europe", en: "Europe", it: "Europa", es: "Europa" },
+  AFR: { fr: "Afrique", en: "Africa", it: "Africa", es: "África", ko: "아프리카" },
+  AME: { fr: "Amérique", en: "America", it: "America", es: "América", ko: "아메리카" },
+  ASI: { fr: "Asie", en: "Asia", it: "Asia", es: "Asia", ko: "아시아" },
+  EUR: { fr: "Europe", en: "Europe", it: "Europa", es: "Europa", ko: "유럽" },
 };
 
 const SPECIAL_COUNTRIES = {
-  ENG: { fr: "Angleterre", en: "England", it: "Inghilterra", es: "Inglaterra" },
-  SCO: { fr: "Écosse", en: "Scotland", it: "Scozia", es: "Escocia" },
-  WAL: { fr: "Pays de Galles", en: "Wales", it: "Galles", es: "Gales" },
-  NIR: { fr: "Irlande du Nord", en: "Northern Ireland", it: "Irlanda del Nord", es: "Irlanda del Norte" },
+  ENG: { fr: "Angleterre", en: "England", it: "Inghilterra", es: "Inglaterra", ko: "잉글랜드" },
+  SCO: { fr: "Écosse", en: "Scotland", it: "Scozia", es: "Escocia", ko: "스코틀랜드" },
+  WAL: { fr: "Pays de Galles", en: "Wales", it: "Galles", es: "Gales", ko: "웨일스" },
+  NIR: { fr: "Irlande du Nord", en: "Northern Ireland", it: "Irlanda del Nord", es: "Irlanda del Norte", ko: "북아일랜드" },
 };
 
 function codeFromFlag(flag) {
@@ -191,6 +191,48 @@ const T = {
       balance: "Saldo",
       transfers_in: "Entr.",
       transfers_out: "Sal.",
+      avg_player_rating_top21: "Top21",
+      avg_shooting: "🏹",
+      avg_passing: "🎯",
+      avg_tackling: "🛡️",
+      gk_rating: "🧤",
+    },
+  },
+  ko: {
+    countryLabel: "국가 :",
+    countryPlaceholder: "국가 선택",
+    divisionLabel: "디비전 :",
+    divisionPlaceholder: "디비전 선택",
+    seasonLabel: "시즌 :",
+    seasonPlaceholder: "시즌 선택",
+    seasonNames: { S1: "시즌 1", S2: "시즌 2" },
+    showTable: "순위 보기",
+    searching: "검색 중...",
+    loadingDetails: "클럽 통계 불러오는 중...",
+    errorNetwork: "네트워크 또는 데이터 파싱 오류.",
+    noLeague: "리그 또는 팀을 찾을 수 없습니다.",
+    standingsTitle: "순위",
+    championshipLabel: "리그:",
+    columns: {
+      rank: "#",
+      club: "클럽",
+      manager_name: "매니저",
+      pts: "승점",
+      played: "경기",
+      won: "승",
+      drawn: "무",
+      lost: "패",
+      goals_for: "득",
+      goals_against: "실",
+      fanbase: "팬층",
+      stadium_size_current: "스타디움",
+      avg_player_rating: "평균 평점",
+      avg_wages: "💸평균",
+      total_wages: "💸총액",
+      total_player_value: "🏦가치",
+      balance: "잔액",
+      transfers_in: "영입",
+      transfers_out: "방출",
       avg_player_rating_top21: "Top21",
       avg_shooting: "🏹",
       avg_passing: "🎯",

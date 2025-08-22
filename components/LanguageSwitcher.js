@@ -6,7 +6,8 @@ const LANGS = [
   { code: "fr", label: "FR" },
   { code: "en", label: "EN" },
   { code: "it", label: "IT" },
-  { code: "es", label: "ES" }
+  { code: "es", label: "ES" },
+  { code: "ko", label: "KO" }
 ];
 
 export default function LanguageSwitcher() {
@@ -18,8 +19,14 @@ export default function LanguageSwitcher() {
   const getHref = (lang) => {
     if (current === lang) return pathname;
     // Replace l'ancien préfixe par le nouveau, ou ajoute si absent
-    if (pathname.startsWith("/fr") || pathname.startsWith("/en") || pathname.startsWith("/it") || pathname.startsWith("/es"))
-      return pathname.replace(/^\/(fr|en|it|es)/, "/" + lang);
+    if (
+      pathname.startsWith("/fr") ||
+      pathname.startsWith("/en") ||
+      pathname.startsWith("/it") ||
+      pathname.startsWith("/es") ||
+      pathname.startsWith("/ko")
+    )
+      return pathname.replace(/^\/(fr|en|it|es|ko)/, "/" + lang);
     return "/" + lang + pathname;
   };
 

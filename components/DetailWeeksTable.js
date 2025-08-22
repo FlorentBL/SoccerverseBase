@@ -5,7 +5,8 @@ const LABELS = {
   fr: { week: "Journée", date: "Date" },
   en: { week: "Week", date: "Date" },
   it: { week: "Giornata", date: "Data" },
-  es: { week: "Jornada", date: "Fecha" }
+  es: { week: "Jornada", date: "Fecha" },
+  ko: { week: "경기", date: "날짜" }
 };
 
 export default function DetailWeeksTable({ weeks, title, lang = "fr" }) {

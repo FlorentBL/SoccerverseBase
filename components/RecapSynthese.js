@@ -26,6 +26,12 @@ const LABELS = {
     totalRecettes: "Total ingresos S2: ",
     totalCharges: "Total gastos S2: ",
   },
+  ko: {
+    soldeFin: "S2 예상 최종 잔고: ",
+    masseSalariale: "S2 예상 선수 임금 총액: ",
+    totalRecettes: "S2 총 수입: ",
+    totalCharges: "S2 총 지출: ",
+  },
 };
 
 export default function RecapSynthese({ soldeFin, masseSalariale, totalRecettes, totalCharges, lang = "fr" }) {
