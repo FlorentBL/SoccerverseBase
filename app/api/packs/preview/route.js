@@ -13,7 +13,7 @@ const PACK_TIERS = new Map([
   [5, "0x3d25Cb3139811c6AeE9D5ae8a01B2e5824b5dB91"],
 ]);
 
-// ✅ La sortie est un tableau d'uint256 (et pas "tuple" générique)
+// ABI minimal (uniquement pour encoder l'appel)
 const PACK_ABI = [
   {
     type: "function",
@@ -23,7 +23,7 @@ const PACK_ABI = [
       { name: "clubId", type: "uint256" },
       { name: "numPacks", type: "uint256" },
     ],
-    outputs: [{ type: "uint256[]" }],
+    // on n'utilise pas 'outputs' ici, on décode nous-mêmes
   },
 ];
 
@@ -35,6 +35,46 @@ function toBigIntSafe(v) {
   if (typeof v === "number") return BigInt(v);
   if (typeof v === "string" && v.trim() !== "") return BigInt(v.trim());
   throw new Error("Argument numérique invalide");
+}
+
+/**
+ * Décode un retour ABI de type `uint256[]` (data hex).
+ * Format: offset(32) = 0x20, length(32), puis N * 32‑byte words.
+ */
+function decodeUint256ArrayFromHex(hex) {
+  if (!hex || typeof hex !== "string" || !hex.startsWith("0x")) {
+    throw new Error("Hex invalide");
+  }
+  const data = hex.slice(2); // sans 0x
+  const word = 64; // 32 bytes = 64 hex chars
+
+  if (data.length < word * 2) {
+    throw new Error("Réponse trop courte");
+  }
+
+  const offset = BigInt("0x" + data.slice(0, word));         // 0..63
+  if (offset !== 32n) {
+    // Par prudence : certains encodeurs peuvent structurer différemment
+    // mais dans notre cas, on s'attend à 0x20.
+    // On autorise quand même, en recalculant l'index de la longueur.
+  }
+  const lenPos = Number(offset) * 2; // hex index
+  if (lenPos + word > data.length) throw new Error("Index longueur hors limites");
+
+  const length = Number(BigInt("0x" + data.slice(lenPos, lenPos + word)));
+
+  const arrStart = lenPos + word;
+  const arrEnd = arrStart + length * word;
+  if (arrEnd > data.length) throw new Error("Buffer insuffisant pour le tableau");
+
+  const out = new Array(length);
+  for (let i = 0; i < length; i++) {
+    const start = arrStart + i * word;
+    const end = start + word;
+    const v = BigInt("0x" + data.slice(start, end));
+    out[i] = v;
+  }
+  return out;
 }
 
 async function handle(clubIdRaw, numPacksRaw, debug) {
@@ -72,14 +112,16 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
     );
   }
 
-  // Mode debug → eth_call bas-niveau (pour voir le revert data si ça échoue)
+  // Encodage de l'appel
+  const data = encodeFunctionData({
+    abi: PACK_ABI,
+    functionName: "preview",
+    args: [clubId, numPacks],
+  });
+
+  // Mode debug → renvoyer l'output brut
   if (debug) {
     try {
-      const data = encodeFunctionData({
-        abi: PACK_ABI,
-        functionName: "preview",
-        args: [clubId, numPacks],
-      });
       const out = await publicClient.call({ to: address, data, account: CALLER });
       return NextResponse.json({
         ok: true,
@@ -107,18 +149,11 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
     }
   }
 
-  // Mode normal : readContract (avec account pour msg.sender) + décodage en uint256[]
+  // Mode normal → appel bas‑niveau + décodage manuel `uint256[]`
   try {
-    const result = await publicClient.readContract({
-      address,
-      abi: PACK_ABI,
-      functionName: "preview",
-      args: [clubId, numPacks],
-      account: CALLER,
-    });
-
-    // `result` est un tableau de bigint. On renvoie aussi une version number[] pour l’UX.
-    const resultNums = Array.isArray(result) ? result.map(x => Number(x)) : null;
+    const out = await publicClient.call({ to: address, data, account: CALLER });
+    const resultBigints = decodeUint256ArrayFromHex(out.data);
+    const resultNums = resultBigints.map((x) => Number(x)); // pratique pour l'UI
 
     return NextResponse.json({
       ok: true,
@@ -126,8 +161,8 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       address,
       clubId: String(clubId),
       numPacks: String(numPacks),
-      result,       // bigint[]
-      resultNums,   // number[] (facile à lire dans Hoppscotch)
+      resultBigints, // uint256[] en bigint
+      resultNums,    // version number[]
       ...diag,
     });
   } catch (e) {
