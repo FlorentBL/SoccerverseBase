@@ -52,7 +52,20 @@ async function handle(clubIdRaw, numPacksRaw) {
       { status: 404 }
     );
   }
-
+const chainId = await publicClient.getChainId();
+if (chainId !== 137) {
+  return NextResponse.json(
+    { ok: false, error: `Bad chainId ${chainId} (expected 137 Polygon mainnet)` , tier, address },
+    { status: 400 }
+  );
+}
+const bytecode = await publicClient.getBytecode({ address });
+if (!bytecode) {
+  return NextResponse.json(
+    { ok: false, error: "No bytecode at address on this chain (wrong network/RPC?)", tier, address },
+    { status: 400 }
+  );
+}
   try {
     const result = await publicClient.readContract({
       address,
