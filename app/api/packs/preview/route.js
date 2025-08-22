@@ -13,7 +13,7 @@ const PACK_TIERS = new Map([
   [5, "0x3d25Cb3139811c6AeE9D5ae8a01B2e5824b5dB91"],
 ]);
 
-// Minimal ABI pour preview(uint256,uint256)
+// ✅ La sortie est un tableau d'uint256 (et pas "tuple" générique)
 const PACK_ABI = [
   {
     type: "function",
@@ -23,7 +23,7 @@ const PACK_ABI = [
       { name: "clubId", type: "uint256" },
       { name: "numPacks", type: "uint256" },
     ],
-    outputs: [{ type: "tuple" }],
+    outputs: [{ type: "uint256[]" }],
   },
 ];
 
@@ -72,7 +72,7 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
     );
   }
 
-  // Si debug=1 → on fait AUSSI un appel bas-niveau pour capturer l'erreur exacte
+  // Mode debug → eth_call bas-niveau (pour voir le revert data si ça échoue)
   if (debug) {
     try {
       const data = encodeFunctionData({
@@ -91,7 +91,6 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
         ...diag,
       });
     } catch (e) {
-      // e.data contient souvent le revert data hex
       return NextResponse.json(
         {
           ok: false,
@@ -108,7 +107,7 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
     }
   }
 
-  // Mode normal : readContract (avec account pour msg.sender)
+  // Mode normal : readContract (avec account pour msg.sender) + décodage en uint256[]
   try {
     const result = await publicClient.readContract({
       address,
@@ -118,13 +117,17 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       account: CALLER,
     });
 
+    // `result` est un tableau de bigint. On renvoie aussi une version number[] pour l’UX.
+    const resultNums = Array.isArray(result) ? result.map(x => Number(x)) : null;
+
     return NextResponse.json({
       ok: true,
       tier,
       address,
       clubId: String(clubId),
       numPacks: String(numPacks),
-      result,
+      result,       // bigint[]
+      resultNums,   // number[] (facile à lire dans Hoppscotch)
       ...diag,
     });
   } catch (e) {
