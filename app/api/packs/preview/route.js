@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { publicClient } from "@/lib/polygon";
 import { getClubTier } from "@/lib/clubTiers.js";
+import { encodeFunctionData } from "viem";
 
 // Tier → address (Polygon mainnet)
 const PACK_TIERS = new Map([
@@ -26,7 +27,7 @@ const PACK_ABI = [
   },
 ];
 
-// Certains contrats lisent msg.sender même en "view" : forçons un EOA non-nul
+// Certains contrats lisent msg.sender même en "view"
 const CALLER = "0x000000000000000000000000000000000000dEaD";
 
 function toBigIntSafe(v) {
@@ -36,7 +37,7 @@ function toBigIntSafe(v) {
   throw new Error("Argument numérique invalide");
 }
 
-async function handle(clubIdRaw, numPacksRaw) {
+async function handle(clubIdRaw, numPacksRaw, debug) {
   const clubId = toBigIntSafe(clubIdRaw);
   const numPacks = toBigIntSafe(numPacksRaw ?? 1);
 
@@ -56,32 +57,67 @@ async function handle(clubIdRaw, numPacksRaw) {
     );
   }
 
-  // Diagnostics réseau/contrat (évite les reverts silencieux)
+  // Diagnostics réseau/contrat
   const chainId = await publicClient.getChainId();
-  if (chainId !== 137) {
-    return NextResponse.json(
-      { ok: false, error: `Bad chainId ${chainId} (expected 137 Polygon mainnet)`, tier, address },
-      { status: 400 }
-    );
-  }
   const bytecode = await publicClient.getBytecode({ address });
-  if (!bytecode) {
+  const diag = {
+    chainId,
+    hasBytecode: !!bytecode,
+    bytecodeLen: bytecode ? bytecode.length : 0,
+  };
+  if (chainId !== 137 || !bytecode) {
     return NextResponse.json(
-      { ok: false, error: "No bytecode at address on this chain (wrong network/RPC?)", tier, address },
+      { ok: false, error: "Bad network or no bytecode", tier, address, ...diag },
       { status: 400 }
     );
   }
 
+  // Si debug=1 → on fait AUSSI un appel bas-niveau pour capturer l'erreur exacte
+  if (debug) {
+    try {
+      const data = encodeFunctionData({
+        abi: PACK_ABI,
+        functionName: "preview",
+        args: [clubId, numPacks],
+      });
+      const out = await publicClient.call({ to: address, data, account: CALLER });
+      return NextResponse.json({
+        ok: true,
+        tier,
+        address,
+        clubId: String(clubId),
+        numPacks: String(numPacks),
+        lowLevelCall: out, // { data, ... }
+        ...diag,
+      });
+    } catch (e) {
+      // e.data contient souvent le revert data hex
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e?.shortMessage || e?.message || String(e),
+          revertData: e?.data || null,
+          tier,
+          address,
+          clubId: String(clubId),
+          numPacks: String(numPacks),
+          ...diag,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Mode normal : readContract (avec account pour msg.sender)
   try {
     const result = await publicClient.readContract({
       address,
       abi: PACK_ABI,
       functionName: "preview",
       args: [clubId, numPacks],
-      account: CALLER, // ← important
+      account: CALLER,
     });
 
-    // On renvoie le tuple brut. (Si tu veux unitUSDC, on l’extraira ici quand l’index exact est confirmé.)
     return NextResponse.json({
       ok: true,
       tier,
@@ -89,6 +125,7 @@ async function handle(clubIdRaw, numPacksRaw) {
       clubId: String(clubId),
       numPacks: String(numPacks),
       result,
+      ...diag,
     });
   } catch (e) {
     return NextResponse.json(
@@ -99,6 +136,7 @@ async function handle(clubIdRaw, numPacksRaw) {
         address,
         clubId: String(clubId),
         numPacks: String(numPacks),
+        ...diag,
       },
       { status: 400 }
     );
@@ -109,12 +147,14 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const clubId = searchParams.get("clubId");
   const numPacks = searchParams.get("numPacks");
-  return handle(clubId, numPacks);
+  const debug = searchParams.get("debug") === "1";
+  return handle(clubId, numPacks, debug);
 }
 
 export async function POST(req) {
   const body = await req.json().catch(() => ({}));
   const clubId = body?.clubId ?? body?.club_id ?? body?.club;
   const numPacks = body?.numPacks ?? body?.num_packs ?? 1;
-  return handle(clubId, numPacks);
+  const debug = body?.debug === 1 || body?.debug === true || body?.debug === "1";
+  return handle(clubId, numPacks, debug);
 }
