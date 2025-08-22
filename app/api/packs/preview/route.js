@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { publicClient } from "@/lib/polygon";
 import { getClubTier } from "@/lib/clubTiers.js";
 import { encodeFunctionData } from "viem";
+import { encodeFunctionData, decodeAbiParameters } from "viem";
 
 // Tier → address (Polygon mainnet)
 const PACK_TIERS = new Map([
@@ -150,10 +151,40 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
   }
 
   // Mode normal → appel bas‑niveau + décodage manuel `uint256[]`
+  // Mode normal → appel bas‑niveau + décodage via viem
   try {
     const out = await publicClient.call({ to: address, data, account: CALLER });
-    const resultBigints = decodeUint256ArrayFromHex(out.data);
-    const resultNums = resultBigints.map((x) => Number(x)); // pratique pour l'UI
+
+    let resultBigints;
+    try {
+      // ✅ décode proprement un seul paramètre de retour: uint256[]
+      const [arr] = decodeAbiParameters([{ type: "uint256[]" }], out.data);
+      resultBigints = arr;
+    } catch (e) {
+      // Fallback (tolérant) si l’implémentation de l’ABI du RPC est un peu “courte”
+      const hex = out.data.startsWith("0x") ? out.data.slice(2) : out.data;
+      const word = 64;
+
+      if (hex.length < word * 2) throw new Error("Réponse trop courte");
+
+      // offset (0..31) – on l’ignore et on scanne directement
+      const lengthHex = hex.slice(word, word * 2); // position 0x20
+      let length = Number(BigInt("0x" + lengthHex));
+
+      const arrStart = word * 2; // après la longueur
+      const maxWords = Math.floor((hex.length - arrStart) / word);
+      if (length > maxWords) length = maxWords; // ← tolérance : on prend ce qu'on a
+
+      const outArr = new Array(length);
+      for (let i = 0; i < length; i++) {
+        const start = arrStart + i * word;
+        const end = start + word;
+        outArr[i] = BigInt("0x" + hex.slice(start, end));
+      }
+      resultBigints = outArr;
+    }
+
+    const resultNums = resultBigints.map((x) => Number(x));
 
     return NextResponse.json({
       ok: true,
@@ -161,8 +192,8 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       address,
       clubId: String(clubId),
       numPacks: String(numPacks),
-      resultBigints, // uint256[] en bigint
-      resultNums,    // version number[]
+      resultBigints, // bigint[]
+      resultNums,    // number[]
       ...diag,
     });
   } catch (e) {
@@ -179,7 +210,7 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       { status: 400 }
     );
   }
-}
+
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
