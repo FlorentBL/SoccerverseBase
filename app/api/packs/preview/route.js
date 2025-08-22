@@ -26,6 +26,9 @@ const PACK_ABI = [
   },
 ];
 
+// Certains contrats lisent msg.sender même en "view" : forçons un EOA non-nul
+const CALLER = "0x000000000000000000000000000000000000dEaD";
+
 function toBigIntSafe(v) {
   if (typeof v === "bigint") return v;
   if (typeof v === "number") return BigInt(v);
@@ -52,35 +55,40 @@ async function handle(clubIdRaw, numPacksRaw) {
       { status: 404 }
     );
   }
-const chainId = await publicClient.getChainId();
-if (chainId !== 137) {
-  return NextResponse.json(
-    { ok: false, error: `Bad chainId ${chainId} (expected 137 Polygon mainnet)` , tier, address },
-    { status: 400 }
-  );
-}
-const bytecode = await publicClient.getBytecode({ address });
-if (!bytecode) {
-  return NextResponse.json(
-    { ok: false, error: "No bytecode at address on this chain (wrong network/RPC?)", tier, address },
-    { status: 400 }
-  );
-}
+
+  // Diagnostics réseau/contrat (évite les reverts silencieux)
+  const chainId = await publicClient.getChainId();
+  if (chainId !== 137) {
+    return NextResponse.json(
+      { ok: false, error: `Bad chainId ${chainId} (expected 137 Polygon mainnet)`, tier, address },
+      { status: 400 }
+    );
+  }
+  const bytecode = await publicClient.getBytecode({ address });
+  if (!bytecode) {
+    return NextResponse.json(
+      { ok: false, error: "No bytecode at address on this chain (wrong network/RPC?)", tier, address },
+      { status: 400 }
+    );
+  }
+
   try {
     const result = await publicClient.readContract({
       address,
       abi: PACK_ABI,
       functionName: "preview",
       args: [clubId, numPacks],
+      account: CALLER, // ← important
     });
 
+    // On renvoie le tuple brut. (Si tu veux unitUSDC, on l’extraira ici quand l’index exact est confirmé.)
     return NextResponse.json({
       ok: true,
       tier,
       address,
       clubId: String(clubId),
       numPacks: String(numPacks),
-      result, // tuple brut décodé par viem
+      result,
     });
   } catch (e) {
     return NextResponse.json(
