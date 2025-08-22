@@ -189,6 +189,9 @@ export default function RoiForever() {
   // unit USD par club (issu de /api/pack_preview?clubId=ID)
   const [unitUsdByClub, setUnitUsdByClub] = useState(new Map());
 
+  // wallet résolu (via /api/resolve_wallet)
+  const [wallet, setWallet] = useState(null);
+
   // mappings noms
   useEffect(() => {
     (async () => {
@@ -256,6 +259,20 @@ export default function RoiForever() {
     return r.json(); // {unitUSDC,...}
   }
 
+  async function resolveWallet(name) {
+    try {
+      const rw = await fetch("/api/resolve_wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const rwJson = await rw.json();
+      setWallet(rw.ok ? (rwJson.wallet || null) : null);
+    } catch {
+      setWallet(null);
+    }
+  }
+
   async function handleSearch(e) {
     e?.preventDefault();
     const name = username.trim();
@@ -276,6 +293,9 @@ export default function RoiForever() {
       setTransactions(txs);
       setPositions(pos);
 
+      // wallet détecté (pour étapes on-chain futures)
+      resolveWallet(name);
+
       // Prévisualisations de pack pour chaque club possédé
       const clubIds = Array.from(new Set((pos?.clubs || []).map((c) => c.id)));
       const previews = await Promise.all(
@@ -293,6 +313,7 @@ export default function RoiForever() {
       setTransactions([]);
       setPositions({ clubs: [], players: [] });
       setUnitUsdByClub(new Map());
+      setWallet(null);
     } finally {
       setLoading(false);
     }
@@ -316,7 +337,7 @@ export default function RoiForever() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold mb-6">ROI — depuis toujours</h1>
 
-        <form onSubmit={handleSearch} className="mb-6 flex flex-col sm:flex-row gap-2">
+        <form onSubmit={handleSearch} className="mb-4 flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={username}
@@ -332,6 +353,24 @@ export default function RoiForever() {
             {loading ? "Chargement..." : "Analyser"}
           </button>
         </form>
+
+        {searched && (
+          <div className="mb-6 text-sm text-gray-300">
+            Wallet détecté :{" "}
+            {wallet ? (
+              <a
+                className="text-indigo-400 hover:underline"
+                href={`https://polygonscan.com/address/${wallet}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {wallet}
+              </a>
+            ) : (
+              <span className="text-gray-500">introuvable</span>
+            )}
+          </div>
+        )}
 
         {!!error && (
           <div className="mb-6 rounded-lg border border-red-800 bg-red-950/30 p-3 text-red-300">
