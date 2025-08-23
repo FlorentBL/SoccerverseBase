@@ -52,6 +52,42 @@ function toSafeNumbers(arr) {
     : [];
 }
 
+/**
+ * Parse le tableau `resultNums` selon ta spécification:
+ * [0]=packCount, [1]=unit price (µUSDC), [2]=treasury injection (µUSDC),
+ * [6]=mainClubId, [7]=mainClubInfluence, puis paires [clubId, influence] jusqu'à 0 terminal.
+ */
+function parsePreviewArray(nums) {
+  if (!Array.isArray(nums) || nums.length < 8) {
+    return { ok: false, error: "Prévisualisation invalide ou incomplète." };
+  }
+  const packCount = nums[0] ?? 0;
+  const unitUSDC = (nums[1] ?? 0) / 1e6;
+  const treasuryInjectionUSDC = (nums[2] ?? 0) / 1e6;
+
+  const mainClubId = nums[6] ?? null;
+  const mainClubInfluence = nums[7] ?? null;
+
+  const secondaries = [];
+  let i = 8;
+  while (i + 1 < nums.length) {
+    const cid = nums[i];
+    if (!cid) break; // terminateur 0
+    const infl = nums[i + 1] ?? 0;
+    secondaries.push({ clubId: cid, influence: infl });
+    i += 2;
+  }
+
+  return {
+    ok: true,
+    packCount,
+    unitUSDC,
+    treasuryInjectionUSDC,
+    mainClub: { clubId: mainClubId, influence: mainClubInfluence },
+    secondaries,
+  };
+}
+
 async function handle(clubIdRaw, numPacksRaw, debug) {
   const clubId = toBigIntSafe(clubIdRaw);
   const numPacks = toBigIntSafe(numPacksRaw ?? 1);
@@ -104,7 +140,7 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
         address,
         clubId: String(clubId),
         numPacks: String(numPacks),
-        lowLevelCall: { data: out.data }, // ne renvoie que la data hex
+        lowLevelCall: { data: out.data },
         ...diag,
       });
     } catch (e) {
@@ -130,20 +166,16 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
 
     let resultBigints;
     try {
-      // Décode proprement un retour unique: uint256[]
       const [arr] = decodeAbiParameters([{ type: "uint256[]" }], out.data);
       resultBigints = arr;
     } catch {
       // Fallback si le buffer est plus court que la longueur annoncée
       const hex = out.data.startsWith("0x") ? out.data.slice(2) : out.data;
       const word = 64;
-
       if (hex.length < word * 2) throw new Error("Réponse trop courte");
 
-      // length à l'offset 0x20
       const lengthHex = hex.slice(word, word * 2);
       let length = Number(BigInt("0x" + lengthHex));
-
       const arrStart = word * 2;
       const maxWords = Math.floor((hex.length - arrStart) / word);
       if (length > maxWords) length = maxWords;
@@ -157,9 +189,15 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       resultBigints = arr;
     }
 
-    // ⬇️ sérialisables JSON + copie "safe number" pour l'UI
+    // Sérialisables JSON + copie "safe number"
     const resultStrings = stringifyBigIntArray(resultBigints);
     const resultNums = toSafeNumbers(resultBigints);
+
+    // Parsing “nice” selon ta spec
+    const parsed = parsePreviewArray(resultNums);
+
+    // Raccourcis pratiques pour le front (compat immédiate)
+    const unitUSDC = parsed.ok ? parsed.unitUSDC : (resultNums[1] ?? 0) / 1e6;
 
     return NextResponse.json({
       ok: true,
@@ -167,8 +205,15 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       address,
       clubId: String(clubId),
       numPacks: String(numPacks),
-      result: resultStrings, // string[]
-      resultNums,            // number[] (null si > MAX_SAFE_INTEGER)
+
+      // bruts
+      result: resultStrings,
+      resultNums,
+
+      // enrichi
+      parsed,     // { ok, unitUSDC, mainClub, secondaries, ... }
+      unitUSDC,   // USD / influence (pour compat ROI immédiate)
+
       ...diag,
     });
   } catch (e) {

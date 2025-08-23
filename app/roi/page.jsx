@@ -253,11 +253,25 @@ export default function RoiForever() {
     return res.json();
   }
 
-  async function fetchPackPreviewFor(clubId) {
-    const r = await fetch(`/api/pack_preview?clubId=${clubId}&numPacks=1`, { cache: "no-store" });
-    if (!r.ok) return null;
-    return r.json(); // {unitUSDC,...}
+ async function fetchPackPreviewFor(clubId) {
+  const r = await fetch(`/api/pack_preview?clubId=${clubId}&numPacks=1`, { cache: "no-store" });
+  if (!r.ok) return null;
+  const j = await r.json();
+
+  // priorité au champ enrichi
+  if (typeof j?.unitUSDC === "number" && !Number.isNaN(j.unitUSDC)) {
+    return { unitUSDC: j.unitUSDC };
   }
+  // fallback sur le parsed
+  if (j?.parsed?.ok && typeof j.parsed.unitUSDC === "number") {
+    return { unitUSDC: j.parsed.unitUSDC };
+  }
+  // dernier recours: resultNums[1] (µUSDC)
+  if (Array.isArray(j?.resultNums) && typeof j.resultNums[1] === "number") {
+    return { unitUSDC: j.resultNums[1] / 1e6 };
+  }
+  return null;
+}
 
   async function resolveWallet(name) {
     try {
