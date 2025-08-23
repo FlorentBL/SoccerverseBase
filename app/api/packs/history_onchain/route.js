@@ -1,4 +1,3 @@
-// app/api/packs/history_onchain/route.js
 import { NextResponse } from "next/server";
 import { publicClient } from "@/lib/polygon";
 import { encodeFunctionData, decodeAbiParameters } from "viem";
@@ -38,10 +37,7 @@ const PACK_ABI = [
   },
 ];
 
-// Certains contrats lisent msg.sender même en view
 const CALLER = "0x000000000000000000000000000000000000dEaD";
-
-// Bloc de départ (tu peux ajuster)
 const DEFAULT_FROM_BLOCK = 66056325n;
 
 const toAddrLower = (a) => (a || "").toLowerCase();
@@ -59,10 +55,9 @@ async function resolveWalletServer(name, origin) {
     let j = null;
     try {
       j = await r.json();
-    } catch (e) {
+    } catch {
       throw new Error(`resolve_wallet non-JSON (HTTP ${r.status})`);
     }
-
     if (!r.ok) throw new Error(j?.error || `resolve_wallet HTTP ${r.status}`);
     if (!j?.wallet) throw new Error("Wallet introuvable");
     return j.wallet;
@@ -80,7 +75,6 @@ function parsePreviewResultHex(hexData) {
   });
 }
 
-// Extrait toutes les paires (clubId, influence) du résultat preview
 function extractClubInfluencesFromPreview(resultNums) {
   const pairs = [];
   let i = 6;
@@ -94,20 +88,56 @@ function extractClubInfluencesFromPreview(resultNums) {
   return pairs;
 }
 
-async function getBuyerLogs(buyer, fromBlock = DEFAULT_FROM_BLOCK) {
-  try {
-    const logs = await publicClient.getLogs({
-      address: PACK_TIERS,
-      event: PACK_ABI[0], // PacksBought
-      args: { buyer: buyer.toLowerCase() },
-      fromBlock,
-      toBlock: "latest",
-    });
-    return logs;
-  } catch (e) {
-    console.error("getBuyerLogs ERROR:", e);
-    throw e;
+/**
+ * Récupère les logs en chunkant la plage de blocs pour éviter
+ * "Block range is too large" côté RPC.
+ */
+async function getBuyerLogsChunked(buyer, fromBlock = DEFAULT_FROM_BLOCK) {
+  const end = await publicClient.getBlockNumber().catch(() => null);
+  if (!end) throw new Error("Impossible de lire le block courant");
+
+  const logsAll = [];
+  let start = fromBlock;
+  let chunkSize = 50_000n; // taille de fenêtre initiale (ajustable dynamiquement)
+
+  while (start <= end) {
+    let to = start + chunkSize - 1n;
+    if (to > end) to = end;
+
+    try {
+      const logs = await publicClient.getLogs({
+        address: PACK_TIERS,
+        event: PACK_ABI[0], // PacksBought
+        args: { buyer: buyer.toLowerCase() },
+        fromBlock: start,
+        toBlock: to,
+      });
+      logsAll.push(...logs);
+      // si ça passe, on peut tenter d'augmenter un peu la fenêtre (max x2)
+      if (chunkSize < 200_000n) chunkSize *= 2n;
+      // avancer
+      start = to + 1n;
+    } catch (e) {
+      const msg = String(e?.message || e);
+      // Si la fenêtre est trop grande, on réduit
+      if (
+        msg.includes("Block range is too large") ||
+        msg.includes("query timeout") ||
+        msg.includes("429") ||
+        msg.includes("rate limit")
+      ) {
+        // réduire la fenêtre
+        chunkSize = chunkSize > 10_000n ? chunkSize / 2n : 10_000n;
+        if (chunkSize <= 0n) throw e;
+        // ne pas avancer 'start' -> on retente avec fenêtre réduite
+        continue;
+      }
+      console.error("getBuyerLogsChunked ERROR chunk:", { start: String(start), to: String(to), e });
+      throw e;
+    }
   }
+
+  return logsAll;
 }
 
 async function previewAtBlock(address, clubId, numPacks, blockNumber) {
@@ -121,7 +151,7 @@ async function previewAtBlock(address, clubId, numPacks, blockNumber) {
       to: address,
       data,
       account: CALLER,
-      blockNumber, // lecture à l’état historique
+      blockNumber,
     });
     return parsePreviewResultHex(out.data);
   } catch (e) {
@@ -143,15 +173,15 @@ async function handle(req, nameRaw, fromBlockRaw) {
   const origin = new URL(req.url).origin;
 
   try {
-    // 1) Résoudre le wallet
     const wallet = await resolveWalletServer(name, origin);
     const wLower = toAddrLower(wallet);
 
-    // 2) Récupérer les events PacksBought
     const fromBlock = fromBlockRaw ? BigInt(fromBlockRaw) : DEFAULT_FROM_BLOCK;
-    const logs = await getBuyerLogs(wLower, fromBlock);
 
-    // 3) Pour chaque achat, rejouer preview au block de l’achat et allouer le coût
+    // 🔁 logs par fenêtres
+    const logs = await getBuyerLogsChunked(wLower, fromBlock);
+
+    // Allocation des coûts
     const spentUSDByClub = new Map();
     const audit = [];
 
@@ -218,7 +248,6 @@ export async function POST(req) {
     body = await req.json();
   } catch (e) {
     console.error("POST body JSON parse ERROR:", e);
-    // On renvoie un JSON *valide* même si le body était vide/corrompu
     return NextResponse.json({ ok: false, error: "Body non JSON" }, { status: 400 });
   }
   const name = body?.name || body?.username;
