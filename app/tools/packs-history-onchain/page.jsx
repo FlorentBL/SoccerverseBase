@@ -7,18 +7,21 @@ const fmtUSD = (n) =>
     ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
     : "—";
 const fmtBlock = (bn) => (bn ? `#${bn}` : "—");
+const fmtInt = (n) =>
+  typeof n === "number" ? n.toLocaleString("en-US") : "—";
 
 export default function PacksHistoryOnchain() {
   const [username, setUsername] = useState("");
-  const [fromBlock, setFromBlock] = useState("");   // optionnel
-  const [maxSecs, setMaxSecs] = useState("180");    // ⬅️ nouveau (par défaut 180 s)
+  const [fromBlock, setFromBlock] = useState("");   // facultatif
+  const [maxSecs, setMaxSecs] = useState("180");    // timeout côté API
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [wallet, setWallet] = useState("");
-  const [spent, setSpent] = useState([]);
-  const [mints, setMints] = useState([]);
-  const [sortKey, setSortKey] = useState("usd");
+  const [spent, setSpent] = useState([]); // [{ clubId, usd }]
+  const [mints, setMints] = useState([]); // [{ tx, blockNumber, clubId, numPacks, unitUSDC, totalUSDC, totalInf, components:[{clubId,influence,usd}]}]
+  const [sortKey, setSortKey] = useState("usd");   // "usd" | "clubId"
   const [sortDir, setSortDir] = useState("desc");
+  const [openMint, setOpenMint] = useState(null);  // tx hash ouvert
   const abortRef = useRef(null);
 
   function toggleSort(key) {
@@ -53,6 +56,7 @@ export default function PacksHistoryOnchain() {
     setWallet("");
     setSpent([]);
     setMints([]);
+    setOpenMint(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -84,8 +88,7 @@ export default function PacksHistoryOnchain() {
       setSpent(Array.isArray(data.spentPackUSDByClub) ? data.spentPackUSDByClub : []);
       setMints(Array.isArray(data.mints) ? data.mints : []);
     } catch (e) {
-      if (e?.name === "AbortError") setError("Requête annulée.");
-      else setError(e?.message || "Erreur inconnue");
+      setError(e?.message || "Erreur inconnue");
     } finally {
       setLoading(false);
       abortRef.current = null;
@@ -164,6 +167,13 @@ export default function PacksHistoryOnchain() {
           </div>
         )}
 
+        {/* Résumé global */}
+        {(spent.length > 0 || mints.length > 0) && (
+          <div className="mb-6 text-sm text-gray-300">
+            {mints.length} achat(s) — total packs {fmtUSD(totalUSD)}
+          </div>
+        )}
+
         {/* Agrégat par club */}
         {spent.length > 0 && (
           <section className="mb-10">
@@ -201,10 +211,10 @@ export default function PacksHistoryOnchain() {
           </section>
         )}
 
-        {/* Journal des mints (audit) */}
+        {/* Journal des mints + breakdown par club */}
         {mints.length > 0 && (
           <section className="mb-20">
-            <h2 className="text-2xl font-semibold mb-3">Mints (audit)</h2>
+            <h2 className="text-2xl font-semibold mb-3">Détail des achats de packs</h2>
             <div className="rounded-xl border border-gray-700 overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-800 text-gray-300">
@@ -215,37 +225,89 @@ export default function PacksHistoryOnchain() {
                     <th className="text-right py-2 px-3">numPacks</th>
                     <th className="text-right py-2 px-3">totalUSDC</th>
                     <th className="text-right py-2 px-3">totalInf</th>
+                    <th className="text-right py-2 px-3">Détail</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {mints.map((m) => (
-                    <tr key={m.tx} className="hover:bg-white/5">
-                      <td className="py-2 px-3">
-                        <a
-                          className="text-indigo-400 hover:underline"
-                          href={`https://polygonscan.com/tx/${m.tx}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {m.tx.slice(0, 10)}…
-                        </a>
-                      </td>
-                      <td className="py-2 px-3">{fmtBlock(m.blockNumber)}</td>
-                      <td className="py-2 px-3 text-right">{fmtUSD(Number(m.unitUSDC) || 0)}</td>
-                      <td className="py-2 px-3 text-right">{Number(m.numPacks) || 0}</td>
-                      <td className="py-2 px-3 text-right">{fmtUSD(Number(m.totalUSDC) || 0)}</td>
-                      <td className="py-2 px-3 text-right">{Number(m.totalInf) || 0}</td>
-                    </tr>
-                  ))}
+                  {mints.map((m) => {
+                    const isOpen = openMint === m.tx;
+                    const toggle = () => setOpenMint(isOpen ? null : m.tx);
+                    const comps = Array.isArray(m.components) ? m.components : [];
+                    const sumUSD = comps.reduce((s, c) => s + (Number(c.usd) || 0), 0);
+                    return (
+                      <React.Fragment key={m.tx}>
+                        <tr className="hover:bg-white/5">
+                          <td className="py-2 px-3">
+                            <a
+                              className="text-indigo-400 hover:underline"
+                              href={`https://polygonscan.com/tx/${m.tx}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {m.tx.slice(0, 10)}…
+                            </a>
+                          </td>
+                          <td className="py-2 px-3">{fmtBlock(m.blockNumber)}</td>
+                          <td className="py-2 px-3 text-right">{fmtUSD(Number(m.unitUSDC) || 0)}</td>
+                          <td className="py-2 px-3 text-right">{fmtInt(Number(m.numPacks) || 0)}</td>
+                          <td className="py-2 px-3 text-right">{fmtUSD(Number(m.totalUSDC) || 0)}</td>
+                          <td className="py-2 px-3 text-right">{fmtInt(Number(m.totalInf) || 0)}</td>
+                          <td className="py-2 px-3 text-right">
+                            <button
+                              onClick={toggle}
+                              className="text-indigo-400 hover:underline"
+                            >
+                              {isOpen ? "Masquer" : "Voir"}
+                            </button>
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="bg-black/30">
+                            <td colSpan={7} className="py-3 px-3">
+                              <div className="text-xs text-gray-300 mb-2">
+                                Répartition par club — somme: {fmtUSD(sumUSD)}
+                              </div>
+                              <div className="rounded-lg border border-gray-700 overflow-hidden">
+                                <table className="w-full text-xs">
+                                  <thead className="bg-gray-800 text-gray-300">
+                                    <tr>
+                                      <th className="text-left py-1 px-2">ClubId</th>
+                                      <th className="text-right py-1 px-2">Influence</th>
+                                      <th className="text-right py-1 px-2">USD imputés</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-700">
+                                    {comps.map((c, i) => (
+                                      <tr key={`${m.tx}-${i}`}>
+                                        <td className="py-1 px-2">{c.clubId}</td>
+                                        <td className="py-1 px-2 text-right">{fmtInt(Number(c.influence) || 0)}</td>
+                                        <td className="py-1 px-2 text-right">{fmtUSD(Number(c.usd) || 0)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             <div className="mt-4 text-xs text-gray-400">
-              * Coût réparti sur toutes les influences retournées par
-              <code className="mx-1 px-1 rounded bg-gray-800">preview</code> au bloc de l’achat.
+              * Le coût est celui payé **le jour de l’achat**, réparti sur toutes les influences
+              retournées par <code className="mx-1 px-1 rounded bg-gray-800">preview</code> au bloc de l’achat.
             </div>
           </section>
+        )}
+
+        {(!loading && !error && spent.length === 0 && mints.length === 0 && wallet) && (
+          <div className="text-gray-400">
+            Aucun achat de pack trouvé pour ce wallet (essaie un fromBlock plus ancien).
+          </div>
         )}
       </div>
     </div>
