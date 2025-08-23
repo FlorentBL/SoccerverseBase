@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 
 const fmtUSD = (n) =>
   typeof n === "number"
@@ -8,70 +8,17 @@ const fmtUSD = (n) =>
     : "—";
 const fmtBlock = (bn) => (bn ? `#${bn}` : "—");
 
-// Optional: avoid endless hangs
-async function fetchWithTimeout(resource, options = {}, ms = 90000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(resource, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-async function fetchHistoryOnchain(name) {
-  const res = await fetchWithTimeout("/api/packs/history_onchain", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    throw new Error(`Réponse non JSON (HTTP ${res.status})`);
-  }
-  if (!res.ok || data?.ok === false) {
-    throw new Error(data?.error || `Erreur API (HTTP ${res.status})`);
-  }
-  return data;
-}
-
 export default function PacksHistoryOnchain() {
   const [username, setUsername] = useState("");
+  const [fromBlock, setFromBlock] = useState("");   // optionnel
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [wallet, setWallet] = useState("");
   const [spent, setSpent] = useState([]);
   const [mints, setMints] = useState([]);
-
-  const [sortKey, setSortKey] = useState("usd");   // "usd" | "clubId"
-  const [sortDir, setSortDir] = useState("desc");  // "asc" | "desc"
-
-  async function run() {
-    const name = username.trim();
-    if (!name) {
-      setError("Entre un nom d'utilisateur Soccerverse");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    setWallet("");
-    setSpent([]);
-    setMints([]);
-
-    try {
-      const data = await fetchHistoryOnchain(name);
-      setWallet(data.wallet || "");
-      setSpent(Array.isArray(data.spentPackUSDByClub) ? data.spentPackUSDByClub : []);
-      setMints(Array.isArray(data.mints) ? data.mints : []);
-    } catch (e) {
-      setError(e?.message || "Erreur inconnue");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [sortKey, setSortKey] = useState("usd");
+  const [sortDir, setSortDir] = useState("desc");
+  const abortRef = useRef(null);
 
   function toggleSort(key) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -83,7 +30,7 @@ export default function PacksHistoryOnchain() {
     arr.sort((a, b) => {
       const va = sortKey === "clubId" ? Number(a.clubId) : Number(a.usd);
       const vb = sortKey === "clubId" ? Number(b.clubId) : Number(b.usd);
-      return sortDir === "asc" ? va - vb : vb - va;  // ✅ fix 'vb' (not vy)
+      return sortDir === "asc" ? va - vb : vb - va;
     });
     return arr;
   }, [spent, sortKey, sortDir]);
@@ -93,26 +40,99 @@ export default function PacksHistoryOnchain() {
     [spent]
   );
 
+  async function run() {
+    const name = username.trim();
+    if (!name) {
+      setError("Entre un nom d'utilisateur Soccerverse");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setWallet("");
+    setSpent([]);
+    setMints([]);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const body = { name, maxSecs: 60 };
+      if (fromBlock && /^\d+$/.test(fromBlock)) body.fromBlock = Number(fromBlock);
+
+      const res = await fetch("/api/packs/history_onchain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Réponse non JSON (HTTP ${res.status})`);
+      }
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.error || `Erreur API (HTTP ${res.status})`);
+      }
+
+      setWallet(data.wallet || "");
+      setSpent(Array.isArray(data.spentPackUSDByClub) ? data.spentPackUSDByClub : []);
+      setMints(Array.isArray(data.mints) ? data.mints : []);
+    } catch (e) {
+      if (e?.name === "AbortError") {
+        setError("Requête annulée.");
+      } else {
+        setError(e?.message || "Erreur inconnue");
+      }
+    } finally {
+      setLoading(false);
+      abortRef.current = null;
+    }
+  }
+
+  function abort() {
+    abortRef.current?.abort();
+  }
+
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold mb-6">Test — Packs history (on‑chain)</h1>
 
-        <div className="mb-4 flex flex-col sm:flex-row gap-2">
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
           <input
-            className="flex-1 rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
+            className="rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Nom d'utilisateur Soccerverse"
           />
-          <button
-            type="button"
-            onClick={run}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
-            disabled={loading || !username.trim()}
-          >
-            {loading ? "Chargement..." : "Lancer"}
-          </button>
+          <input
+            className="rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
+            value={fromBlock}
+            onChange={(e) => setFromBlock(e.target.value)}
+            placeholder="fromBlock (optionnel)"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={run}
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+              disabled={loading || !username.trim()}
+            >
+              {loading ? "Chargement..." : "Lancer"}
+            </button>
+            {loading && (
+              <button
+                type="button"
+                onClick={abort}
+                className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600"
+              >
+                Annuler
+              </button>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -211,16 +231,10 @@ export default function PacksHistoryOnchain() {
             </div>
 
             <div className="mt-4 text-xs text-gray-400">
-              * Le coût est réparti sur toutes les influences retournées par
+              * Coût réparti sur toutes les influences retournées par
               <code className="mx-1 px-1 rounded bg-gray-800">preview</code> au bloc de l’achat.
             </div>
           </section>
-        )}
-
-        {(!loading && !error && spent.length === 0 && mints.length === 0 && wallet) && (
-          <div className="text-gray-400">
-            Aucun achat de pack trouvé pour ce wallet (vérifie le pseudo).
-          </div>
         )}
       </div>
     </div>
