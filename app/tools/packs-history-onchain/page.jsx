@@ -1,4 +1,4 @@
-// app/tools/packs-history/page.jsx
+// app/tools/packs-history-onchain/page.jsx
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -8,20 +8,21 @@ const fmtUSD = (n) =>
     ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
     : "—";
 
-const fmtDate = (ts) =>
-  ts ? new Date(Number(ts) * 1000).toLocaleString() : "—";
+const fmtDate = (bn) => (bn ? `#${bn}` : "—");
 
-export default function PacksHistoryTest() {
+export default function PacksHistoryOnchain() {
   const [username, setUsername] = useState("");
+  const [fromBlock, setFromBlock] = useState("66056325");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [wallet, setWallet] = useState("");
-  const [spent, setSpent] = useState([]); // [{clubId, usd}]
-  const [mints, setMints] = useState([]); // [{id, ts, unitUSDC, numPacks, totalUSDC, totalInf}]
-  const [sortKey, setSortKey] = useState("usd");
-  const [sortDir, setSortDir] = useState("desc");
+  const [spent, setSpent] = useState([]); // [{ clubId, usd }]
+  const [mints, setMints] = useState([]); // [{ tx, blockNumber, clubId, numPacks, unitUSDC, totalUSDC, totalInf, components }]
 
-  async function handleRun(e) {
+  const [sortKey, setSortKey] = useState("usd"); // "usd" | "clubId"
+  const [sortDir, setSortDir] = useState("desc"); // "asc" | "desc"
+
+  async function run(e) {
     e?.preventDefault();
     const name = username.trim();
     if (!name) return;
@@ -33,59 +34,68 @@ export default function PacksHistoryTest() {
     setMints([]);
 
     try {
-      const r = await fetch("/api/packs/history", {
+      const r = await fetch("/api/packs/history_onchain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, fromBlock }),
       });
       const j = await r.json();
       if (!r.ok || j?.ok === false) throw new Error(j?.error || `HTTP ${r.status}`);
 
       setWallet(j.wallet || "");
-      setSpent(Array.isArray(j?.spentPackUSDByClub) ? j.spentPackUSDByClub : []);
-      // `mints` renvoyé par l’API est un audit résumé (id, ts, unitUSDC, numPacks, totalUSDC, totalInf, skipped)
-      setMints(Array.isArray(j?.mints) ? j.mints : []);
-    } catch (err) {
-      setError(err?.message || "Erreur inconnue");
+      setSpent(Array.isArray(j.spentPackUSDByClub) ? j.spentPackUSDByClub : []);
+      setMints(Array.isArray(j.mints) ? j.mints : []);
+    } catch (e2) {
+      setError(e2?.message || "Erreur inconnue");
     } finally {
       setLoading(false);
     }
   }
 
   function toggleSort(key) {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
       setSortKey(key);
       setSortDir("desc");
     }
   }
 
   const spentSorted = useMemo(() => {
-    const arr = [...spent];
-    arr.sort((a, b) => {
-      const va = sortKey === "clubId" ? Number(a.clubId) : Number(a.usd);
-      const vb = sortKey === "clubId" ? Number(b.clubId) : Number(b.usd);
-      return sortDir === "asc" ? va - vb : vb - va;
+    const a = [...spent];
+    a.sort((x, y) => {
+      const vx = sortKey === "clubId" ? Number(x.clubId) : Number(x.usd);
+      const vy = sortKey === "clubId" ? Number(y.clubId) : Number(y.usd);
+      return sortDir === "asc" ? vx - vy : vy - vx;
     });
-    return arr;
+    return a;
   }, [spent, sortKey, sortDir]);
 
   const totalUSD = useMemo(
-    () => spent.reduce((s, x) => s + (Number(x.usd) || 0), 0),
+    () => spent.reduce((s, r) => s + (Number(r.usd) || 0), 0),
     [spent]
   );
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-6">Test — Packs history (subgraph)</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">
+          Test — Packs history (on‑chain)
+        </h1>
 
-        <form onSubmit={handleRun} className="mb-4 flex flex-col sm:flex-row gap-2">
+        {/* Form */}
+        <form onSubmit={run} className="mb-4 flex flex-col sm:flex-row gap-2">
           <input
+            className="flex-1 rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Nom d'utilisateur Soccerverse"
-            className="flex-1 rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
+          />
+          <input
+            className="w-44 rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
+            value={fromBlock}
+            onChange={(e) => setFromBlock(e.target.value)}
+            placeholder="fromBlock (optionnel)"
           />
           <button
             className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
@@ -95,15 +105,17 @@ export default function PacksHistoryTest() {
           </button>
         </form>
 
+        {/* Error */}
         {error && (
           <div className="mb-6 rounded-lg border border-red-800 bg-red-950/30 p-3 text-red-300">
             {error}
           </div>
         )}
 
+        {/* Wallet */}
         {wallet && (
           <div className="mb-6 text-sm text-gray-300">
-            Wallet:{" "}
+            Wallet :{" "}
             <a
               className="text-indigo-400 hover:underline"
               href={`https://polygonscan.com/address/${wallet}`}
@@ -119,7 +131,7 @@ export default function PacksHistoryTest() {
         {spent.length > 0 && (
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-3">
-              Dépenses packs réelles par club (USD) — total {fmtUSD(totalUSD)}
+              Dépenses packs réelles par club — total {fmtUSD(totalUSD)}
             </h2>
 
             <div className="rounded-xl border border-gray-700 overflow-hidden">
@@ -130,13 +142,23 @@ export default function PacksHistoryTest() {
                       className="text-left py-2 px-3 cursor-pointer select-none hover:underline"
                       onClick={() => toggleSort("clubId")}
                     >
-                      ClubId {sortKey === "clubId" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                      ClubId{" "}
+                      {sortKey === "clubId"
+                        ? sortDir === "asc"
+                          ? "↑"
+                          : "↓"
+                        : "↕"}
                     </th>
                     <th
                       className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
                       onClick={() => toggleSort("usd")}
                     >
-                      USD {sortKey === "usd" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                      USD{" "}
+                      {sortKey === "usd"
+                        ? sortDir === "asc"
+                          ? "↑"
+                          : "↓"
+                        : "↕"}
                     </th>
                   </tr>
                 </thead>
@@ -144,7 +166,9 @@ export default function PacksHistoryTest() {
                   {spentSorted.map((row) => (
                     <tr key={row.clubId} className="hover:bg-white/5">
                       <td className="py-2 px-3">{row.clubId}</td>
-                      <td className="py-2 px-3 text-right">{fmtUSD(Number(row.usd) || 0)}</td>
+                      <td className="py-2 px-3 text-right">
+                        {fmtUSD(Number(row.usd) || 0)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -162,35 +186,61 @@ export default function PacksHistoryTest() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-800 text-gray-300">
                   <tr>
-                    <th className="text-left py-2 px-3">ID</th>
-                    <th className="text-left py-2 px-3">Date</th>
+                    <th className="text-left py-2 px-3">Tx</th>
+                    <th className="text-left py-2 px-3">Bloc</th>
                     <th className="text-right py-2 px-3">unitUSDC</th>
                     <th className="text-right py-2 px-3">numPacks</th>
                     <th className="text-right py-2 px-3">totalUSDC</th>
                     <th className="text-right py-2 px-3">totalInf</th>
-                    <th className="text-left py-2 px-3">status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {mints.map((m) => (
-                    <tr key={m.id} className="hover:bg-white/5">
-                      <td className="py-2 px-3">{m.id}</td>
-                      <td className="py-2 px-3">{fmtDate(m.ts)}</td>
-                      <td className="py-2 px-3 text-right">{fmtUSD(Number(m.unitUSDC) || 0)}</td>
-                      <td className="py-2 px-3 text-right">{Number(m.numPacks) || 0}</td>
-                      <td className="py-2 px-3 text-right">{fmtUSD(Number(m.totalUSDC) || 0)}</td>
-                      <td className="py-2 px-3 text-right">{Number(m.totalInf) || 0}</td>
-                      <td className="py-2 px-3">{m.skipped ? "skipped" : "ok"}</td>
+                    <tr key={m.tx} className="hover:bg-white/5">
+                      <td className="py-2 px-3">
+                        <a
+                          className="text-indigo-400 hover:underline"
+                          href={`https://polygonscan.com/tx/${m.tx}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {m.tx.slice(0, 10)}…
+                        </a>
+                      </td>
+                      <td className="py-2 px-3">{fmtDate(m.blockNumber)}</td>
+                      <td className="py-2 px-3 text-right">
+                        {fmtUSD(Number(m.unitUSDC) || 0)}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        {Number(m.numPacks) || 0}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        {fmtUSD(Number(m.totalUSDC) || 0)}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        {Number(m.totalInf) || 0}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Détail composants (optionnel) */}
+            <div className="mt-4 text-xs text-gray-400">
+              <p>
+                * Le coût est réparti sur toutes les influences retournées par
+                <code className="mx-1 px-1 py-0.5 rounded bg-gray-800">preview</code>
+                au bloc de l’achat.
+              </p>
+            </div>
           </section>
         )}
 
         {(!loading && !error && spent.length === 0 && mints.length === 0 && wallet) && (
-          <div className="text-gray-400">Aucun mint pack trouvé pour ce wallet.</div>
+          <div className="text-gray-400">
+            Aucun achat de pack trouvé pour ce wallet à partir du bloc {fromBlock}.
+          </div>
         )}
       </div>
     </div>
