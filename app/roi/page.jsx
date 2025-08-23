@@ -7,6 +7,7 @@
  * - Gains SVC (clubs)      = somme des dividends_club
  * - Prix pack + inf./pack  = via /api/pack_preview (pack principal)
  * - ROI ($) = gains$ / (dépense$SVC + dépense$Packs)   avec 1 SVC = $SVC2USDC
+ * - ROI affiné ($) = gains$ / (dépense$SVC + dépense$Packs réparti entre tous les clubs du pack)
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -59,7 +60,6 @@ function estimateQtyBoughtViaSVC(transactions) {
     const s = t?.share;
     if (s?.type !== "club" || s?.id == null) continue;
 
-    // champs possibles : qty, quantity, delta, totalDelta, etc.
     const q =
       Number(t?.qty) ||
       Number(t?.quantity) ||
@@ -67,8 +67,6 @@ function estimateQtyBoughtViaSVC(transactions) {
       Number(t?.totalDelta) ||
       0;
 
-    // on ne sait pas toujours si c’est achat/vente ;
-    // si q>0 on considère que c'est un achat, sinon on ignore prudemment
     if (q > 0) {
       qtyByClub.set(s.id, (qtyByClub.get(s.id) || 0) + q);
     }
@@ -87,6 +85,7 @@ function aggregateForever({
   playerMap,
   packPriceUSDByClub, // Map<number, number> clubId -> prix pack ($)
   infPerPackByClub,   // Map<number, number> clubId -> inf./pack (club principal)
+  allInfByClub,       // Map<number, Array<{clubId:number, inf:number}>> (composition complète du pack)
   svcRateUSD,         // 1 SVC = $svcRateUSD (number | null)
 }) {
   const tradeIdx = indexTradesByTimeAndCounterparty(transactions);
@@ -150,29 +149,43 @@ function aggregateForever({
     // Le reste est supposé venir des packs
     const qtyIssuePacks = Math.max(0, qty - qtyAcheteeSvc);
 
-    // Coût imputé aux packs (linéaire sur l’influence principale)
+    // Coût imputé aux packs (méthode simple : coût / influence du club principal)
     const usdParInfluenceDepuisPack = infPerPack > 0 ? packPriceUSD / infPerPack : 0;
     const depensePacksUSD = round2(qtyIssuePacks * usdParInfluenceDepuisPack);
+
+    // Coût pack **affiné** : réparti entre tous les clubs contenus
+    let depensePacksAffineeUSD = 0;
+    const composition = allInfByClub.get(id); // [{clubId, inf}, ...] incluant le principal + secondaires
+    if (composition && composition.length > 0) {
+      const totalInfPack = composition.reduce((s, x) => s + (Number(x.inf) || 0), 0);
+      const costPerInf = totalInfPack > 0 ? packPriceUSD / totalInfPack : 0;
+      depensePacksAffineeUSD = round2(qtyIssuePacks * costPerInf);
+    }
 
     // Conversion SVC -> USD
     const depenseSvcUSD = svcRateUSD != null ? round2(achatsSvc * svcRateUSD) : null;
     const gainsUSD = svcRateUSD != null ? round2(gainsSvc * svcRateUSD) : null;
 
     const coutTotalUSD = (depenseSvcUSD ?? 0) + (depensePacksUSD || 0);
+    const coutTotalAffUSD = (depenseSvcUSD ?? 0) + (depensePacksAffineeUSD || 0);
+
     const roiUSD = SAFE_DIV(gainsUSD ?? 0, coutTotalUSD);
+    const roiAffUSD = SAFE_DIV(gainsUSD ?? 0, coutTotalAffUSD);
 
     clubs.push({
       id,
       name,
       qty,
-      achatsSvc,     // SVC (colonne "Achats via SVC")
-      gainsSvc,      // SVC (colonne "Gains SVC")
-      packPriceUSD,  // $
-      infPerPack,    // influences / pack (club principal)
-      depenseSvcUSD, // $ (info pour tooltip)
-      depensePacksUSD, // $ (info pour tooltip)
-      gainsUSD,      // $ (info pour tooltip)
-      roiUSD,        // nombre dans [0..+inf) (affiché en barre %)
+      achatsSvc,         // SVC
+      gainsSvc,          // SVC
+      packPriceUSD,      // $
+      infPerPack,        // influences / pack (club principal)
+      depenseSvcUSD,     // $
+      depensePacksUSD,   // $
+      depensePacksAffineeUSD, // $
+      gainsUSD,          // $
+      roiUSD,            // ROI ($) simple
+      roiAffUSD,         // ROI affiné ($)
       link: `https://play.soccerverse.com/club/${id}`,
     });
   }
@@ -197,7 +210,7 @@ function aggregateForever({
     });
   }
 
-  // tri : plus gros gains d’abord
+  // tri par défaut (gains)
   clubs.sort((a, b) => (b.gainsSvc - a.gainsSvc) || (b.qty - a.qty));
   players.sort((a, b) => (b.payouts - a.payouts) || (b.qty - a.qty));
 
@@ -238,12 +251,17 @@ export default function RoiForever() {
   const [transactions, setTransactions] = useState([]); // /api/transactions
   const [positions, setPositions] = useState({ clubs: [], players: [] }); // /api/user_positions
 
-  // Prix pack ($) et inf./pack pour le club
+  // Prix pack ($), inf./pack (principal) et composition complète des packs
   const [packPriceUSDByClub, setPackPriceUSDByClub] = useState(new Map());
   const [infPerPackByClub, setInfPerPackByClub] = useState(new Map());
+  const [allInfByClub, setAllInfByClub] = useState(new Map());
 
   // 1 SVC = $svcRateUSD
   const [svcRateUSD, setSvcRateUSD] = useState(null);
+
+  // Tri (ROI / ROI affiné)
+  const [sortKey, setSortKey] = useState(null); // "roiUSD" | "roiAffUSD" | null
+  const [sortDir, setSortDir] = useState("desc");
 
   // wallet résolu (via /api/resolve_wallet)
   const [wallet, setWallet] = useState(null);
@@ -324,7 +342,8 @@ export default function RoiForever() {
     return res.json();
   }
 
-  // Récupère le prix du pack ($) et l’influence/pack du club principal
+  // Récupère prix du pack ($), influence/pack du club principal
+  // ET la composition complète du pack (principal + secondaires)
   async function fetchPackPreviewFor(clubId) {
     const r = await fetch(`/api/pack_preview?clubId=${clubId}&numPacks=1`, { cache: "no-store" });
     if (!r.ok) return null;
@@ -337,12 +356,25 @@ export default function RoiForever() {
         ? j.resultNums[1] / 1e6
         : null;
 
+    // inf principale
     const infPerPack =
       j?.parsed?.mainClub?.influence ??
       (Array.isArray(j?.resultNums) ? j.resultNums[7] : null);
 
+    // composition complète à partir de resultNums :
+    // indices: [ ..., clubId, inf, clubId, inf, ..., 0 ]
+    const influences = [];
+    if (Array.isArray(j?.resultNums)) {
+      for (let i = 6; i < j.resultNums.length; i += 2) {
+        const cid = Number(j.resultNums[i]);
+        const inf = Number(j.resultNums[i + 1] || 0);
+        if (!cid) break; // 0 terminal
+        influences.push({ clubId: cid, inf });
+      }
+    }
+
     if (typeof packPriceUSD === "number" && typeof infPerPack === "number") {
-      return { packPriceUSD, infPerPack };
+      return { packPriceUSD, infPerPack, influences };
     }
     return null;
   }
@@ -392,12 +424,16 @@ export default function RoiForever() {
 
       const priceMap = new Map();
       const infMap = new Map();
+      const allInfMap = new Map();
       for (const [id, p] of previews) {
-        if (p && typeof p.packPriceUSD === "number") priceMap.set(id, p.packPriceUSD);
-        if (p && typeof p.infPerPack === "number") infMap.set(id, p.infPerPack);
+        if (!p) continue;
+        if (typeof p.packPriceUSD === "number") priceMap.set(id, p.packPriceUSD);
+        if (typeof p.infPerPack === "number") infMap.set(id, p.infPerPack);
+        if (Array.isArray(p.influences)) allInfMap.set(id, p.influences);
       }
       setPackPriceUSDByClub(priceMap);
       setInfPerPackByClub(infMap);
+      setAllInfByClub(allInfMap);
     } catch (err) {
       setError(err?.message || "Erreur lors du chargement.");
       setBalanceSheet([]);
@@ -405,13 +441,14 @@ export default function RoiForever() {
       setPositions({ clubs: [], players: [] });
       setPackPriceUSDByClub(new Map());
       setInfPerPackByClub(new Map());
+      setAllInfByClub(new Map());
       setWallet(null);
     } finally {
       setLoading(false);
     }
   }
 
-  const { clubs, players } = useMemo(
+  const aggregated = useMemo(
     () =>
       aggregateForever({
         balanceSheet,
@@ -421,9 +458,39 @@ export default function RoiForever() {
         playerMap,
         packPriceUSDByClub,
         infPerPackByClub,
+        allInfByClub,
         svcRateUSD,
       }),
-    [balanceSheet, transactions, positions, clubMap, playerMap, packPriceUSDByClub, infPerPackByClub, svcRateUSD]
+    [balanceSheet, transactions, positions, clubMap, playerMap, packPriceUSDByClub, infPerPackByClub, allInfByClub, svcRateUSD]
+  );
+
+  // tri local si demandé
+  const clubs = useMemo(() => {
+    const arr = [...aggregated.clubs];
+    if (!sortKey) return arr;
+    arr.sort((a, b) => {
+      const va = a[sortKey] ?? -Infinity;
+      const vb = b[sortKey] ?? -Infinity;
+      return sortDir === "asc" ? va - vb : vb - va;
+    });
+    return arr;
+  }, [aggregated.clubs, sortKey, sortDir]);
+
+  const { players } = aggregated;
+
+  function toggleSort(key) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
+
+  const Arrow = ({ active, dir }) => (
+    <span className={`ml-1 text-xs ${active ? "opacity-100" : "opacity-30"}`}>
+      {active ? (dir === "asc" ? "↑" : "↓") : "↕"}
+    </span>
   );
 
   return (
@@ -489,7 +556,22 @@ export default function RoiForever() {
                       <th className="text-right py-2 px-3">Gains SVC</th>
                       <th className="text-right py-2 px-3">Prix pack ($)</th>
                       <th className="text-right py-2 px-3">Inf./pack (club)</th>
-                      <th className="text-right py-2 px-3">ROI ($)</th>
+                      <th
+                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                        onClick={() => toggleSort("roiUSD")}
+                        title="Trier par ROI ($)"
+                      >
+                        ROI ($)
+                        <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
+                      </th>
+                      <th
+                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                        onClick={() => toggleSort("roiAffUSD")}
+                        title="Trier par ROI affiné ($)"
+                      >
+                        ROI affiné ($)
+                        <Arrow active={sortKey === "roiAffUSD"} dir={sortDir} />
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -523,6 +605,18 @@ export default function RoiForever() {
                           {row.gainsUSD != null && (
                             <div className="text-xs text-gray-500 text-right mt-1">
                               gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD((row.depenseSvcUSD || 0) + (row.depensePacksUSD || 0))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2 px-3">
+                          {row.roiAffUSD != null ? (
+                            <RoiBar pct={row.roiAffUSD * 100} />
+                          ) : (
+                            <span className="text-gray-500">n/a</span>
+                          )}
+                          {row.gainsUSD != null && (
+                            <div className="text-xs text-gray-500 text-right mt-1">
+                              gains: {fmtUSD(row.gainsUSD)} / coût aff.: {fmtUSD((row.depenseSvcUSD || 0) + (row.depensePacksAffineeUSD || 0))}
                             </div>
                           )}
                         </td>
@@ -571,7 +665,7 @@ export default function RoiForever() {
                         <td className="py-2 px-3 text-right">{fmtSVC(row.payouts)}</td>
                         <td className="py-2 px-3">
                           {row.baseSvc > 0 ? (
-                            <RoiBar pct={row.roi * 100} />
+                            <RoiBar pct={(row.payouts / row.baseSvc) * 100} />
                           ) : (
                             <span className="text-gray-500">n/a (base mint)</span>
                           )}
