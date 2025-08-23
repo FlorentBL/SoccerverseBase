@@ -37,6 +37,21 @@ function toBigIntSafe(v) {
   throw new Error("Argument numérique invalide");
 }
 
+// Convertit un BigInt[] en string[] (sérialisable JSON)
+function stringifyBigIntArray(arr) {
+  return Array.isArray(arr) ? arr.map((x) => (typeof x === "bigint" ? x.toString() : String(x))) : [];
+}
+
+// Convertit prudemment en Number ; met `null` si > Number.MAX_SAFE_INTEGER
+function toSafeNumbers(arr) {
+  return Array.isArray(arr)
+    ? arr.map((x) => {
+        const n = typeof x === "bigint" ? x : BigInt(String(x));
+        return n <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(n) : null;
+      })
+    : [];
+}
+
 async function handle(clubIdRaw, numPacksRaw, debug) {
   const clubId = toBigIntSafe(clubIdRaw);
   const numPacks = toBigIntSafe(numPacksRaw ?? 1);
@@ -89,7 +104,7 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
         address,
         clubId: String(clubId),
         numPacks: String(numPacks),
-        lowLevelCall: out, // { data, ... }
+        lowLevelCall: { data: out.data }, // ne renvoie que la data hex
         ...diag,
       });
     } catch (e) {
@@ -109,7 +124,7 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
     }
   }
 
-  // Mode normal → eth_call + décodage (uint256[]) via viem avec fallback tolérant
+  // Mode normal → eth_call + décodage (uint256[]) via viem avec fallback
   try {
     const out = await publicClient.call({ to: address, data, account: CALLER });
 
@@ -142,7 +157,9 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       resultBigints = arr;
     }
 
-    const resultNums = resultBigints.map((x) => Number(x));
+    // ⬇️ sérialisables JSON + copie "safe number" pour l'UI
+    const resultStrings = stringifyBigIntArray(resultBigints);
+    const resultNums = toSafeNumbers(resultBigints);
 
     return NextResponse.json({
       ok: true,
@@ -150,8 +167,8 @@ async function handle(clubIdRaw, numPacksRaw, debug) {
       address,
       clubId: String(clubId),
       numPacks: String(numPacks),
-      resultBigints, // bigint[]
-      resultNums,    // number[]
+      result: resultStrings, // string[]
+      resultNums,            // number[] (null si > MAX_SAFE_INTEGER)
       ...diag,
     });
   } catch (e) {
