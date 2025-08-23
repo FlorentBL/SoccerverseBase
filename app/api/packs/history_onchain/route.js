@@ -1,256 +1,236 @@
-import { NextResponse } from "next/server";
-import { publicClient } from "@/lib/polygon";
-import { encodeFunctionData, decodeAbiParameters } from "viem";
+"use client";
 
-// Adresses des contrats de vente par tier (Polygon mainnet)
-const PACK_TIERS = [
-  "0x8501A9018A5625b720355A5A05c5dA3D5E8bB003", // tier 1
-  "0x0bF818f3A69485c8B05Cf6292D9A04C6f58ADF08", // tier 2
-  "0x4259D89087b6EBBC8bE38A30393a2F99F798FE2f", // tier 3
-  "0x167360A54746b82e38f700dF0ef812c269c4e565", // tier 4
-  "0x3d25Cb3139811c6AeE9D5ae8a01B2e5824b5dB91", // tier 5
-];
+import React, { useMemo, useState } from "react";
 
-// Minimal ABI pour:
-// - event PacksBought(address indexed buyer, string ref, uint256 indexed clubId, uint256 numPacks, uint256 unitUSDC)
-// - function preview(uint256 clubId, uint256 numPacks)
-const PACK_ABI = [
-  {
-    type: "event",
-    name: "PacksBought",
-    inputs: [
-      { indexed: true,  name: "buyer",    type: "address" },
-      { indexed: false, name: "ref",      type: "string"  },
-      { indexed: true,  name: "clubId",   type: "uint256" },
-      { indexed: false, name: "numPacks", type: "uint256" },
-      { indexed: false, name: "unitUSDC", type: "uint256" }, // µUSDC
-    ],
-  },
-  {
-    type: "function",
-    name: "preview",
-    stateMutability: "view",
-    inputs: [
-      { name: "clubId", type: "uint256"  },
-      { name: "numPacks", type: "uint256" },
-    ],
-  },
-];
+const fmtUSD = (n) =>
+  typeof n === "number"
+    ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
+    : "—";
+const fmtBlock = (bn) => (bn ? `#${bn}` : "—");
 
-const CALLER = "0x000000000000000000000000000000000000dEaD";
-const DEFAULT_FROM_BLOCK = 66056325n;
-
-const toAddrLower = (a) => (a || "").toLowerCase();
-
-async function resolveWalletServer(name, origin) {
+// Petit helper pour éviter les appels bloqués indéfiniment
+async function fetchWithTimeout(resource, options = {}, ms = 60000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
   try {
-    const url = `${origin}/api/resolve_wallet`;
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-      cache: "no-store",
-    });
+    const res = await fetch(resource, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
 
-    let j = null;
-    try {
-      j = await r.json();
-    } catch {
-      throw new Error(`resolve_wallet non-JSON (HTTP ${r.status})`);
+async function fetchHistoryOnchain(name) {
+  // ⚠️ CHEMIN ABSOLU OBLIGATOIRE
+  const res = await fetchWithTimeout("/api/packs/history_onchain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  }, 90000); // 90s timeout
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Réponse non JSON (HTTP ${res.status})`);
+  }
+
+  if (!res.ok || data?.ok === false) {
+    throw new Error(data?.error || `Erreur API (HTTP ${res.status})`);
+  }
+  return data;
+}
+
+export default function PacksHistoryOnchain() {
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [wallet, setWallet] = useState("");
+  const [spent, setSpent] = useState([]);
+  const [mints, setMints] = useState([]);
+
+  const [sortKey, setSortKey] = useState("usd");   // "usd" | "clubId"
+  const [sortDir, setSortDir] = useState("desc");  // "asc" | "desc"
+
+  async function run() {
+    const name = username.trim();
+    if (!name) {
+      setError("Entre un nom d'utilisateur Soccerverse");
+      return;
     }
-    if (!r.ok) throw new Error(j?.error || `resolve_wallet HTTP ${r.status}`);
-    if (!j?.wallet) throw new Error("Wallet introuvable");
-    return j.wallet;
-  } catch (e) {
-    console.error("resolveWalletServer ERROR:", e);
-    throw e;
-  }
-}
 
-function parsePreviewResultHex(hexData) {
-  const [arr] = decodeAbiParameters([{ type: "uint256[]" }], hexData);
-  return arr.map((x) => {
-    const n = typeof x === "bigint" ? x : BigInt(String(x));
-    return n <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(n) : n;
-  });
-}
-
-function extractClubInfluencesFromPreview(resultNums) {
-  const pairs = [];
-  let i = 6;
-  while (i + 1 < resultNums.length) {
-    const clubId = Number(resultNums[i]);
-    const inf = Number(resultNums[i + 1]);
-    if (!clubId) break; // terminaison
-    if (inf > 0) pairs.push({ clubId, inf });
-    i += 2;
-  }
-  return pairs;
-}
-
-/**
- * Récupère les logs en chunkant la plage de blocs pour éviter
- * "Block range is too large" côté RPC.
- */
-async function getBuyerLogsChunked(buyer, fromBlock = DEFAULT_FROM_BLOCK) {
-  const end = await publicClient.getBlockNumber().catch(() => null);
-  if (!end) throw new Error("Impossible de lire le block courant");
-
-  const logsAll = [];
-  let start = fromBlock;
-  let chunkSize = 50_000n; // taille de fenêtre initiale (ajustable dynamiquement)
-
-  while (start <= end) {
-    let to = start + chunkSize - 1n;
-    if (to > end) to = end;
+    setLoading(true);
+    setError("");
+    setWallet("");
+    setSpent([]);
+    setMints([]);
 
     try {
-      const logs = await publicClient.getLogs({
-        address: PACK_TIERS,
-        event: PACK_ABI[0], // PacksBought
-        args: { buyer: buyer.toLowerCase() },
-        fromBlock: start,
-        toBlock: to,
-      });
-      logsAll.push(...logs);
-      // si ça passe, on peut tenter d'augmenter un peu la fenêtre (max x2)
-      if (chunkSize < 200_000n) chunkSize *= 2n;
-      // avancer
-      start = to + 1n;
+      console.log("[packs-history-onchain] calling API…", { name });
+      const data = await fetchHistoryOnchain(name);
+      console.log("[packs-history-onchain] API response OK", data);
+
+      setWallet(data.wallet || "");
+      setSpent(Array.isArray(data.spentPackUSDByClub) ? data.spentPackUSDByClub : []);
+      setMints(Array.isArray(data.mints) ? data.mints : []);
     } catch (e) {
-      const msg = String(e?.message || e);
-      // Si la fenêtre est trop grande, on réduit
-      if (
-        msg.includes("Block range is too large") ||
-        msg.includes("query timeout") ||
-        msg.includes("429") ||
-        msg.includes("rate limit")
-      ) {
-        // réduire la fenêtre
-        chunkSize = chunkSize > 10_000n ? chunkSize / 2n : 10_000n;
-        if (chunkSize <= 0n) throw e;
-        // ne pas avancer 'start' -> on retente avec fenêtre réduite
-        continue;
-      }
-      console.error("getBuyerLogsChunked ERROR chunk:", { start: String(start), to: String(to), e });
-      throw e;
+      console.error(e);
+      setError(e?.message || "Erreur inconnue");
+    } finally {
+      setLoading(false);
     }
   }
 
-  return logsAll;
-}
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("desc"); }
+  }
 
-async function previewAtBlock(address, clubId, numPacks, blockNumber) {
-  const data = encodeFunctionData({
-    abi: PACK_ABI,
-    functionName: "preview",
-    args: [BigInt(clubId), BigInt(numPacks)],
-  });
-  try {
-    const out = await publicClient.call({
-      to: address,
-      data,
-      account: CALLER,
-      blockNumber,
+  const spentSorted = useMemo(() => {
+    const arr = [...spent];
+    arr.sort((a, b) => {
+      const va = sortKey === "clubId" ? Number(a.clubId) : Number(a.usd);
+      const vb = sortKey === "clubId" ? Number(b.clubId) : Number(b.usd);
+      return sortDir === "asc" ? va - vb : vb - va;
     });
-    return parsePreviewResultHex(out.data);
-  } catch (e) {
-    console.error("previewAtBlock ERROR:", { address, clubId, numPacks, blockNumber, e });
-    throw e;
-  }
-}
+    return arr;
+  }, [spent, sortKey, sortDir]);
 
-function addTo(map, key, val) {
-  map.set(key, (map.get(key) || 0) + val);
-}
+  const totalUSD = useMemo(
+    () => spent.reduce((s, r) => s + (Number(r.usd) || 0), 0),
+    [spent]
+  );
 
-async function handle(req, nameRaw, fromBlockRaw) {
-  const name = (nameRaw || "").trim();
-  if (!name) {
-    return NextResponse.json({ ok: false, error: "Paramètre 'name' manquant" }, { status: 400 });
-  }
+  return (
+    <div className="min-h-screen text-white py-8 px-3 sm:px-6">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">Test — Packs history (on‑chain)</h1>
 
-  const origin = new URL(req.url).origin;
+        <div className="mb-4 flex flex-col sm:flex-row gap-2">
+          <input
+            className="flex-1 rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Nom d'utilisateur Soccerverse"
+          />
+          <button
+            type="button"
+            onClick={run}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+            disabled={loading || !username.trim()}
+          >
+            {loading ? "Chargement..." : "Lancer"}
+          </button>
+        </div>
 
-  try {
-    const wallet = await resolveWalletServer(name, origin);
-    const wLower = toAddrLower(wallet);
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-800 bg-red-950/30 p-3 text-red-300">
+            {error}
+          </div>
+        )}
 
-    const fromBlock = fromBlockRaw ? BigInt(fromBlockRaw) : DEFAULT_FROM_BLOCK;
+        {wallet && (
+          <div className="mb-6 text-sm text-gray-300">
+            Wallet :{" "}
+            <a
+              className="text-indigo-400 hover:underline"
+              href={`https://polygonscan.com/address/${wallet}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {wallet}
+            </a>
+          </div>
+        )}
 
-    // 🔁 logs par fenêtres
-    const logs = await getBuyerLogsChunked(wLower, fromBlock);
+        {spent.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-2xl font-semibold mb-3">
+              Dépenses packs réelles par club — total {fmtUSD(totalUSD)}
+            </h2>
+            <div className="rounded-xl border border-gray-700 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-800 text-gray-300">
+                  <tr>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer select-none hover:underline"
+                      onClick={() => toggleSort("clubId")}
+                    >
+                      ClubId {sortKey === "clubId" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                    </th>
+                    <th
+                      className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                      onClick={() => toggleSort("usd")}
+                    >
+                      USD {sortKey === "usd" ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {spentSorted.map((row) => (
+                    <tr key={row.clubId} className="hover:bg-white/5">
+                      <td className="py-2 px-3">{row.clubId}</td>
+                      <td className="py-2 px-3 text-right">{fmtUSD(Number(row.usd) || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
-    // Allocation des coûts
-    const spentUSDByClub = new Map();
-    const audit = [];
+        {mints.length > 0 && (
+          <section className="mb-20">
+            <h2 className="text-2xl font-semibold mb-3">Mints (audit)</h2>
+            <div className="rounded-xl border border-gray-700 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-800 text-gray-300">
+                  <tr>
+                    <th className="text-left py-2 px-3">Tx</th>
+                    <th className="text-left py-2 px-3">Bloc</th>
+                    <th className="text-right py-2 px-3">unitUSDC</th>
+                    <th className="text-right py-2 px-3">numPacks</th>
+                    <th className="text-right py-2 px-3">totalUSDC</th>
+                    <th className="text-right py-2 px-3">totalInf</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {mints.map((m) => (
+                    <tr key={m.tx} className="hover:bg-white/5">
+                      <td className="py-2 px-3">
+                        <a
+                          className="text-indigo-400 hover:underline"
+                          href={`https://polygonscan.com/tx/${m.tx}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {m.tx.slice(0, 10)}…
+                        </a>
+                      </td>
+                      <td className="py-2 px-3">{fmtBlock(m.blockNumber)}</td>
+                      <td className="py-2 px-3 text-right">{fmtUSD(Number(m.unitUSDC) || 0)}</td>
+                      <td className="py-2 px-3 text-right">{Number(m.numPacks) || 0}</td>
+                      <td className="py-2 px-3 text-right">{fmtUSD(Number(m.totalUSDC) || 0)}</td>
+                      <td className="py-2 px-3 text-right">{Number(m.totalInf) || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-    for (const log of logs) {
-      const {
-        address: saleAddress,
-        blockNumber,
-        transactionHash,
-        args: { buyer, clubId, numPacks, unitUSDC },
-      } = log;
+            <div className="mt-4 text-xs text-gray-400">
+              * Le coût est réparti sur toutes les influences retournées par
+              <code className="mx-1 px-1 rounded bg-gray-800">preview</code> au bloc de l’achat.
+            </div>
+          </section>
+        )}
 
-      if (toAddrLower(buyer) !== wLower) continue;
-
-      const nPacks = Number(numPacks);
-      const unit = Number(unitUSDC); // µUSDC/pack
-      const totalUSDC = (unit / 1e6) * nPacks;
-
-      const previewNums = await previewAtBlock(saleAddress, Number(clubId), nPacks, blockNumber);
-      const pairs = extractClubInfluencesFromPreview(previewNums);
-      const totalInf = pairs.reduce((s, p) => s + p.inf, 0);
-
-      if (totalUSDC > 0 && totalInf > 0) {
-        const usdPerInf = totalUSDC / totalInf;
-        for (const { clubId: cid, inf } of pairs) {
-          addTo(spentUSDByClub, cid, usdPerInf * inf);
-        }
-      }
-
-      audit.push({
-        tx: transactionHash,
-        blockNumber: Number(blockNumber),
-        clubId: Number(clubId),
-        numPacks: nPacks,
-        unitUSDC: unit / 1e6,
-        totalUSDC,
-        totalInf,
-        components: pairs,
-      });
-    }
-
-    return NextResponse.json({
-      ok: true,
-      wallet,
-      count: logs.length,
-      spentPackUSDByClub: [...spentUSDByClub.entries()].map(([clubId, usd]) => ({ clubId, usd })),
-      mints: audit,
-    });
-  } catch (e) {
-    console.error("history_onchain.handle ERROR:", e);
-    return NextResponse.json({ ok: false, error: e?.message || String(e) }, { status: 500 });
-  }
-}
-
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const name = searchParams.get("name") || searchParams.get("username");
-  const fromBlock = searchParams.get("fromBlock");
-  return handle(req, name, fromBlock);
-}
-
-export async function POST(req) {
-  let body = {};
-  try {
-    body = await req.json();
-  } catch (e) {
-    console.error("POST body JSON parse ERROR:", e);
-    return NextResponse.json({ ok: false, error: "Body non JSON" }, { status: 400 });
-  }
-  const name = body?.name || body?.username;
-  const fromBlock = body?.fromBlock;
-  return handle(req, name, fromBlock);
+        {(!loading && !error && spent.length === 0 && mints.length === 0 && wallet) && (
+          <div className="text-gray-400">
+            Aucun achat de pack trouvé pour ce wallet (vérifie le pseudo).
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
