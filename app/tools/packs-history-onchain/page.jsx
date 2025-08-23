@@ -11,6 +11,7 @@ const fmtBlock = (bn) => (bn ? `#${bn}` : "—");
 export default function PacksHistoryOnchain() {
   const [username, setUsername] = useState("");
   const [fromBlock, setFromBlock] = useState("");   // optionnel
+  const [maxSecs, setMaxSecs] = useState("180");    // ⬅️ nouveau (par défaut 180 s)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [wallet, setWallet] = useState("");
@@ -57,8 +58,10 @@ export default function PacksHistoryOnchain() {
     abortRef.current = controller;
 
     try {
-      const body = { name, maxSecs: 60 };
+      const body = { name };
       if (fromBlock && /^\d+$/.test(fromBlock)) body.fromBlock = Number(fromBlock);
+      const ms = Number(maxSecs);
+      if (!Number.isNaN(ms) && ms > 0) body.maxSecs = ms;
 
       const res = await fetch("/api/packs/history_onchain", {
         method: "POST",
@@ -81,11 +84,8 @@ export default function PacksHistoryOnchain() {
       setSpent(Array.isArray(data.spentPackUSDByClub) ? data.spentPackUSDByClub : []);
       setMints(Array.isArray(data.mints) ? data.mints : []);
     } catch (e) {
-      if (e?.name === "AbortError") {
-        setError("Requête annulée.");
-      } else {
-        setError(e?.message || "Erreur inconnue");
-      }
+      if (e?.name === "AbortError") setError("Requête annulée.");
+      else setError(e?.message || "Erreur inconnue");
     } finally {
       setLoading(false);
       abortRef.current = null;
@@ -101,7 +101,8 @@ export default function PacksHistoryOnchain() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-bold mb-6">Test — Packs history (on‑chain)</h1>
 
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {/* Contrôles */}
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-2">
           <input
             className="rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
             value={username}
@@ -113,6 +114,12 @@ export default function PacksHistoryOnchain() {
             value={fromBlock}
             onChange={(e) => setFromBlock(e.target.value)}
             placeholder="fromBlock (optionnel)"
+          />
+          <input
+            className="rounded-lg p-2 bg-gray-900 border border-gray-700 text-white"
+            value={maxSecs}
+            onChange={(e) => setMaxSecs(e.target.value)}
+            placeholder="maxSecs (ex: 180)"
           />
           <div className="flex gap-2">
             <button
@@ -135,12 +142,14 @@ export default function PacksHistoryOnchain() {
           </div>
         </div>
 
+        {/* Erreur */}
         {error && (
           <div className="mb-6 rounded-lg border border-red-800 bg-red-950/30 p-3 text-red-300">
             {error}
           </div>
         )}
 
+        {/* Wallet */}
         {wallet && (
           <div className="mb-6 text-sm text-gray-300">
             Wallet :{" "}
@@ -155,6 +164,7 @@ export default function PacksHistoryOnchain() {
           </div>
         )}
 
+        {/* Agrégat par club */}
         {spent.length > 0 && (
           <section className="mb-10">
             <h2 className="text-2xl font-semibold mb-3">
@@ -191,6 +201,7 @@ export default function PacksHistoryOnchain() {
           </section>
         )}
 
+        {/* Journal des mints (audit) */}
         {mints.length > 0 && (
           <section className="mb-20">
             <h2 className="text-2xl font-semibold mb-3">Mints (audit)</h2>
