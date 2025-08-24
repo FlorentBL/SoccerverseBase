@@ -5,6 +5,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // ───────────────────────────────────────────────────────────────────────────────
+// ENV helpers
+function getPolygonscanKey() {
+  return (
+    process.env.POLYGONSCAN_API_KEY || // ton nom actuel
+    process.env.POLYGONSCAN_KEY ||     // alias accepté
+    process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY || // au cas où
+    ""
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
 // CONFIG
 const RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-rpc.com";
 const USDC_CONTRACT = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowerCase();
@@ -236,7 +247,7 @@ async function fetchUsdcTransfersForWallet_Polygonscan(wallet, { startblock, end
 // Fallback RPC: eth_getLogs avec chunking adaptatif
 const RANGE_ERR_RE = /(range|too (large|wide)|exceed|more than|timeout|query|result size)/i;
 function padTopicAddress(addr) {
-  const clean = addr.toLowerCase().replace(/^0x/,"");
+  const clean = addr.toLowerCase().replace(/^0x/, "");
   return "0x" + "0".repeat(24) + clean;
 }
 async function getLatestBlockNumber() {
@@ -383,26 +394,32 @@ export async function GET(req) {
       return NextResponse.json({ ok: false, error: "wallet invalide" }, { status: 400 });
     }
 
-    // Ranger par défaut si non fourni (RPC seulement)
+    // Range par défaut (utile si on passe en RPC)
     const latest = await getLatestBlockNumber();
     if (!startblock) startblock = Math.max(0, latest - 1_000_000);
     if (!endblock) endblock = latest;
 
-    // Clé Polygonscan lue à l'exécution
-    const apiKey = process.env.POLYGONSCAN_KEY || "";
+    // Clé Polygonscan lue à l'exécution (accepte plusieurs noms)
+    const apiKey = getPolygonscanKey();
 
     // Choix de la source
     let sourceUsed = "rpc";
     if (sourceParam === "polygonscan" || (sourceParam === "auto" && apiKey)) {
       sourceUsed = "polygonscan";
     }
+    // sécurité : si on exige polygonscan mais pas de clé → erreur claire
+    if (sourceUsed === "polygonscan" && !apiKey) {
+      return NextResponse.json(
+        { ok: false, error: "POLYGONSCAN_API_KEY manquante côté serveur" },
+        { status: 400 }
+      );
+    }
 
     // 1) Candidats = sorties USDC
     let transfers;
     if (sourceUsed === "polygonscan") {
-      // NB: on ne passe PAS de range par défaut → pas d’erreur “range too large”
-      const ps = await fetchUsdcTransfersForWallet_Polygonscan(wallet, {}, apiKey);
-      transfers = ps;
+      // par défaut sans range → pas d’erreur “range too large”
+      transfers = await fetchUsdcTransfersForWallet_Polygonscan(wallet, {}, apiKey);
     } else {
       transfers = await fetchUsdcTransfersForWallet_RPC(wallet, { startblock, endblock, initialStep: 20000, minStep: 1000 });
     }
@@ -458,7 +475,10 @@ export async function GET(req) {
         analyzed: analyzed.length,
         packsDetected: items.length,
         range: { startblock, endblock },
-        debug: { hasPolygonscanKey: Boolean(apiKey), requestedSource: sourceParam },
+        debug: {
+          hasPolygonscanKey: Boolean(apiKey),
+          requestedSource: sourceParam,
+        },
       },
       totals: {
         packs: totalPacks,
