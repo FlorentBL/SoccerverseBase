@@ -7,8 +7,8 @@ import React, { useEffect, useMemo, useState } from "react";
  * ROI — “depuis toujours”
  * - Achats via SVC (clubs) = somme absolue des share trade négatifs en SVC (balance_sheet)
  * - Gains SVC (clubs)      = somme des dividends_club
- * - Coût packs ($)         = /api/packs/by-wallet (répartition réelle par club selon l’influence des packs)
- * - ROI ($)                = gains$ / (dépense$SVC + dépense$Packs)
+ * - Coût packs (club, $)   = /api/packs/by-wallet (répartition réelle par club selon l’influence)
+ * - ROI ($)                = gains$ / (dépense$SVC + dépense$Packs imputée au club)
  */
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -31,8 +31,7 @@ const fmtUSD = (n) =>
     ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
     : "—";
 
-const fmtInt = (n) =>
-  typeof n === "number" ? n.toLocaleString("fr-FR") : "—";
+const fmtInt = (n) => (typeof n === "number" ? n.toLocaleString("fr-FR") : "—");
 
 const fmtDate = (ts) => {
   if (!ts) return "—";
@@ -76,9 +75,7 @@ function estimateQtyBoughtViaSVC(transactions) {
       Number(t?.totalDelta) ||
       0;
 
-    if (q > 0) {
-      qtyByClub.set(s.id, (qtyByClub.get(s.id) || 0) + q);
-    }
+    if (q > 0) qtyByClub.set(s.id, (qtyByClub.get(s.id) || 0) + q);
   }
   return qtyByClub;
 }
@@ -95,7 +92,7 @@ function aggregateForever({
   packPriceUSDByClub,
   infPerPackByClub,
   allInfByClub,
-  packSpendUSDByClub,
+  packSpendUSDByClub, // coût packs imputé au club ($)
   svcRateUSD,
 }) {
   const tradeIdx = indexTradesByTimeAndCounterparty(transactions);
@@ -103,7 +100,7 @@ function aggregateForever({
   const payoutsClub = new Map();
   const payoutsPlayer = new Map();
   const baseMintPlayer = new Map();
-  const achatsSvcClub = new Map(); // SVC dépensés
+  const achatsSvcClub = new Map();
   const qtyAcheteeSvcClub = estimateQtyBoughtViaSVC(transactions);
 
   for (const it of balanceSheet || []) {
@@ -150,7 +147,6 @@ function aggregateForever({
     const qtyIssuePacks = Math.max(0, qty - qtyAcheteeSvc);
 
     const depensePacksAffineeUSD = round2(Number(packSpendUSDByClub?.get(id) || 0));
-
     const depenseSvcUSD = svcRateUSD != null ? round2(achatsSvc * svcRateUSD) : null;
     const gainsUSD = svcRateUSD != null ? round2(gainsSvc * svcRateUSD) : null;
 
@@ -163,13 +159,12 @@ function aggregateForever({
       qty,
       achatsSvc,
       gainsSvc,
-      packPriceUSD,
-      infPerPack,
+      packPriceUSD, // indicatif
+      infPerPack,   // indicatif
       depenseSvcUSD,
-      depensePacksAffineeUSD,
+      depensePacksAffineeUSD, // “Coût packs (club)”
       gainsUSD,
       roiUSD,
-      roiAffUSD: roiUSD,
       coutTotalUSD,
       qtyIssuePacks,
       link: `https://play.soccerverse.com/club/${id}`,
@@ -233,23 +228,29 @@ export default function RoiForever() {
   const [playerMap, setPlayerMap] = useState({});
 
   const [balanceSheet, setBalanceSheet] = useState([]);
-  const [transactions, setTransactions] = useState([]);
+  theadconst [transactions, setTransactions] = useState([]);
   const [positions, setPositions] = useState({ clubs: [], players: [] });
 
+  // “preview” (indicatif)
   const [packPriceUSDByClub, setPackPriceUSDByClub] = useState(new Map());
   const [infPerPackByClub, setInfPerPackByClub] = useState(new Map());
   const [allInfByClub, setAllInfByClub] = useState(new Map());
 
+  // coût packs réel imputé + détails d’achats par club
   const [packSpendUSDByClub, setPackSpendUSDByClub] = useState(new Map());
   const [packBuysByClub, setPackBuysByClub] = useState(new Map());
 
   const [svcRateUSD, setSvcRateUSD] = useState(null);
-  const [sortKey, setSortKey] = useState(null);
+
+  // Tri (ROI / Coût)
+  const [sortKey, setSortKey] = useState(null); // "roiUSD" | "coutTotalUSD" | null
   const [sortDir, setSortDir] = useState("desc");
+
+  // wallet résolu & drawer
   const [wallet, setWallet] = useState(null);
   const [openClub, setOpenClub] = useState(null);
 
-  // mappings noms
+  // mappings
   useEffect(() => {
     (async () => {
       try {
@@ -263,7 +264,7 @@ export default function RoiForever() {
         ]);
         setClubMap(clubData || {});
         setPlayerMap(playerData || {});
-      } catch {}
+      } catch {/* ignore */}
     })();
   }, []);
 
@@ -273,10 +274,8 @@ export default function RoiForever() {
       try {
         const res = await fetch("https://services.soccerverse.com/api/market", { cache: "no-store" });
         const data = await res.json();
-        if (data && typeof data.SVC2USDC === "number") {
-          setSvcRateUSD(data.SVC2USDC);
-        }
-      } catch {}
+        if (data && typeof data.SVC2USDC === "number") setSvcRateUSD(data.SVC2USDC);
+      } catch {/* ignore */}
     })();
   }, []);
 
@@ -321,7 +320,7 @@ export default function RoiForever() {
     return res.json();
   }
 
-  // (facultatif) preview unitaire par club
+  // Preview (facultatif)
   async function fetchPackPreviewFor(clubId) {
     const r = await fetch(`/api/pack_preview?clubId=${clubId}&numPacks=1`, { cache: "no-store" });
     if (!r.ok) return null;
@@ -372,9 +371,9 @@ export default function RoiForever() {
     }
   }
 
-  // Packs on-chain → coût réparti par club
+  // Packs on-chain → coût imputé par club
   async function fetchPackCostsForWallet(w) {
-    // Utilise EXACTEMENT les mêmes paramètres que la page wallet pour éviter le rate-limit
+    // mêmes paramètres que la page wallet (évite rate-limit)
     const qs = new URLSearchParams({
       wallet: w,
       pages: "3",
@@ -395,7 +394,7 @@ export default function RoiForever() {
       const packs = Number(it.packs || 0);
       const txHash = it.txHash;
       const blockNumber = it.blockNumber;
-      const blockTs = Number(it.timeStamp || it.blockTimestamp || 0); // <- champ correct
+      const blockTs = Number(it.timeStamp || it.blockTimestamp || 0);
 
       const det = it.details || {};
       const parts = [];
@@ -424,6 +423,7 @@ export default function RoiForever() {
           packs,
           priceUSDC: price,
           unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
+          // allocatedUSD supprimé de l'affichage (gardé ici si besoin futur)
           allocatedUSD: partUSD,
           allocatedInf: p.inf,
         });
@@ -463,7 +463,7 @@ export default function RoiForever() {
       const w = await resolveWallet(name);
       if (w) await fetchPackCostsForWallet(w);
 
-      // (facultatif) previews
+      // previews (facultatif)
       const clubIds = Array.from(new Set((pos?.clubs || []).map((c) => c.id)));
       const previews = await Promise.all(
         clubIds.map(async (id) => [id, await fetchPackPreviewFor(id)])
@@ -525,6 +525,7 @@ export default function RoiForever() {
     ]
   );
 
+  // tri local si demandé
   const clubs = useMemo(() => {
     const arr = [...aggregated.clubs];
     if (!sortKey) return arr;
@@ -568,7 +569,6 @@ export default function RoiForever() {
                 <th className="text-right py-2 px-3">Packs</th>
                 <th className="text-right py-2 px-3">Prix total ($)</th>
                 <th className="text-right py-2 px-3">Prix / pack ($)</th>
-                <th className="text-right py-2 px-3">Part allouée au club ($)</th>
                 <th className="text-right py-2 px-3">Influence allouée</th>
               </tr>
             </thead>
@@ -577,19 +577,26 @@ export default function RoiForever() {
                 <tr key={`${r.txHash}-${i}`} className="hover:bg-white/5">
                   <td className="py-2 px-3">{fmtDate(r.dateTs)}</td>
                   <td className="py-2 px-3">
-                    <a className="text-indigo-400 hover:underline" href={`https://polygonscan.com/tx/${r.txHash}`} target="_blank" rel="noreferrer">
+                    <a
+                      className="text-indigo-400 hover:underline"
+                      href={`https://polygonscan.com/tx/${r.txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       {shortHash(r.txHash)}
                     </a>
                   </td>
                   <td className="py-2 px-3 text-right">{fmtInt(r.packs)}</td>
                   <td className="py-2 px-3 text-right">{fmtUSD(r.priceUSDC)}</td>
                   <td className="py-2 px-3 text-right">{fmtUSD(r.unitPriceUSDC)}</td>
-                  <td className="py-2 px-3 text-right">{fmtUSD(r.allocatedUSD)}</td>
                   <td className="py-2 px-3 text-right">{fmtInt(r.allocatedInf)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="text-xs text-gray-500 mt-2">
+          Note : le “Coût packs (club)” en ligne de tableau additionne, pour ce club, sa part d’influence × (prix total / influence totale) de chaque achat.
         </div>
       </div>
     );
@@ -621,7 +628,12 @@ export default function RoiForever() {
           <div className="mb-6 text-sm text-gray-300">
             Wallet détecté :{" "}
             {wallet ? (
-              <a className="text-indigo-400 hover:underline" href={`https://polygonscan.com/address/${wallet}`} target="_blank" rel="noreferrer">
+              <a
+                className="text-indigo-400 hover:underline"
+                href={`https://polygonscan.com/address/${wallet}`}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {wallet}
               </a>
             ) : (
@@ -658,20 +670,13 @@ export default function RoiForever() {
                       >
                         Coût total ($) <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3">Coût packs ($)</th>
+                      <th className="text-right py-2 px-3">Coût packs (club) ($)</th>
                       <th
                         className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
                         onClick={() => toggleSort("roiUSD")}
                         title="Trier par ROI ($)"
                       >
                         ROI ($) <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
-                      </th>
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("roiAffUSD")}
-                        title="Trier par ROI affiné ($)"
-                      >
-                        ROI affiné ($) <Arrow active={sortKey === "roiAffUSD"} dir={sortDir} />
                       </th>
                       <th className="text-right py-2 px-3">Détails</th>
                     </tr>
@@ -683,7 +688,12 @@ export default function RoiForever() {
                         <React.Fragment key={`c-${row.id}`}>
                           <tr className="hover:bg-white/5">
                             <td className="py-2 px-3">
-                              <a href={row.link} className="text-indigo-400 hover:underline" target="_blank" rel="noreferrer">
+                              <a
+                                href={row.link}
+                                className="text-indigo-400 hover:underline"
+                                target="_blank"
+                                rel="noreferrer"
+                              >
                                 {row.name}
                               </a>
                             </td>
@@ -697,25 +707,33 @@ export default function RoiForever() {
                               {row.depensePacksAffineeUSD || row.depensePacksAffineeUSD === 0 ? fmtUSD(row.depensePacksAffineeUSD) : <span className="text-gray-500">—</span>}
                             </td>
                             <td className="py-2 px-3">
-                              {row.roiUSD != null ? <RoiBar pct={row.roiUSD * 100} /> : <span className="text-gray-500">n/a</span>}
+                              {row.roiUSD != null ? (
+                                <RoiBar pct={row.roiUSD * 100} />
+                              ) : (
+                                <span className="text-gray-500">n/a</span>
+                              )}
                               {row.gainsUSD != null && (
                                 <div className="text-xs text-gray-500 text-right mt-1">
-                                  gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD(row.coutTotalUSD || 0)}
+                                  gains: {fmtUSD(row.gainsUSD)} / coût club: {fmtUSD(row.coutTotalUSD || 0)}
                                 </div>
                               )}
                             </td>
-                            <td className="py-2 px-3">
-                              {row.roiAffUSD != null ? <RoiBar pct={row.roiAffUSD * 100} /> : <span className="text-gray-500">n/a</span>}
-                            </td>
                             <td className="py-2 px-3 text-right">
-                              <button className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-xs" onClick={() => setOpenClub(isOpen ? null : row.id)}>
+                              <button
+                                className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-xs"
+                                onClick={() => setOpenClub(isOpen ? null : row.id)}
+                              >
                                 {isOpen ? "fermer" : "voir"}
                               </button>
                             </td>
                           </tr>
+
+                          {/* Drawer */}
                           {isOpen && (
                             <tr className="bg-black/30">
-                              <td className="py-3 px-3" colSpan={9}>{renderDrawer(row.id)}</td>
+                              <td className="py-3 px-3" colSpan={8}>
+                                {renderDrawer(row.id)}
+                              </td>
                             </tr>
                           )}
                         </React.Fragment>
@@ -750,7 +768,12 @@ export default function RoiForever() {
                     {players.map((row) => (
                       <tr key={`p-${row.id}`} className="hover:bg-white/5">
                         <td className="py-2 px-3">
-                          <a href={row.link} className="text-indigo-400 hover:underline" target="_blank" rel="noreferrer">
+                          <a
+                            href={row.link}
+                            className="text-indigo-400 hover:underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             {row.name}
                           </a>
                         </td>
@@ -758,7 +781,11 @@ export default function RoiForever() {
                         <td className="py-2 px-3 text-right">{fmtSVC(row.baseSvc)}</td>
                         <td className="py-2 px-3 text-right">{fmtSVC(row.payouts)}</td>
                         <td className="py-2 px-3">
-                          {row.baseSvc > 0 ? <RoiBar pct={(row.payouts / row.baseSvc) * 100} /> : <span className="text-gray-500">n/a (base mint)</span>}
+                          {row.baseSvc > 0 ? (
+                            <RoiBar pct={(row.payouts / row.baseSvc) * 100} />
+                          ) : (
+                            <span className="text-gray-500">n/a (base mint)</span>
+                          )}
                         </td>
                       </tr>
                     ))}
