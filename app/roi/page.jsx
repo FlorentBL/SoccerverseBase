@@ -228,7 +228,7 @@ export default function RoiForever() {
   const [playerMap, setPlayerMap] = useState({});
 
   const [balanceSheet, setBalanceSheet] = useState([]);
-  theadconst [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [positions, setPositions] = useState({ clubs: [], players: [] });
 
   // “preview” (indicatif)
