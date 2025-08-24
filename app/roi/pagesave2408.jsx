@@ -1,16 +1,16 @@
 // app/roi/page.jsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-
 /**
  * ROI — “depuis toujours”
  * - Achats via SVC (clubs) = somme absolue des share trade négatifs en SVC (balance_sheet)
  * - Gains SVC (clubs)      = somme des dividends_club
- * - Coût packs ($)         = /api/packs/by-wallet (répartition sur clubs selon l’influence réelle des packs)
- * - ROI ($) = gains$ / (dépense$SVC + dépense$Packs)
- * - ROI affiné ($) = identique (on utilise directement la répartition fine par club)
+ * - Prix pack + inf./pack  = via /api/pack_preview (pack principal)
+ * - ROI ($) = gains$ / (dépense$SVC + dépense$Packs)   avec 1 SVC = $SVC2USDC
+ * - ROI affiné ($) = gains$ / (dépense$SVC + dépense$Packs réparti entre tous les clubs du pack)
  */
+
+import React, { useEffect, useMemo, useState } from "react";
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Utils/format
@@ -35,19 +35,6 @@ const fmtUSD = (n) =>
 const fmtInt = (n) =>
   typeof n === "number" ? n.toLocaleString("fr-FR") : "-";
 
-const fmtDate = (ts) => {
-  if (!ts) return "—";
-  try {
-    const d = new Date(Number(ts) * 1000);
-    return d.toLocaleString("fr-FR");
-  } catch {
-    return "—";
-  }
-};
-
-const shortHash = (h) => (h ? `${h.slice(0, 6)}…${h.slice(-4)}` : "");
-
-// clé pour matcher un trade balance_sheet ↔ transactions
 const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -65,7 +52,7 @@ function indexTradesByTimeAndCounterparty(txs) {
   return idx;
 }
 
-// Estime les quantités achetées en SVC depuis /api/transactions (si dispo)
+// Essaye d’estimer les quantités achetées en SVC depuis /api/transactions (si dispo)
 function estimateQtyBoughtViaSVC(transactions) {
   const qtyByClub = new Map();
   for (const t of transactions || []) {
@@ -96,14 +83,10 @@ function aggregateForever({
   positions,
   clubMap,
   playerMap,
-  // anciens “preview” (facultatifs)
-  packPriceUSDByClub,
-  infPerPackByClub,
-  allInfByClub,
-  // nouveau : coûts packs déjà répartis par club via l’historique on-chain
-  packSpendUSDByClub,
-  // 1 SVC = $svcRateUSD (nullable)
-  svcRateUSD,
+  packPriceUSDByClub, // Map<number, number> clubId -> prix pack ($)
+  infPerPackByClub,   // Map<number, number> clubId -> inf./pack (club principal)
+  allInfByClub,       // Map<number, Array<{clubId:number, inf:number}>> (composition complète du pack)
+  svcRateUSD,         // 1 SVC = $svcRateUSD (number | null)
 }) {
   const tradeIdx = indexTradesByTimeAndCounterparty(transactions);
 
@@ -158,26 +141,36 @@ function aggregateForever({
     const gainsSvc = round4(payoutsClub.get(id) || 0);            // dividendes
     const achatsSvc = round2(achatsSvcClub.get(id) || 0);         // SVC dépensés
 
-    // (préviews éventuels, pas utilisés dans le coût final mais affichables si besoin)
-    const packPriceUSD = Number(packPriceUSDByClub?.get(id) || 0);
-    const infPerPack = Number(infPerPackByClub?.get(id) || 0);
+    const packPriceUSD = Number(packPriceUSDByClub?.get(id) || 0); // prix du pack ($)
+    const infPerPack = Number(infPerPackByClub?.get(id) || 0);     // inf/pack pour ce club
 
     // Quantité achetée en SVC si dispo (sinon 0)
     const qtyAcheteeSvc = Number(qtyAcheteeSvcClub.get(id) || 0);
-    // Le reste est supposé venir des packs (indicatif)
+    // Le reste est supposé venir des packs
     const qtyIssuePacks = Math.max(0, qty - qtyAcheteeSvc);
 
-    // Coûts packs par club ($), issus de l’historique on-chain
-    const depensePacksAffineeUSD = round2(Number(packSpendUSDByClub?.get(id) || 0));
+    // Coût imputé aux packs (méthode simple : coût / influence du club principal)
+    const usdParInfluenceDepuisPack = infPerPack > 0 ? packPriceUSD / infPerPack : 0;
+    const depensePacksUSD = round2(qtyIssuePacks * usdParInfluenceDepuisPack);
+
+    // Coût pack **affiné** : réparti entre tous les clubs contenus
+    let depensePacksAffineeUSD = 0;
+    const composition = allInfByClub.get(id); // [{clubId, inf}, ...] incluant le principal + secondaires
+    if (composition && composition.length > 0) {
+      const totalInfPack = composition.reduce((s, x) => s + (Number(x.inf) || 0), 0);
+      const costPerInf = totalInfPack > 0 ? packPriceUSD / totalInfPack : 0;
+      depensePacksAffineeUSD = round2(qtyIssuePacks * costPerInf);
+    }
 
     // Conversion SVC -> USD
     const depenseSvcUSD = svcRateUSD != null ? round2(achatsSvc * svcRateUSD) : null;
     const gainsUSD = svcRateUSD != null ? round2(gainsSvc * svcRateUSD) : null;
 
-    const coutTotalUSD = (depenseSvcUSD ?? 0) + (depensePacksAffineeUSD || 0);
+    const coutTotalUSD = (depenseSvcUSD ?? 0) + (depensePacksUSD || 0);
+    const coutTotalAffUSD = (depenseSvcUSD ?? 0) + (depensePacksAffineeUSD || 0);
 
     const roiUSD = SAFE_DIV(gainsUSD ?? 0, coutTotalUSD);
-    const roiAffUSD = roiUSD; // même coût (réparti finement)
+    const roiAffUSD = SAFE_DIV(gainsUSD ?? 0, coutTotalAffUSD);
 
     clubs.push({
       id,
@@ -185,15 +178,14 @@ function aggregateForever({
       qty,
       achatsSvc,         // SVC
       gainsSvc,          // SVC
-      packPriceUSD,      // $ (indicatif)
-      infPerPack,        // influence/pack (indicatif)
-      depenseSvcUSD,     // $ SVC
-      depensePacksAffineeUSD, // $ Packs (réel réparti)
+      packPriceUSD,      // $
+      infPerPack,        // influences / pack (club principal)
+      depenseSvcUSD,     // $
+      depensePacksUSD,   // $
+      depensePacksAffineeUSD, // $
       gainsUSD,          // $
-      roiUSD,            // ROI ($)
-      roiAffUSD,         // ROI ($)
-      coutTotalUSD,      // pour colonne dédiée
-      qtyIssuePacks,     // info
+      roiUSD,            // ROI ($) simple
+      roiAffUSD,         // ROI affiné ($)
       link: `https://play.soccerverse.com/club/${id}`,
     });
   }
@@ -218,7 +210,7 @@ function aggregateForever({
     });
   }
 
-  // tri par défaut (gains SVC)
+  // tri par défaut (gains)
   clubs.sort((a, b) => (b.gainsSvc - a.gainsSvc) || (b.qty - a.qty));
   players.sort((a, b) => (b.payouts - a.payouts) || (b.qty - a.qty));
 
@@ -226,7 +218,7 @@ function aggregateForever({
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// UI helpers
+// UI
 
 function RoiBar({ pct }) {
   const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
@@ -259,29 +251,22 @@ export default function RoiForever() {
   const [transactions, setTransactions] = useState([]); // /api/transactions
   const [positions, setPositions] = useState({ clubs: [], players: [] }); // /api/user_positions
 
-  // Prix pack ($), inf./pack (principal) et composition du pack (preview, facultatif)
+  // Prix pack ($), inf./pack (principal) et composition complète des packs
   const [packPriceUSDByClub, setPackPriceUSDByClub] = useState(new Map());
   const [infPerPackByClub, setInfPerPackByClub] = useState(new Map());
   const [allInfByClub, setAllInfByClub] = useState(new Map());
-
-  // Nouveau : coût packs réel par club ($) + détails d’achats par club
-  const [packSpendUSDByClub, setPackSpendUSDByClub] = useState(new Map());
-  const [packBuysByClub, setPackBuysByClub] = useState(new Map());
 
   // 1 SVC = $svcRateUSD
   const [svcRateUSD, setSvcRateUSD] = useState(null);
 
   // Tri (ROI / ROI affiné)
-  const [sortKey, setSortKey] = useState(null); // "roiUSD" | "roiAffUSD" | "coutTotalUSD" | null
+  const [sortKey, setSortKey] = useState(null); // "roiUSD" | "roiAffUSD" | null
   const [sortDir, setSortDir] = useState("desc");
 
   // wallet résolu (via /api/resolve_wallet)
   const [wallet, setWallet] = useState(null);
 
-  // Drawer ouvert (clubId → bool)
-  const [openClub, setOpenClub] = useState(null);
-
-  // mappings noms (club / player)
+  // mappings noms
   useEffect(() => {
     (async () => {
       try {
@@ -357,7 +342,8 @@ export default function RoiForever() {
     return res.json();
   }
 
-  // (facultatif) preview unitaire par club pour afficher un prix unitaire + inf/pack
+  // Récupère prix du pack ($), influence/pack du club principal
+  // ET la composition complète du pack (principal + secondaires)
   async function fetchPackPreviewFor(clubId) {
     const r = await fetch(`/api/pack_preview?clubId=${clubId}&numPacks=1`, { cache: "no-store" });
     if (!r.ok) return null;
@@ -375,7 +361,8 @@ export default function RoiForever() {
       j?.parsed?.mainClub?.influence ??
       (Array.isArray(j?.resultNums) ? j.resultNums[7] : null);
 
-    // composition complète depuis resultNums (si besoin)
+    // composition complète à partir de resultNums :
+    // indices: [ ..., clubId, inf, clubId, inf, ..., 0 ]
     const influences = [];
     if (Array.isArray(j?.resultNums)) {
       for (let i = 6; i < j.resultNums.length; i += 2) {
@@ -392,7 +379,6 @@ export default function RoiForever() {
     return null;
   }
 
-  // Résolution du wallet
   async function resolveWallet(name) {
     try {
       const rw = await fetch("/api/resolve_wallet", {
@@ -401,78 +387,10 @@ export default function RoiForever() {
         body: JSON.stringify({ name }),
       });
       const rwJson = await rw.json();
-      const w = rw.ok ? (rwJson.wallet || null) : null;
-      setWallet(w);
-      return w;
+      setWallet(rw.ok ? (rwJson.wallet || null) : null);
     } catch {
       setWallet(null);
-      return null;
     }
-  }
-
-  // Récupère les achats de packs on-chain et répartit le coût par club
-  async function fetchPackCostsForWallet(w) {
-    // NOTE: pages/pageSize/limit → ajuste si tu veux couvrir “toute la vie” du wallet
-    const url = `/api/packs/by-wallet?wallet=${w}&pages=10&pageSize=100&limit=1000`;
-    const r = await fetch(url, { cache: "no-store" });
-    const j = await r.json();
-    if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
-
-    // Répartition fine du prix de chaque achat selon l'influence réelle par club
-    const spend = new Map(); // clubId -> $ cumulé
-    const buysMap = new Map(); // clubId -> [{...purchaseForThisClub}]
-    for (const it of j.items || []) {
-      const price = Number(it.priceUSDC || 0);
-      const unit = Number(it.unitPriceUSDC || 0);
-      const packs = Number(it.packs || 0);
-      const blockTs = Number(it.blockTimestamp || 0); // si API renvoie le timestamp, sinon 0
-      const txHash = it.txHash;
-      const blockNumber = it.blockNumber;
-
-      // Composition (influences par club) présente via details.enrich
-      const parts = [];
-      const det = it.details || {};
-      const mainId = det?.shares?.mainClub?.clubId;
-      const mainInf = Number(det?.influence?.main || 0);
-      if (mainId && mainInf > 0) parts.push({ clubId: mainId, inf: mainInf });
-
-      for (const s of det?.shares?.secondaryClubs || []) {
-        const cid = Number(s.clubId);
-        const inf = Number(s.influence || 0);
-        if (cid && inf > 0) parts.push({ clubId: cid, inf });
-      }
-
-      const totalInf = parts.reduce((a, b) => a + b.inf, 0);
-      if (price <= 0 || totalInf <= 0) continue;
-
-      const usdPerInf = price / totalInf;
-
-      for (const p of parts) {
-        const partUSD = usdPerInf * p.inf;
-        spend.set(p.clubId, (spend.get(p.clubId) || 0) + partUSD);
-
-        const arr = buysMap.get(p.clubId) || [];
-        arr.push({
-          txHash,
-          dateTs: blockTs || null,
-          blockNumber,
-          packs,
-          priceUSDC: price,
-          unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
-          allocatedUSD: partUSD,
-          allocatedInf: p.inf,
-        });
-        buysMap.set(p.clubId, arr);
-      }
-    }
-
-    // Tri des achats par date desc (si timestamp dispo), sinon par blockNumber desc
-    for (const [cid, arr] of buysMap.entries()) {
-      arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0) || (b.blockNumber || 0) - (a.blockNumber || 0));
-    }
-
-    setPackSpendUSDByClub(spend);
-    setPackBuysByClub(buysMap);
   }
 
   async function handleSearch(e) {
@@ -483,7 +401,6 @@ export default function RoiForever() {
     setLoading(true);
     setError("");
     setSearched(true);
-    setOpenClub(null);
 
     try {
       const [bs, txs, pos] = await Promise.all([
@@ -496,11 +413,10 @@ export default function RoiForever() {
       setTransactions(txs);
       setPositions(pos);
 
-      // wallet détecté + coûts packs par club
-      const w = await resolveWallet(name);
-      if (w) await fetchPackCostsForWallet(w);
+      // wallet détecté (pour étapes on-chain futures)
+      resolveWallet(name);
 
-      // (facultatif) Prévisualisations de pack pour chaque club possédé
+      // Prévisualisations de pack pour chaque club possédé
       const clubIds = Array.from(new Set((pos?.clubs || []).map((c) => c.id)));
       const previews = await Promise.all(
         clubIds.map(async (id) => [id, await fetchPackPreviewFor(id)])
@@ -526,8 +442,6 @@ export default function RoiForever() {
       setPackPriceUSDByClub(new Map());
       setInfPerPackByClub(new Map());
       setAllInfByClub(new Map());
-      setPackSpendUSDByClub(new Map());
-      setPackBuysByClub(new Map());
       setWallet(null);
     } finally {
       setLoading(false);
@@ -545,21 +459,9 @@ export default function RoiForever() {
         packPriceUSDByClub,
         infPerPackByClub,
         allInfByClub,
-        packSpendUSDByClub,
         svcRateUSD,
       }),
-    [
-      balanceSheet,
-      transactions,
-      positions,
-      clubMap,
-      playerMap,
-      packPriceUSDByClub,
-      infPerPackByClub,
-      allInfByClub,
-      packSpendUSDByClub,
-      svcRateUSD,
-    ]
+    [balanceSheet, transactions, positions, clubMap, playerMap, packPriceUSDByClub, infPerPackByClub, allInfByClub, svcRateUSD]
   );
 
   // tri local si demandé
@@ -590,61 +492,6 @@ export default function RoiForever() {
       {active ? (dir === "asc" ? "↑" : "↓") : "↕"}
     </span>
   );
-
-  const renderDrawer = (clubId) => {
-    const rows = packBuysByClub.get(clubId) || [];
-    if (!rows.length) {
-      return (
-        <div className="text-sm text-gray-400">
-          Aucun achat de pack détecté pour ce club.
-        </div>
-      );
-    }
-    return (
-      <div className="text-sm">
-        <div className="mb-2 text-gray-300">
-          {rows.length} achat{rows.length > 1 ? "s" : ""} de pack impliquant ce club
-        </div>
-        <div className="overflow-x-auto rounded-lg border border-gray-700">
-          <table className="w-full text-xs sm:text-sm">
-            <thead className="bg-gray-800 text-gray-300">
-              <tr>
-                <th className="text-left py-2 px-3">Date</th>
-                <th className="text-left py-2 px-3">Tx</th>
-                <th className="text-right py-2 px-3">Packs</th>
-                <th className="text-right py-2 px-3">Prix total ($)</th>
-                <th className="text-right py-2 px-3">Prix / pack ($)</th>
-                <th className="text-right py-2 px-3">Part allouée au club ($)</th>
-                <th className="text-right py-2 px-3">Influence allouée</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {rows.map((r, i) => (
-                <tr key={`${r.txHash}-${i}`} className="hover:bg-white/5">
-                  <td className="py-2 px-3">{fmtDate(r.dateTs)}</td>
-                  <td className="py-2 px-3">
-                    <a
-                      className="text-indigo-400 hover:underline"
-                      href={`https://polygonscan.com/tx/${r.txHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {shortHash(r.txHash)}
-                    </a>
-                  </td>
-                  <td className="py-2 px-3 text-right">{fmtInt(r.packs)}</td>
-                  <td className="py-2 px-3 text-right">{fmtUSD(r.priceUSDC)}</td>
-                  <td className="py-2 px-3 text-right">{fmtUSD(r.unitPriceUSDC)}</td>
-                  <td className="py-2 px-3 text-right">{fmtUSD(r.allocatedUSD)}</td>
-                  <td className="py-2 px-3 text-right">{fmtInt(r.allocatedInf)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
@@ -707,15 +554,8 @@ export default function RoiForever() {
                       <th className="text-right py-2 px-3">Quantité</th>
                       <th className="text-right py-2 px-3">Achats via SVC</th>
                       <th className="text-right py-2 px-3">Gains SVC</th>
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("coutTotalUSD")}
-                        title="Trier par coût total ($)"
-                      >
-                        Coût total ($)
-                        <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
-                      </th>
-                      <th className="text-right py-2 px-3">Coût packs ($)</th>
+                      <th className="text-right py-2 px-3">Prix pack ($)</th>
+                      <th className="text-right py-2 px-3">Inf./pack (club)</th>
                       <th
                         className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
                         onClick={() => toggleSort("roiUSD")}
@@ -732,74 +572,56 @@ export default function RoiForever() {
                         ROI affiné ($)
                         <Arrow active={sortKey === "roiAffUSD"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3">Détails</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
-                    {clubs.map((row) => {
-                      const isOpen = openClub === row.id;
-                      return (
-                        <React.Fragment key={`c-${row.id}`}>
-                          <tr className="hover:bg-white/5">
-                            <td className="py-2 px-3">
-                              <a
-                                href={row.link}
-                                className="text-indigo-400 hover:underline"
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {row.name}
-                              </a>
-                            </td>
-                            <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
-                            <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
-                            <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
-                            <td className="py-2 px-3 text-right">
-                              {row.coutTotalUSD ? fmtUSD(row.coutTotalUSD) : <span className="text-gray-500">—</span>}
-                            </td>
-                            <td className="py-2 px-3 text-right">
-                              {row.depensePacksAffineeUSD ? fmtUSD(row.depensePacksAffineeUSD) : <span className="text-gray-500">—</span>}
-                            </td>
-                            <td className="py-2 px-3">
-                              {row.roiUSD != null ? (
-                                <RoiBar pct={row.roiUSD * 100} />
-                              ) : (
-                                <span className="text-gray-500">n/a</span>
-                              )}
-                              {row.gainsUSD != null && (
-                                <div className="text-xs text-gray-500 text-right mt-1">
-                                  gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD(row.coutTotalUSD || 0)}
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-2 px-3">
-                              {row.roiAffUSD != null ? (
-                                <RoiBar pct={row.roiAffUSD * 100} />
-                              ) : (
-                                <span className="text-gray-500">n/a</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-right">
-                              <button
-                                className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-xs"
-                                onClick={() => setOpenClub(isOpen ? null : row.id)}
-                              >
-                                {isOpen ? "fermer" : "voir"}
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Drawer */}
-                          {isOpen && (
-                            <tr className="bg-black/30">
-                              <td className="py-3 px-3" colSpan={9}>
-                                {renderDrawer(row.id)}
-                              </td>
-                            </tr>
+                    {clubs.map((row) => (
+                      <tr key={`c-${row.id}`} className="hover:bg-white/5">
+                        <td className="py-2 px-3">
+                          <a
+                            href={row.link}
+                            className="text-indigo-400 hover:underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {row.name}
+                          </a>
+                        </td>
+                        <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
+                        <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
+                        <td className="py-2 px-3 text-right">
+                          {row.packPriceUSD > 0 ? fmtUSD(row.packPriceUSD) : <span className="text-gray-500">—</span>}
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          {row.infPerPack || <span className="text-gray-500">—</span>}
+                        </td>
+                        <td className="py-2 px-3">
+                          {row.roiUSD != null ? (
+                            <RoiBar pct={row.roiUSD * 100} />
+                          ) : (
+                            <span className="text-gray-500">n/a</span>
                           )}
-                        </React.Fragment>
-                      );
-                    })}
+                          {row.gainsUSD != null && (
+                            <div className="text-xs text-gray-500 text-right mt-1">
+                              gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD((row.depenseSvcUSD || 0) + (row.depensePacksUSD || 0))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2 px-3">
+                          {row.roiAffUSD != null ? (
+                            <RoiBar pct={row.roiAffUSD * 100} />
+                          ) : (
+                            <span className="text-gray-500">n/a</span>
+                          )}
+                          {row.gainsUSD != null && (
+                            <div className="text-xs text-gray-500 text-right mt-1">
+                              gains: {fmtUSD(row.gainsUSD)} / coût aff.: {fmtUSD((row.depenseSvcUSD || 0) + (row.depensePacksAffineeUSD || 0))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
