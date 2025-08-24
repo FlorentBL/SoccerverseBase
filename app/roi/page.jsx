@@ -239,16 +239,29 @@ function aggregateForever({
 // UI helpers
 
 function RoiBar({ pct }) {
-  const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+  const val = Number(pct) || 0;                    // real ROI in %
+  const width = Math.max(0, Math.min(100, val));   // clamp only the bar
+  const color =
+    val < 0 ? "bg-red-500"
+    : val >= 100 ? "bg-emerald-500"
+    : "bg-indigo-500";
+
   return (
     <div className="flex items-center gap-3 min-w-[180px]">
-      <div className="flex-1 h-2 rounded bg-gray-800 overflow-hidden">
+      <div
+        className="flex-1 h-2 rounded bg-gray-800 overflow-hidden"
+        title={`${val.toFixed(2)}%`}                 // tooltip shows exact ROI
+        role="progressbar"
+        aria-valuenow={val}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
         <div
-          className="h-full bg-indigo-500 transition-[width] duration-300"
-          style={{ width: `${clamped}%` }}
+          className={`h-full ${color} transition-[width] duration-300`}
+          style={{ width: `${width}%` }}
         />
       </div>
-      <span className="tabular-nums">{clamped.toFixed(1)}%</span>
+      <span className="tabular-nums">{val.toFixed(1)}%</span>  {/* show real ROI, can be >100 */}
     </div>
   );
 }
