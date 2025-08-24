@@ -3,162 +3,142 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ───────────────────────────────────────────────────────────────────────────────
-// ENV
-const getKey = () =>
-  process.env.POLYGONSCAN_API_KEY ||
-  process.env.POLYGONSCAN_KEY ||
-  process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY ||
-  "";
+/**
+ * CONFIG
+ * - POLYGON_RPC_URL doit pointer vers un RPC fiable (QuickNode, Alchemy, Infura, ou le public polygon-rpc.com)
+ */
+const RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-rpc.com";
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Polygonscan API: account.tokentx (1 page)
-async function fetchTokenTxPage(addr, page, pageSize, sort, apiKey, withBlocks = false) {
-  const url = new URL("https://api.polygonscan.com/api");
-  url.searchParams.set("module", "account");
-  url.searchParams.set("action", "tokentx");
-  url.searchParams.set("address", addr);
-  url.searchParams.set("page", String(page));
-  url.searchParams.set("offset", String(pageSize));
-  url.searchParams.set("sort", sort);
-  if (withBlocks) {
-    url.searchParams.set("startblock", "0");
-    url.searchParams.set("endblock", "99999999");
-  }
-  url.searchParams.set("apikey", apiKey);
+// Topics
+const TOPIC_TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-  const r = await fetch(url, { cache: "no-store" });
-  let body;
-  try { body = await r.json(); } catch { body = null; }
-  return { status: r.status, url: url.toString(), body };
+// Helpers
+const to0x = (x) => (x?.startsWith("0x") ? x : "0x" + x);
+function padTopicAddress(addr) {
+  const clean = addr.toLowerCase().replace(/^0x/, "");
+  return "0x" + "0".repeat(24) + clean; // 12 bytes of 0 → left-padded to 32 bytes for topic
+}
+async function rpc(method, params) {
+  const r = await fetch(RPC_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    cache: "no-store",
+  });
+  if (!r.ok) throw new Error(`RPC HTTP ${r.status}`);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || "RPC error");
+  return j.result;
+}
+async function getLatestBlockNumber() {
+  const hex = await rpc("eth_blockNumber", []);
+  return parseInt(hex, 16);
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Fallback HTML scraper: /tokentxns?a=...&ps=100&p=...
-async function scrapeTokenTxPage(addr, page, pageSize) {
-  const url = new URL("https://polygonscan.com/tokentxns");
-  url.searchParams.set("a", addr);
-  url.searchParams.set("ps", String(pageSize));
-  url.searchParams.set("p", String(page));
-  const r = await fetch(url.toString(), {
-    cache: "no-store",
-    headers: {
-      // Petit UA pour éviter les blocages les plus basiques
-      "User-Agent":
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.8,fr;q=0.6",
-    },
-  });
-  const html = await r.text();
-  // Extraction très robuste des liens /tx/0x...
-  const re = /\/tx\/(0x[a-fA-F0-9]{64})/g;
-  const hashes = [];
+/**
+ * Scan des logs Transfer (ERC20/721) où topics[1] = from = wallet
+ * - address non spécifiée -> n’importe quel contrat (tous tokens)
+ * - chunking adaptatif pour éviter "range too large" / timeouts
+ */
+const RANGE_ERR_RE = /(range|too (large|wide)|exceed|more than|timeout|query|result size|response size)/i;
+
+async function fetchTransferTxHashesByRPC(wallet, { startblock, endblock, initialStep = 20000, minStep = 2000 } = {}) {
+  const fromTopic = padTopicAddress(wallet);
   const seen = new Set();
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    const h = m[1].toLowerCase();
-    if (!seen.has(h)) {
-      seen.add(h);
-      hashes.push(h);
+  const byTx = new Map(); // txHash -> { blockNumber, txHash }
+
+  let from = startblock;
+  let step = Math.min(initialStep, Math.max(1, endblock - startblock + 1));
+
+  while (from <= endblock) {
+    let curStep = Math.min(step, endblock - from + 1);
+
+    // Tentatives avec réduction de fenêtre si le RPC refuse
+    // (boucle interne)
+    while (true) {
+      const to = from + curStep - 1;
+      const filter = {
+        fromBlock: to0x(from.toString(16)),
+        toBlock: to0x(to.toString(16)),
+        topics: [TOPIC_TRANSFER, fromTopic], // Transfer(from=wallet, to=any)
+      };
+
+      try {
+        const logs = await rpc("eth_getLogs", [filter]);
+
+        // Collecte des txHash
+        for (const l of logs) {
+          const tx = (l.transactionHash || "").toLowerCase();
+          if (!tx || seen.has(tx)) continue;
+          seen.add(tx);
+          const bn = parseInt(l.blockNumber, 16);
+          byTx.set(tx, { txHash: tx, blockNumber: bn });
+        }
+
+        // Avance la fenêtre
+        from = to + 1;
+
+        // Si ce chunk a ramené beaucoup de logs → réduire step futur
+        if (logs.length > 5000 && step > minStep) {
+          step = Math.max(minStep, Math.floor(step / 2));
+        }
+        break; // chunk OK -> sortir de la boucle "réduction"
+      } catch (e) {
+        const msg = String(e.message || e);
+        if (RANGE_ERR_RE.test(msg) && curStep > minStep) {
+          curStep = Math.max(minStep, Math.floor(curStep / 2));
+          continue; // on retente avec une fenêtre plus petite
+        }
+        // autre erreur ou déjà à minStep
+        throw e;
+      }
     }
   }
-  return { url: url.toString(), count: hashes.length, hashes };
+
+  // Trie par blockNumber décroissant
+  return Array.from(byTx.values())
+    .sort((a, b) => b.blockNumber - a.blockNumber)
+    .map((x) => x.txHash);
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
 // Handler
 export async function GET(req) {
-  const url = new URL(req.url);
-  const wallet = (url.searchParams.get("wallet") || "").toLowerCase();
-  const pages = Math.max(1, Math.min(10, parseInt(url.searchParams.get("pages") || "3", 10)));
-  const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get("pageSize") || "100", 10)));
-  const sort = (url.searchParams.get("sort") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
-  const prefer = (url.searchParams.get("prefer") || "api").toLowerCase(); // api|html
-
-  if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
-    return NextResponse.json({ ok: false, error: "wallet invalide" }, { status: 400 });
-  }
-
-  const apiKey = getKey();
-  const debug = [];
-  const seen = new Set();
-  const hashes = [];
-
-  // Choix: on tente d'abord l'API, puis fallback HTML si NOTOK ou vide
-  const doApi = prefer !== "html" && !!apiKey;
-
   try {
-    if (doApi) {
-      for (let p = 1; p <= pages; p++) {
-        let res = await fetchTokenTxPage(wallet, p, pageSize, sort, apiKey, false);
-        const apiResultStr =
-          typeof res.body?.result === "string" ? res.body.result : null;
-        let arr = Array.isArray(res.body?.result) ? res.body.result : [];
+    const url = new URL(req.url);
+    const wallet = (url.searchParams.get("wallet") || "").toLowerCase();
+    let startblock = parseInt(url.searchParams.get("startblock") || "0", 10);
+    let endblock = parseInt(url.searchParams.get("endblock") || "0", 10);
+    const initialStep = parseInt(url.searchParams.get("initialStep") || "20000", 10);
+    const minStep = parseInt(url.searchParams.get("minStep") || "2000", 10);
+    const limit = Math.max(1, Math.min(5000, parseInt(url.searchParams.get("limit") || "1000", 10)));
 
-        const pageDebug = {
-          page: p,
-          apiStatus: res.body?.status,
-          apiMessage: res.body?.message,
-          apiResult: apiResultStr, // ex: "Max rate limit reached" / "Invalid API Key"
-          fetched: Array.isArray(res.body?.result) ? res.body.result.length : null,
-        };
-
-        // Si 1ère page vide/NOTOK → retente avec bornes explicites (certains comptes l’exigent)
-        if ((res.body?.status !== "1" || arr.length === 0) && p === 1) {
-          const retry = await fetchTokenTxPage(wallet, p, pageSize, sort, apiKey, true);
-          const retryResultStr =
-            typeof retry.body?.result === "string" ? retry.body.result : null;
-          pageDebug.retryWithBlocks = {
-            apiStatus: retry.body?.status,
-            apiMessage: retry.body?.message,
-            apiResult: retryResultStr,
-            fetched: Array.isArray(retry.body?.result) ? retry.body.result.length : null,
-          };
-          if (Array.isArray(retry.body?.result)) arr = retry.body.result;
-        }
-
-        debug.push(pageDebug);
-
-        for (const x of arr) {
-          const h = (x.hash || x.transactionHash || "").toLowerCase();
-          if (h && !seen.has(h)) {
-            seen.add(h);
-            hashes.push(h);
-          }
-        }
-
-        if (arr.length < pageSize) break; // dernière page
-      }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
+      return NextResponse.json({ ok: false, error: "wallet invalide" }, { status: 400 });
     }
+
+    const latest = await getLatestBlockNumber();
+    // Par défaut, on scanne ~2 000 000 de blocs en arrière (≈ ~2-3 semaines sur Polygon PoS, ajustable)
+    if (!endblock) endblock = latest;
+    if (!startblock) startblock = Math.max(0, endblock - 2_000_000);
+
+    const hashes = await fetchTransferTxHashesByRPC(wallet, {
+      startblock,
+      endblock,
+      initialStep,
+      minStep,
+    });
+
+    const trimmed = hashes.slice(0, limit);
+
+    return NextResponse.json({
+      ok: true,
+      wallet,
+      range: { startblock, endblock },
+      count: trimmed.length,
+      hashes: trimmed,
+      meta: { totalFound: hashes.length, initialStep, minStep, rpc: !!RPC_URL },
+    });
   } catch (e) {
-    debug.push({ apiError: String(e?.message || e) });
+    return NextResponse.json({ ok: false, error: e.message || "Unhandled error" }, { status: 500 });
   }
-
-  // Fallback HTML si rien trouvé via API (NOTOK, quota, invalid key, etc.) ou si prefer=html
-  const usedFallback = hashes.length === 0;
-  if (usedFallback || prefer === "html") {
-    const htmlInfo = [];
-    for (let p = 1; p <= pages; p++) {
-      try {
-        const { url: pageUrl, count, hashes: list } = await scrapeTokenTxPage(wallet, p, pageSize);
-        htmlInfo.push({ page: p, pageUrl, count });
-        for (const h of list) if (!seen.has(h)) { seen.add(h); hashes.push(h); }
-        if (count < pageSize) break; // probablement la dernière page
-      } catch (e) {
-        htmlInfo.push({ page: p, error: String(e?.message || e) });
-        break;
-      }
-    }
-    debug.push({ htmlFallback: htmlInfo });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    wallet,
-    count: hashes.length,
-    hashes,
-    debug,
-    usedFallback,
-  });
 }
