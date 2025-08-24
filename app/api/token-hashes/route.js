@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// USDC natif + USDC.e (tu peux changer/retirer ce filtre via ?contracts=all)
+// Par défaut: USDC (native) + USDC.e (tu peux changer via ?contracts=...)
 const DEFAULT_CONTRACTS = [
   "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359", // USDC (native)
   "0x2791bca1f2de4661ed88a30c99a7a9449aa84174", // USDC.e (bridged)
@@ -16,14 +16,15 @@ function getApiKey(reqUrl) {
   const url = new URL(reqUrl);
   return (
     url.searchParams.get("apikey") ||
-    process.env.ETHERSCAN_API_KEY ||           // clé Etherscan v2
-    process.env.POLYGONSCAN_API_KEY ||         // on accepte aussi si tu la poses ici
+    process.env.ETHERSCAN_API_KEY ||
+    process.env.POLYGONSCAN_API_KEY ||
     process.env.POLYGONSCAN_KEY ||
     process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY ||
     ""
   );
 }
 
+// — Etherscan v2: account.tokentx (1 page) —
 async function fetchTokenTxPageV2({ address, page, offset, sort, contract, apikey }) {
   const url = new URL(ETHERSCAN_V2);
   url.searchParams.set("chainid", CHAIN_ID);
@@ -42,12 +43,20 @@ async function fetchTokenTxPageV2({ address, page, offset, sort, contract, apike
   let body = null;
   try { body = await r.json(); } catch { /* ignore */ }
 
-  // v2 garde le même shape: {status:"1"|"0", message:"OK"/"NOTOK", result:[...]|string}
-  if (!body || body.status !== "1" || !Array.isArray(body.result)) {
-    const resultString = typeof body?.result === "string" ? body.result : null;
-    return { ok: false, error: body?.message || "NOTOK", resultString, items: [], url: url.toString() };
+  // Cas normal
+  if (body && body.status === "1" && Array.isArray(body.result)) {
+    return { ok: true, items: body.result, url: url.toString() };
   }
-  return { ok: true, items: body.result, url: url.toString() };
+
+  // Cas "No transactions found" => succès vide (ne pas bloquer l’agrégation)
+  const msg = (body?.message || "").toLowerCase();
+  if (msg.includes("no transactions found")) {
+    return { ok: true, items: [], url: url.toString(), note: "empty" };
+  }
+
+  // Autres erreurs (rate limit, invalid key, etc.)
+  const resultString = typeof body?.result === "string" ? body.result : null;
+  return { ok: false, error: body?.message || "NOTOK", resultString, items: [], url: url.toString() };
 }
 
 export async function GET(req) {
@@ -62,8 +71,11 @@ export async function GET(req) {
     const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get("pageSize") || "100", 10)));
     const sort = (url.searchParams.get("sort") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
     const apikey = getApiKey(req.url);
+    if (!apikey) {
+      return NextResponse.json({ ok: false, error: "API key manquante (?apikey=... ou ETHERSCAN_API_KEY)" }, { status: 400 });
+    }
 
-    // "contracts=all" pour tout récupérer (attention: plus volumineux)
+    // Contrats: "contracts=all" | liste séparée par virgules | défaut = USDC+USDC.e
     const contractsParam = (url.searchParams.get("contracts") || "").trim();
     let contracts = DEFAULT_CONTRACTS;
     if (contractsParam) {
@@ -76,13 +88,6 @@ export async function GET(req) {
           .filter((s) => /^0x[0-9a-fA-F]{40}$/.test(s));
         if (contracts.length === 0) contracts = DEFAULT_CONTRACTS;
       }
-    }
-
-    if (!apikey) {
-      return NextResponse.json({
-        ok: false,
-        error: "API key manquante. Utilise ?apikey=... ou mets ETHERSCAN_API_KEY dans l'env.",
-      }, { status: 400 });
     }
 
     const seen = new Set();
@@ -99,18 +104,19 @@ export async function GET(req) {
           contract,
           apikey,
         });
+
         debug.push({
           contract: contract || "ALL",
           page: p,
           ok: res.ok,
           error: res.ok ? undefined : res.error,
-          resultString: res.ok ? undefined : res.resultString, // ex: "Invalid API Key ..."
+          resultString: res.ok ? undefined : res.resultString,
           url: res.url,
           fetched: res.items.length,
         });
 
         if (!res.ok) {
-          // Erreurs clés bien visibles dans la réponse
+          // erreur “forte” → on renvoie l’info debug telle quelle
           return NextResponse.json({ ok: false, error: res.resultString || res.error, debug }, { status: 502 });
         }
 
@@ -122,7 +128,7 @@ export async function GET(req) {
           }
         }
 
-        if (res.items.length < pageSize) break; // fin de pagination pour ce contrat
+        if (res.items.length < pageSize) break; // fin pagination pour ce contrat
       }
     }
 
