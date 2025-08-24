@@ -8,9 +8,9 @@ export const dynamic = "force-dynamic";
 // ENV helpers
 function getPolygonscanKey() {
   return (
-    process.env.POLYGONSCAN_API_KEY || // ton nom actuel
-    process.env.POLYGONSCAN_KEY ||     // alias accepté
-    process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY || // au cas où
+    process.env.POLYGONSCAN_API_KEY ||
+    process.env.POLYGONSCAN_KEY ||
+    process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY ||
     ""
   );
 }
@@ -18,7 +18,11 @@ function getPolygonscanKey() {
 // ───────────────────────────────────────────────────────────────────────────────
 // CONFIG
 const RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-rpc.com";
-const USDC_CONTRACT = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowerCase();
+// USDC natif & USDC.e (bridgé)
+const USDC_NATIVE = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowerCase();
+const USDC_BRIDGED = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174".toLowerCase();
+const USDC_SET = new Set([USDC_NATIVE, USDC_BRIDGED]);
+const isUsdc = (addr) => USDC_SET.has((addr || "").toLowerCase());
 
 // Règles packs
 const SHARES_PER_PACK_MAIN = 40;
@@ -166,7 +170,7 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   if (buyerWallet) {
     const w = buyerWallet.toLowerCase();
     const usdcTransfers = transfers.filter(
-      (t) => t.standard === "ERC20/721" && (t.contract || "") === USDC_CONTRACT && (t.from || "").toLowerCase() === w
+      (t) => t.standard === "ERC20/721" && isUsdc(t.contract) && (t.from || "").toLowerCase() === w
     );
     if (usdcTransfers.length) {
       const amounts = usdcTransfers.map((t) => normalizeUSDC(t.amountOrId)).sort((a, b) => b - a);
@@ -222,13 +226,13 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Polygonscan (clé passée à l'exécution).  ⚠️ Si start/end absents → full historique (offset limité)
-async function fetchUsdcTransfersForWallet_Polygonscan(wallet, { startblock, endblock, offset = 10000 } = {}, apiKey) {
+// Polygonscan fetchers
+async function fetchTokentxFor(wallet, contract, { startblock, endblock, offset = 10000 } = {}, apiKey) {
   const url = new URL("https://api.polygonscan.com/api");
   url.searchParams.set("module", "account");
   url.searchParams.set("action", "tokentx");
   url.searchParams.set("address", wallet);
-  url.searchParams.set("contractaddress", USDC_CONTRACT);
+  if (contract) url.searchParams.set("contractaddress", contract);
   if (Number.isFinite(startblock)) url.searchParams.set("startblock", String(startblock));
   if (Number.isFinite(endblock))   url.searchParams.set("endblock", String(endblock));
   url.searchParams.set("page", "1");
@@ -239,8 +243,65 @@ async function fetchUsdcTransfersForWallet_Polygonscan(wallet, { startblock, end
   const r = await fetch(url, { cache: "no-store" });
   if (!r.ok) throw new Error(`Polygonscan HTTP ${r.status}`);
   const j = await r.json();
-  if (j.status !== "1" && j.message !== "OK") return [];
-  return Array.isArray(j.result) ? j.result : [];
+  if (!Array.isArray(j.result)) return [];
+  // normalisation
+  return j.result.map(x => ({
+    hash: x.hash,
+    from: (x.from || "").toLowerCase(),
+    to: (x.to || "").toLowerCase(),
+    timeStamp: x.timeStamp,
+    contractAddress: (x.contractAddress || "").toLowerCase(),
+  }));
+}
+
+// Fallback via logs.getLogs (topics Transfer + from=wallet) — par contrat
+async function fetchTransfersViaLogsPolygonscan(wallet, contract, { startblock, endblock, step = 200000 } = {}, apiKey) {
+  const padAddr = (a) => "0x" + "0".repeat(24) + a.toLowerCase().replace(/^0x/, "");
+  const out = [];
+  const fromTopic = padAddr(wallet);
+  for (let from = startblock; from <= endblock; from += step) {
+    const to = Math.min(endblock, from + step - 1);
+    const url = new URL("https://api.polygonscan.com/api");
+    url.searchParams.set("module", "logs");
+    url.searchParams.set("action", "getLogs");
+    url.searchParams.set("fromBlock", String(from));
+    url.searchParams.set("toBlock", String(to));
+    url.searchParams.set("address", contract);
+    url.searchParams.set("topic0", TOPIC_TRANSFER_ERC20_721);
+    url.searchParams.set("topic1", fromTopic);
+    url.searchParams.set("apikey", apiKey);
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`Polygonscan logs HTTP ${r.status}`);
+    const j = await r.json();
+    if (!Array.isArray(j.result)) continue;
+    for (const lg of j.result) {
+      out.push({
+        hash: lg.transactionHash,
+        from: hexToAddress(lg.topics?.[1] || ""),
+        to: hexToAddress(lg.topics?.[2] || ""),
+        timeStamp: lg.timeStamp ? String(parseInt(lg.timeStamp, 16)) : "0",
+        contractAddress: (lg.address || "").toLowerCase(),
+      });
+    }
+  }
+  return out;
+}
+
+async function fetchUsdcTransfersForWallet_Polygonscan(wallet, { startblock, endblock } = {}, apiKey) {
+  // 1) Essaye tokentx sur USDC natif + USDC.e
+  const a = await fetchTokentxFor(wallet, USDC_NATIVE, { startblock, endblock }, apiKey);
+  const b = await fetchTokentxFor(wallet, USDC_BRIDGED, { startblock, endblock }, apiKey);
+  let merged = [...a, ...b].filter(t => isUsdc(t.contractAddress));
+  if (merged.length) return { transfers: merged, mode: "tokentx" };
+
+  // 2) Fallback via logs.getLogs si rien
+  if (Number.isFinite(startblock) && Number.isFinite(endblock)) {
+    const la = await fetchTransfersViaLogsPolygonscan(wallet, USDC_NATIVE, { startblock, endblock }, apiKey);
+    const lb = await fetchTransfersViaLogsPolygonscan(wallet, USDC_BRIDGED, { startblock, endblock }, apiKey);
+    merged = [...la, ...lb].filter(t => isUsdc(t.contractAddress));
+    return { transfers: merged, mode: "logs" };
+  }
+  return { transfers: [], mode: "tokentx" };
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -262,36 +323,25 @@ async function fetchUsdcTransfersForWallet_RPC(wallet, { startblock, endblock, i
 
   while (from <= endblock) {
     let curStep = Math.min(step, endblock - from + 1);
-    // boucle de tentative avec réduction de curStep en cas d'échec
     while (true) {
       const to = from + curStep - 1;
       const filter = {
         fromBlock: to0x(from.toString(16)),
         toBlock: to0x(to.toString(16)),
-        address: USDC_CONTRACT,
+        address: [USDC_NATIVE, USDC_BRIDGED], // certains nœuds acceptent la liste
         topics: [TOPIC_TRANSFER_ERC20_721, topicFrom],
       };
       try {
         const chunk = await rpc("eth_getLogs", [filter]);
         logs.push(...chunk);
         from = to + 1;
-
-        // si volumineux → réduire step futur
-        if (chunk.length > 5000 && step > minStep) {
-          step = Math.max(minStep, Math.floor(step / 2));
-        }
-        break; // chunk OK → sortir de la while interne
+        if (chunk.length > 5000 && step > minStep) step = Math.max(minStep, Math.floor(step / 2));
+        break;
       } catch (e) {
         const msg = String(e.message || e);
-        if (RANGE_ERR_RE.test(msg) && curStep > minStep) {
-          curStep = Math.max(minStep, Math.floor(curStep / 2));
-          continue; // retente avec fenêtre réduite
-        }
-        if (curStep > minStep) { // autre erreur → réessaye en réduisant
-          curStep = Math.max(minStep, Math.floor(curStep / 2));
-          continue;
-        }
-        throw e; // on a atteint minStep → remonter l'erreur
+        if (RANGE_ERR_RE.test(msg) && curStep > minStep) { curStep = Math.max(minStep, Math.floor(curStep / 2)); continue; }
+        if (curStep > minStep) { curStep = Math.max(minStep, Math.floor(curStep / 2)); continue; }
+        throw e;
       }
     }
   }
@@ -394,12 +444,12 @@ export async function GET(req) {
       return NextResponse.json({ ok: false, error: "wallet invalide" }, { status: 400 });
     }
 
-    // Range par défaut (utile si on passe en RPC)
+    // Range par défaut (utile si on passe en RPC ou logs)
     const latest = await getLatestBlockNumber();
     if (!startblock) startblock = Math.max(0, latest - 1_000_000);
     if (!endblock) endblock = latest;
 
-    // Clé Polygonscan lue à l'exécution (accepte plusieurs noms)
+    // Clé Polygonscan
     const apiKey = getPolygonscanKey();
 
     // Choix de la source
@@ -407,7 +457,6 @@ export async function GET(req) {
     if (sourceParam === "polygonscan" || (sourceParam === "auto" && apiKey)) {
       sourceUsed = "polygonscan";
     }
-    // sécurité : si on exige polygonscan mais pas de clé → erreur claire
     if (sourceUsed === "polygonscan" && !apiKey) {
       return NextResponse.json(
         { ok: false, error: "POLYGONSCAN_API_KEY manquante côté serveur" },
@@ -416,10 +465,12 @@ export async function GET(req) {
     }
 
     // 1) Candidats = sorties USDC
-    let transfers;
+    let transfers = [];
+    let psMode = null;
     if (sourceUsed === "polygonscan") {
-      // par défaut sans range → pas d’erreur “range too large”
-      transfers = await fetchUsdcTransfersForWallet_Polygonscan(wallet, {}, apiKey);
+      const { transfers: t, mode } = await fetchUsdcTransfersForWallet_Polygonscan(wallet, { startblock, endblock }, apiKey);
+      transfers = t;
+      psMode = mode;
     } else {
       transfers = await fetchUsdcTransfersForWallet_RPC(wallet, { startblock, endblock, initialStep: 20000, minStep: 1000 });
     }
@@ -471,6 +522,7 @@ export async function GET(req) {
       wallet,
       scans: {
         source: sourceUsed,
+        polygonscanMode: psMode,
         candidates: candidates.length,
         analyzed: analyzed.length,
         packsDetected: items.length,
