@@ -1,6 +1,5 @@
 // app/wallet/[wallet]/packs/page.js
 import Link from "next/link";
-import { headers } from "next/headers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,20 +12,6 @@ function fmt(n, d = 6) {
 function shortHash(h) {
   return h ? `${h.slice(0, 8)}…${h.slice(-6)}` : "—";
 }
-function getBaseUrl() {
-  // Priorité à variables explicites, sinon on lit les headers (Vercel/Proxy safe)
-  const h = headers();
-  const forwardedProto = (h.get("x-forwarded-proto") || "https").split(",")[0].trim();
-  const forwardedHost = (h.get("x-forwarded-host") || h.get("host") || "").split(",")[0].trim();
-
-  const envPublic = process.env.NEXT_PUBLIC_SITE_URL; // ex: https://svbase.vercel.app
-  if (envPublic) return envPublic.replace(/\/+$/, "");
-
-  const vercelUrl = process.env.VERCEL_URL; // ex: svbase.vercel.app
-  if (vercelUrl) return `https://${vercelUrl}`;
-
-  return `${forwardedProto}://${forwardedHost}`;
-}
 
 export default async function WalletPacksPage({ params, searchParams }) {
   const wallet = (params.wallet || "").toLowerCase();
@@ -34,7 +19,6 @@ export default async function WalletPacksPage({ params, searchParams }) {
   const pageSize = Number(searchParams?.pageSize ?? "100");
   const limit = Number(searchParams?.limit ?? "80");
 
-  // On construit une URL ABSOLUE vers l’API (évite les 500 silencieuses en prod)
   const qs = new URLSearchParams({
     wallet,
     pages: String(pages),
@@ -42,7 +26,7 @@ export default async function WalletPacksPage({ params, searchParams }) {
     limit: String(limit),
   });
 
-  // On forward éventuellement la clé si dispo côté serveur (facultatif, l’API la lit déjà)
+  // On forward la clé si dispo côté serveur (facultatif)
   const apikey =
     process.env.POLYGONSCAN_API_KEY ||
     process.env.POLYGONSCAN_KEY ||
@@ -50,26 +34,21 @@ export default async function WalletPacksPage({ params, searchParams }) {
     "";
   if (apikey) qs.set("apikey", apikey);
 
-  const baseUrl = getBaseUrl();
-  const apiUrl = `${baseUrl}/api/packs/by-wallet?${qs.toString()}`;
+  // ⚠️ Fetch RELATIF pour éviter la protection Vercel sur un alias preview :
+  const apiUrl = `/api/packs/by-wallet?${qs.toString()}`;
 
   let data;
   try {
-    const res = await fetch(apiUrl, {
-      cache: "no-store",
-      next: { revalidate: 0 },
-    });
+    const res = await fetch(apiUrl, { cache: "no-store", next: { revalidate: 0 } });
+    const text = await res.text();
 
-    const text = await res.text(); // évite un crash si ce n’est pas du JSON
     try {
       data = JSON.parse(text);
-    } catch (e) {
+    } catch {
       return (
         <div className="p-6">
           <h1 className="text-xl font-semibold mb-2">Packs par wallet</h1>
-          <p className="text-red-600">
-            Réponse non-JSON de l’API ({res.status}) :
-          </p>
+          <p className="text-red-600">Réponse non-JSON de l’API ({res.status}) :</p>
           <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto">{text}</pre>
         </div>
       );
@@ -79,9 +58,7 @@ export default async function WalletPacksPage({ params, searchParams }) {
       return (
         <div className="p-6">
           <h1 className="text-xl font-semibold mb-2">Packs par wallet</h1>
-          <p className="text-red-600">
-            Erreur API {res.status}: {data?.error || "unknown"}
-          </p>
+          <p className="text-red-600">Erreur API {res.status}: {data?.error || "unknown"}</p>
         </div>
       );
     }
@@ -93,9 +70,6 @@ export default async function WalletPacksPage({ params, searchParams }) {
         <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto">
           {String(err && (err.message || err))}
         </pre>
-        <p className="mt-2 text-xs text-gray-500">
-          URL appelée : <code>{apiUrl}</code>
-        </p>
       </div>
     );
   }
@@ -108,9 +82,7 @@ export default async function WalletPacksPage({ params, searchParams }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Packs par wallet</h1>
-          <p className="text-sm text-gray-500">
-            Wallet: <span className="font-mono">{data.wallet}</span>
-          </p>
+          <p className="text-sm text-gray-500">Wallet: <span className="font-mono">{data.wallet}</span></p>
           <p className="text-sm text-gray-500">
             Source: {scans?.source} • Candidates: {scans?.candidates} • Analysées: {scans?.analyzed}
           </p>
@@ -147,7 +119,6 @@ export default async function WalletPacksPage({ params, searchParams }) {
               <th className="p-3">Prix / pack</th>
               <th className="p-3">Frais USDC</th>
               <th className="p-3">Influence</th>
-              <th className="p-3">Secondaires</th>
               <th className="p-3">Détail</th>
             </tr>
           </thead>
@@ -170,9 +141,9 @@ export default async function WalletPacksPage({ params, searchParams }) {
                       .map((s) => `${s.clubId} (${s.amount})`)
                       .join(", ") + (secs.length > 4 ? `, +${secs.length - 4}…` : "");
               const warn =
-                totals?.unitPriceAvgUSDC != null &&
+                data?.totals?.unitPriceAvgUSDC != null &&
                 it.unitPriceUSDC != null &&
-                Math.abs(it.unitPriceUSDC - totals.unitPriceAvgUSDC) / totals.unitPriceAvgUSDC > 0.1;
+                Math.abs(it.unitPriceUSDC - data.totals.unitPriceAvgUSDC) / data.totals.unitPriceAvgUSDC > 0.1;
 
               return (
                 <tr key={it.txHash} className="border-t hover:bg-gray-50">
@@ -203,7 +174,6 @@ export default async function WalletPacksPage({ params, searchParams }) {
                   </td>
                   <td className="p-3">{fmt(it.feesUSDC, 6)}</td>
                   <td className="p-3">{it.influenceTotal}</td>
-                  <td className="p-3">{secsLabel}</td>
                   <td className="p-3">
                     <details>
                       <summary className="cursor-pointer text-blue-600">voir</summary>
@@ -224,8 +194,6 @@ export default async function WalletPacksPage({ params, searchParams }) {
         <code>
           /api/packs/by-wallet?wallet={wallet}&amp;pages={pages}&amp;pageSize={pageSize}&amp;limit={limit}
         </code>
-        <br />
-        (appelée via <code>{getBaseUrl()}</code>)
       </div>
     </div>
   );
