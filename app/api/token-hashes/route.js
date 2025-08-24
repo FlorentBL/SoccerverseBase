@@ -3,25 +3,30 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// USDC natif + USDC.e sur Polygon
+// USDC natif + USDC.e (tu peux changer/retirer ce filtre via ?contracts=all)
 const DEFAULT_CONTRACTS = [
   "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359", // USDC (native)
   "0x2791bca1f2de4661ed88a30c99a7a9449aa84174", // USDC.e (bridged)
 ].map((x) => x.toLowerCase());
 
+const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
+const CHAIN_ID = "137"; // Polygon PoS
+
 function getApiKey(reqUrl) {
   const url = new URL(reqUrl);
   return (
-    url.searchParams.get("apikey") || // permet de tester rapidement
-    process.env.POLYGONSCAN_API_KEY ||
+    url.searchParams.get("apikey") ||
+    process.env.ETHERSCAN_API_KEY ||           // clé Etherscan v2
+    process.env.POLYGONSCAN_API_KEY ||         // on accepte aussi si tu la poses ici
     process.env.POLYGONSCAN_KEY ||
     process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY ||
     ""
   );
 }
 
-async function fetchTokenTxPage({ address, page, offset, sort, contract, apikey }) {
-  const url = new URL("https://api.polygonscan.com/api");
+async function fetchTokenTxPageV2({ address, page, offset, sort, contract, apikey }) {
+  const url = new URL(ETHERSCAN_V2);
+  url.searchParams.set("chainid", CHAIN_ID);
   url.searchParams.set("module", "account");
   url.searchParams.set("action", "tokentx");
   url.searchParams.set("address", address);
@@ -37,7 +42,7 @@ async function fetchTokenTxPage({ address, page, offset, sort, contract, apikey 
   let body = null;
   try { body = await r.json(); } catch { /* ignore */ }
 
-  // Etherscan/PolygonScan v1: status "1"/"0", message "OK"/"NOTOK"
+  // v2 garde le même shape: {status:"1"|"0", message:"OK"/"NOTOK", result:[...]|string}
   if (!body || body.status !== "1" || !Array.isArray(body.result)) {
     const resultString = typeof body?.result === "string" ? body.result : null;
     return { ok: false, error: body?.message || "NOTOK", resultString, items: [], url: url.toString() };
@@ -58,12 +63,12 @@ export async function GET(req) {
     const sort = (url.searchParams.get("sort") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
     const apikey = getApiKey(req.url);
 
-    // contrats: "contracts=addr1,addr2" | "contracts=all" | rien => USDC/USDC.e
+    // "contracts=all" pour tout récupérer (attention: plus volumineux)
     const contractsParam = (url.searchParams.get("contracts") || "").trim();
     let contracts = DEFAULT_CONTRACTS;
     if (contractsParam) {
       if (contractsParam.toLowerCase() === "all") {
-        contracts = [null]; // null => pas de filtre contrat (tous tokens) — plus verbeux
+        contracts = [null]; // null => pas de filtre contrat
       } else {
         contracts = contractsParam
           .split(",")
@@ -76,7 +81,7 @@ export async function GET(req) {
     if (!apikey) {
       return NextResponse.json({
         ok: false,
-        error: "API key PolygonScan manquante (apikey). Ajoute ?apikey=... au call ou définis POLYGONSCAN_API_KEY.",
+        error: "API key manquante. Utilise ?apikey=... ou mets ETHERSCAN_API_KEY dans l'env.",
       }, { status: 400 });
     }
 
@@ -86,7 +91,7 @@ export async function GET(req) {
 
     for (const contract of contracts) {
       for (let p = 1; p <= pages; p++) {
-        const res = await fetchTokenTxPage({
+        const res = await fetchTokenTxPageV2({
           address: wallet,
           page: p,
           offset: pageSize,
@@ -99,17 +104,14 @@ export async function GET(req) {
           page: p,
           ok: res.ok,
           error: res.ok ? undefined : res.error,
-          resultString: res.ok ? undefined : res.resultString, // ex: "Invalid API Key (#err2)|POLY-2"
+          resultString: res.ok ? undefined : res.resultString, // ex: "Invalid API Key ..."
           url: res.url,
           fetched: res.items.length,
         });
 
         if (!res.ok) {
-          // si clé invalide ou rate-limit, on s’arrête net pour signaler clairement
-          if ((res.error || "").toUpperCase().includes("NOTOK")) {
-            return NextResponse.json({ ok: false, error: res.resultString || res.error, debug }, { status: 502 });
-          }
-          break;
+          // Erreurs clés bien visibles dans la réponse
+          return NextResponse.json({ ok: false, error: res.resultString || res.error, debug }, { status: 502 });
         }
 
         for (const it of res.items) {
@@ -120,7 +122,7 @@ export async function GET(req) {
           }
         }
 
-        if (res.items.length < pageSize) break; // dernière page
+        if (res.items.length < pageSize) break; // fin de pagination pour ce contrat
       }
     }
 
