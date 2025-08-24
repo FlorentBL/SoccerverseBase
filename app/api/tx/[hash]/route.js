@@ -6,11 +6,11 @@ import { NextResponse } from "next/server";
 const RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-rpc.com";
 const USDC_CONTRACT = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowerCase();
 
-// Packs / Influence
-const PACK_MAIN_SHARES = 10000;
-const PACK_SECONDARY_SHARES = 2500;
-const INFLUENCE_MAIN_PER_PACK = 40;
-const INFLUENCE_SEC_PER_PACK = 10;
+// Packs / Parts / Influence (nouvelle logique)
+const SHARES_PER_PACK_MAIN = 40;   // ← 1 pack donne 40 "parts" principal
+const SHARES_PER_PACK_SEC  = 10;   // ← 1 pack donne 10 "parts" secondaire
+const INFLUENCE_MAIN_PER_PACK = 40; // influence pack principal
+const INFLUENCE_SEC_PER_PACK  = 10; // influence pack secondaire
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Low-level helpers
@@ -19,7 +19,6 @@ async function rpc(method, params) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    // Next 14: pas de cache pour des receipts fraiches
     cache: "no-store",
   });
   if (!r.ok) throw new Error(`RPC HTTP ${r.status}`);
@@ -61,18 +60,17 @@ function hexToBigInt(h) { try { return h ? BigInt(h) : 0n; } catch { return 0n; 
 function hexToAddress(h) { return "0x" + (h?.slice(26) || "").toLowerCase(); }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// ERC events decoding (standards)
+// ERC events decoding
 const TOPIC_TRANSFER_ERC20_721 =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"; // Transfer(address,address,uint256)
 const TOPIC_TRANSFER_SINGLE_1155 =
   "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62"; // TransferSingle(address,address,address,uint256,uint256)
 
-// ERC20/721: topics[1]=from, topics[2]=to, data=tokenId/value
 function decodeTransferERC20_721(log) {
   if (log.topics?.[0]?.toLowerCase() !== TOPIC_TRANSFER_ERC20_721) return null;
   const from = hexToAddress(log.topics[1]);
   const to = hexToAddress(log.topics[2]);
-  const amountOrId = hexToBigInt(log.data).toString(); // string pour JSON
+  const amountOrId = hexToBigInt(log.data).toString();
   return {
     standard: "ERC20/721",
     contract: log.address?.toLowerCase(),
@@ -83,7 +81,6 @@ function decodeTransferERC20_721(log) {
   };
 }
 
-// ERC1155 TransferSingle: data contient id (32B) + value (32B)
 function decodeTransferSingle1155(log) {
   if (log.topics?.[0]?.toLowerCase() !== TOPIC_TRANSFER_SINGLE_1155) return null;
   const data = hexToBytes(log.data);
@@ -103,7 +100,7 @@ function decodeTransferSingle1155(log) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Extraction heuristique de strings/JSON ABI-like dans log.data
+// Extraction ABI-like de strings/JSON dans log.data
 function extractAbiLikeStringsFromLogData(logDataHex) {
   const bytes = hexToBytes(logDataHex);
   const res = [];
@@ -132,13 +129,7 @@ function extractAbiLikeStringsFromLogData(logDataHex) {
     if (!txt) continue;
 
     const json = tryParseJsonLoose(txt);
-    res.push({
-      txt,
-      json,
-      offsetWordIndex: base / WORD,
-      offset: off,
-      length: len,
-    });
+    res.push({ txt, json, offsetWordIndex: base / WORD, offset: off, length: len });
   }
   return res;
 }
@@ -152,8 +143,7 @@ function extractJsonFromInput(inputHex) {
 // ───────────────────────────────────────────────────────────────────────────────
 // Pack summary builders
 function normalizeUSDC(valueStr) {
-  // USDC: 6 décimales
-  try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; }
+  try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; } // USDC 6 déc.
 }
 
 function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
@@ -164,7 +154,7 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
     if (j?.cmd?.mint?.shares) {
       const s = j.cmd.mint.shares;
       const clubId = s?.s?.club ?? s?.club ?? null;
-      const n = s?.n ?? null;
+      const n = s?.n ?? null; // "parts" telles qu’émises par le contrat
       const r = s?.r ?? j?.r ?? null;
       if (clubId && n) shares.push({ clubId, n, r, fromLog: c.source, contract: c.contract });
     }
@@ -180,8 +170,8 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const secondaries = shares.filter((s) => s !== main);
   const smcForMain = clubSmc.find((x) => x.clubId === main?.clubId) || null;
 
-  let priceUSDC = null;
-  let feeUSDC = 0;
+  // Prix en USDC (si wallet fourni)
+  let priceUSDC = null, feeUSDC = 0;
   if (buyerWallet) {
     const w = buyerWallet.toLowerCase();
     const usdcTransfers = transfers.filter(
@@ -191,11 +181,9 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
         (t.from || "").toLowerCase() === w
     );
     if (usdcTransfers.length) {
-      const amounts = usdcTransfers
-        .map((t) => normalizeUSDC(t.amountOrId))
-        .sort((a, b) => b - a);
+      const amounts = usdcTransfers.map((t) => normalizeUSDC(t.amountOrId)).sort((a, b) => b - a);
       priceUSDC = amounts[0] ?? null;
-      feeUSDC = amounts.slice(1).reduce((s, x) => s + x, 0);
+      feeUSDC   = amounts.slice(1).reduce((s, x) => s + x, 0);
     }
   }
 
@@ -217,8 +205,8 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
   if (!pack?.shares?.mainClub) return pack;
 
   const mainShares = Number(pack.shares.mainClub.amount || 0);
-  const packs = Math.floor(mainShares / PACK_MAIN_SHARES);
-  const mainModulo = mainShares % PACK_MAIN_SHARES;
+  const packs = Math.floor(mainShares / SHARES_PER_PACK_MAIN);
+  const mainModulo = mainShares % SHARES_PER_PACK_MAIN;
 
   const pricePerPack =
     packs > 0 && typeof pack.priceUSDC === "number"
@@ -229,8 +217,8 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
 
   const secondaries = (pack.shares.secondaryClubs || []).map((s) => {
     const secShares = Number(s.amount || 0);
-    const packsSec = Math.floor(secShares / PACK_SECONDARY_SHARES);
-    const secModulo = secShares % PACK_SECONDARY_SHARES;
+    const packsSec = Math.floor(secShares / SHARES_PER_PACK_SEC);
+    const secModulo = secShares % SHARES_PER_PACK_SEC;
     const secInfluence = packsSec * INFLUENCE_SEC_PER_PACK;
     return {
       ...s,
@@ -243,10 +231,14 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
   const totalSecondaryInfluence = secondaries.reduce((acc, x) => acc + (x.influence || 0), 0);
   const totalInfluence = mainInfluence + totalSecondaryInfluence;
 
+  // heuristique simple pour flagger un prix unitaire anormal
+  const unitPriceSuspect = pricePerPack != null && (pricePerPack < 1 || pricePerPack > 500);
+
   return {
     ...pack,
     packs,
     unitPriceUSDC: pricePerPack,
+    unitPriceSuspect,
     validation: {
       mainSharesModulo: mainModulo,
       secondariesHaveModuloZero: secondaries.every((x) => x.sharesModulo === 0),
@@ -297,7 +289,7 @@ export async function GET(req, { params }) {
       if (t1155) { transfers.push(t1155); continue; }
     }
 
-    // JSON candidates depuis log.data
+    // JSON candidates
     const jsonCandidates = [];
     for (const [i, log] of (receipt.logs || []).entries()) {
       if (!log?.data || log.data === "0x") continue;
@@ -314,10 +306,8 @@ export async function GET(req, { params }) {
       }
     }
 
-    // Fallback input
     const inputJsons = tx?.input ? extractJsonFromInput(tx.input) : [];
 
-    // Focus “intéressants”
     const interesting = [...jsonCandidates, ...inputJsons].filter(
       (e) =>
         e.json &&
@@ -326,7 +316,6 @@ export async function GET(req, { params }) {
           (e.json.mint && typeof e.json.mint === "object"))
     );
 
-    // Pack summary
     const packSummaryRaw = buildPackSummary({ jsonCandidates: interesting, transfers, buyerWallet });
     const packSummary = packSummaryRaw ? enrichPackWithInfluenceAndUnitPrice(packSummaryRaw) : null;
 
@@ -341,7 +330,7 @@ export async function GET(req, { params }) {
       jsonCandidates,
       inputJsons,
       interesting,
-      packSummary, // ← prêt à consommer côté UI
+      packSummary,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message || "Unhandled error" }, { status: 500 });

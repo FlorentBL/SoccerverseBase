@@ -71,12 +71,12 @@ export default function TxInspectorPage() {
     </div>
   );
 
-  const Badge = ({ ok, text }) => (
+  const Badge = ({ ok, text, warn }) => (
     <span
       style={{
-        background: ok ? "#16351f" : "#3a1515",
-        border: `1px solid ${ok ? "#2b7a3f" : "#7a2b2b"}`,
-        color: ok ? "#7df1a9" : "#ff9b9b",
+        background: warn ? "#3a3515" : ok ? "#16351f" : "#3a1515",
+        border: `1px solid ${warn ? "#7a6f2b" : ok ? "#2b7a3f" : "#7a2b2b"}`,
+        color: warn ? "#ffe07d" : ok ? "#7df1a9" : "#ff9b9b",
         padding: "2px 8px",
         borderRadius: 999,
         fontWeight: 700,
@@ -204,7 +204,19 @@ export default function TxInspectorPage() {
                   </div>
 
                   <div style={{ opacity: 0.7 }}>Prix / pack (USDC)</div>
-                  <div>{res.packSummary.unitPriceUSDC != null ? res.packSummary.unitPriceUSDC.toFixed(6) : "-"}</div>
+                  <div>
+                    {res.packSummary.unitPriceUSDC != null
+                      ? (
+                        <>
+                          {res.packSummary.unitPriceUSDC.toFixed(6)}
+                          {res.packSummary.unitPriceSuspect && (
+                            <Badge warn text="⚠️ suspect" />
+                          )}
+                        </>
+                        )
+                      : "-"
+                    }
+                  </div>
 
                   <div style={{ opacity: 0.7 }}>Influence totale</div>
                   <div>{res.packSummary.influence?.total ?? "-"}</div>
