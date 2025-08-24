@@ -45,6 +45,15 @@ const fmtDate = (ts) => {
   }
 };
 
+// Renvoie un texte multi-lignes avec toutes les dates d'achats d'un club
+function tooltipDatesForClub(buys = []) {
+  return buys
+    .filter(r => r?.dateTs)
+    .map(r => fmtDate(r.dateTs))
+    .join("\n");
+}
+
+
 const shortHash = (h) => (h ? `${h.slice(0, 6)}…${h.slice(-4)}` : "");
 const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
 
@@ -771,7 +780,34 @@ const clubs = useMemo(() => {
                         </td>
                         <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
                         <td className="py-2 px-3 text-right">{fmtInt(row.packsAchetes)}</td>
-                        <td className="py-2 px-3 text-right">{fmtDate(row.dernierAchatTs)}</td>
+                        <td className="py-2 px-3 text-right">
+  {(() => {
+    const buys = packBuysByClub.get(row.id) || [];      // toutes les lignes d'achat de packs pour ce club
+    const lastTs = buys[0]?.dateTs || null;              // le plus récent (on a déjà trié décroissant)
+    const tip    = tooltipDatesForClub(buys);            // multi-lignes "\n"
+    if (!lastTs) return <span className="text-gray-500">—</span>;
+
+    return (
+      <span
+        className="relative group cursor-help"
+        title={tip}                                      // fallback natif
+        aria-label={tip.replace(/\n/g, ", ")}             // accessibilité
+      >
+        {fmtDate(lastTs)}
+        {buys.length > 1 && (
+          <span className="ml-1 inline-flex items-center rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-gray-300">
+            +{buys.length - 1}
+          </span>
+        )}
+
+        {/* tooltip custom */}
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-20 hidden -translate-x-1/2 whitespace-pre rounded border border-white/10 bg-black/90 px-2 py-1 text-xs text-white shadow-lg group-hover:block">
+          {tip}
+        </span>
+      </span>
+    );
+  })()}
+</td>
                         <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
                         <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
                         <td className="py-2 px-3 text-right">
