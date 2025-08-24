@@ -10,7 +10,6 @@ export const dynamic = "force-dynamic";
 const RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-rpc.com";
 
 // USDC "native" sur Polygon (Circle) — 6 décimales
-// (On ajoute le bridged en option côté query si besoin)
 const USDC_NATIVE_POLYGON = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowerCase();
 
 // Règles d’un pack
@@ -73,12 +72,7 @@ function decodeTransferERC20_721(log) {
   const from = hexToAddress(log.topics[1]);
   const to = hexToAddress(log.topics[2]);
   const amountOrId = hexToBigInt(log.data).toString();
-  return {
-    standard: "ERC20/721",
-    contract: (log.address || "").toLowerCase(),
-    from, to, amountOrId,
-    logIndex: parseInt(log.logIndex, 16),
-  };
+  return { standard: "ERC20/721", contract: (log.address || "").toLowerCase(), from, to, amountOrId, logIndex: parseInt(log.logIndex, 16) };
 }
 function decodeTransferSingle1155(log) {
   if ((log.topics?.[0] || "").toLowerCase() !== TOPIC_TRANSFER_SINGLE_1155) return null;
@@ -143,7 +137,6 @@ function extractJsonFromInput(inputHex) {
 function normalizeUSDC(valueStr) {
   try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; }
 }
-
 function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const shares = [];
   const clubSmc = [];
@@ -172,9 +165,7 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   if (buyerWallet) {
     const w = buyerWallet.toLowerCase();
     const usdcTransfers = transfers.filter(
-      (t) => t.standard === "ERC20/721"
-        && (t.contract || "") === USDC_NATIVE_POLYGON
-        && (t.from || "").toLowerCase() === w
+      (t) => t.standard === "ERC20/721" && (t.contract || "") === USDC_NATIVE_POLYGON && (t.from || "").toLowerCase() === w
     );
     if (usdcTransfers.length) {
       const amounts = usdcTransfers.map((t) => normalizeUSDC(t.amountOrId)).sort((a, b) => b - a);
@@ -196,10 +187,8 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
     isConsistent: Boolean(main && smcForMain && smcForMain.clubId === main.clubId),
   };
 }
-
 function enrichPackWithInfluenceAndUnitPrice(pack) {
   if (!pack?.shares?.mainClub) return pack;
-
   const mainShares = Number(pack.shares.mainClub.amount || 0);
   const packs = Math.floor(mainShares / SHARES_PER_PACK_MAIN);
   const mainModulo = mainShares % SHARES_PER_PACK_MAIN;
@@ -232,9 +221,7 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Etherscan v2 — pagination pour récupérer les tx hashes USDC sortantes
-   Docs: https://docs.etherscan.io/etherscan-v2/api-endpoints/accounts
-   NB: la clé Etherscan fonctionne cross-chain (chainid=137 pour Polygon)
+   Etherscan v2 — pagination (avec minAmountUSDC + timeStamp)
 ────────────────────────────────────────────────────────────────────────── */
 function getApiKeyFromReqOrEnv(reqUrl) {
   const u = new URL(reqUrl);
@@ -248,15 +235,21 @@ function getApiKeyFromReqOrEnv(reqUrl) {
   );
 }
 
+function normalizeFromEtherscanTx(it) {
+  const dec = Number(it.tokenDecimal || 6) || 6;
+  return Number(it.value) / Math.pow(10, dec);
+}
+
 async function fetchTokenTxHashesEtherscan({
   wallet,
   contracts,
   pageSize = 100,
   pages = 3,
   apikey,
+  minAmountUSDC = 0,
 }) {
   const base = "https://api.etherscan.io/v2/api";
-  const out = new Set();
+  const byHash = new Map(); // hash -> {hash, timeStamp}
   const debug = [];
   const addr = wallet.toLowerCase();
 
@@ -281,26 +274,34 @@ async function fetchTokenTxHashesEtherscan({
       try { j = await r.json(); } catch {}
 
       const res = Array.isArray(j?.result) ? j.result : [];
-      let fetched = 0;
+      let kept = 0;
       for (const it of res) {
         if ((it.from || "").toLowerCase() !== addr) continue; // sortant seulement
-        if (it.hash) { out.add(it.hash); fetched++; }
+        const amt = normalizeFromEtherscanTx(it);
+        if (amt < minAmountUSDC) continue; // filtre micro-fees
+        const ts = Number(it.timeStamp || 0);
+        const prev = byHash.get(it.hash);
+        if (!prev || ts > prev.timeStamp) {
+          byHash.set(it.hash, { hash: it.hash, timeStamp: ts });
+          kept++;
+        }
       }
 
       debug.push({
         contract, page: p, ok,
         url: url.toString(),
         fetched: res.length,
-        keptOutgoing: fetched,
+        keptOutgoing: kept,
         status: j?.status, message: j?.message,
       });
 
-      // S'il reste moins que pageSize, page suivante sera vide — on peut sortir
-      if (res.length < pageSize) break;
+      if (res.length < pageSize) break; // plus de pages utiles
     }
   }
 
-  return { hashes: Array.from(out), debug };
+  // Tri du plus récent au plus ancien
+  const txs = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
+  return { txs, debug };
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -374,6 +375,7 @@ export async function GET(req) {
     const limit = Math.max(1, Math.min(500, parseInt(url.searchParams.get("limit") || "80", 10)));
     const pages = Math.max(1, Math.min(25, parseInt(url.searchParams.get("pages") || "3", 10)));
     const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get("pageSize") || "100", 10)));
+    const minAmountUSDC = Number(url.searchParams.get("minAmountUSDC") || "0"); // NEW
 
     if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
       return NextResponse.json({ ok: false, error: "wallet invalide" }, { status: 400 });
@@ -391,21 +393,22 @@ export async function GET(req) {
       for (const c of contractsParam.split(",").map(s => s.trim()).filter(Boolean)) contracts.add(c);
     }
 
-    // 1) Découverte des candidates via Etherscan v2 avec pagination
-    const { hashes, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
+    // 1) Découverte via Etherscan v2 (avec minAmountUSDC) + pagination
+    const { txs, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
       wallet,
       contracts: Array.from(contracts),
       pageSize,
       pages,
       apikey,
+      minAmountUSDC,
     });
 
-    const candidates = hashes.slice(0, limit).map(h => ({ txHash: h }));
+    const candidates = txs.slice(0, limit).map(({ hash, timeStamp }) => ({ txHash: hash, timeStamp }));
 
     // 2) Analyse pack tx par tx (concurrence 4)
     const analyzed = await mapWithConcurrency(candidates, 4, async (c) => {
       const r = await analyzeTx(c.txHash, wallet);
-      return { ...c, ...r };
+      return { ...c, ...r }; // garde c.timeStamp
     });
 
     // 3) Packs détectés
@@ -414,6 +417,7 @@ export async function GET(req) {
       .map((x) => ({
         txHash: x.txHash,
         blockNumber: x.blockNumber,
+        timeStamp: x.timeStamp || null,          // NEW → pour la date UTC côté UI
         packs: x.packSummary.packs,
         priceUSDC: x.packSummary.priceUSDC,
         unitPriceUSDC: x.packSummary.unitPriceUSDC,
