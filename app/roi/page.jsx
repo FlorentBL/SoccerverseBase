@@ -185,7 +185,7 @@ function aggregateForever({
     // Conversion gains SVC → $
     const gainsUSD = svcRateUSD != null ? round2(gainsSvc * svcRateUSD) : null;
 
-    // ROI sur la base demandée: gains$ / (coût total$ = prix total cumulé)
+    // ROI = gains$ / coût total$ (prix total cumulé)
     const coutTotalUSD = totalPriceUSD;
     const roiUSD = SAFE_DIV(gainsUSD ?? 0, coutTotalUSD);
 
@@ -251,7 +251,7 @@ function RoiBar({ pct }) {
     <div className="flex items-center gap-3 min-w-[180px]">
       <div
         className="flex-1 h-2 rounded bg-gray-800 overflow-hidden"
-        title={`${val.toFixed(2)}%`}                 // tooltip shows exact ROI
+        title={`${val.toFixed(2)}%`}
         role="progressbar"
         aria-valuenow={val}
         aria-valuemin={0}
@@ -262,7 +262,7 @@ function RoiBar({ pct }) {
           style={{ width: `${width}%` }}
         />
       </div>
-      <span className="tabular-nums">{val.toFixed(1)}%</span>  {/* show real ROI, can be >100 */}
+      <span className="tabular-nums">{val.toFixed(1)}%</span>
     </div>
   );
 }
@@ -305,7 +305,7 @@ export default function RoiForever() {
   const [svcRateUSD, setSvcRateUSD] = useState(null);
 
   // Tri
-  const [sortKey, setSortKey] = useState(null); // "roiUSD" | "coutTotalUSD" | ...
+  const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("desc");
 
   // wallet résolu (via /api/resolve_wallet)
@@ -440,7 +440,7 @@ export default function RoiForever() {
 
   // Récupère les achats de packs (on-chain) et calcule les métriques demandées
   async function fetchPackCostsForWallet(w) {
-    // ⬇️ plus de 'limit' dans la query et pages très haut
+    // pas de 'limit' + pages très haut
     const url = `/api/packs/by-wallet?wallet=${w}&pages=${PACKS_PAGES}&pageSize=${PACKS_PAGE_SIZE}&minAmountUSDC=${MIN_AMOUNT_USDC}`;
 
     const r = await fetch(url, { cache: "no-store" });
@@ -460,17 +460,19 @@ export default function RoiForever() {
       const parts = [];
       const mainId  = det?.shares?.mainClub?.clubId;
       const mainInf = Number(det?.influence?.main || 0);
-      if (mainId && mainInf > 0) parts.push({ clubId: mainId, inf: mainInf });
+      if (mainId && mainInf > 0) parts.push({ clubId: mainId, role: "main" });
       for (const s of det?.shares?.secondaryClubs || []) {
         const cid = Number(s.clubId);
         const inf = Number(s.influence || 0);
-        if (cid && inf > 0) parts.push({ clubId: cid, inf });
+        if (cid && inf > 0) parts.push({ clubId: cid, role: "secondary" });
       }
 
+      // rattacher la transaction au(x) club(s) impliqués, avec role
       for (const p of parts) {
         const arr = buysMap.get(p.clubId) || [];
         arr.push({
           txHash,
+          role: p.role,                      // <— main | secondary
           dateTs: blockTs || null,
           blockNumber,
           packs,
@@ -537,7 +539,7 @@ export default function RoiForever() {
       const w = await resolveWallet(name);
       if (w) await fetchPackCostsForWallet(w);
 
-      // (facultatif) Prévisualisations de pack pour chaque club possédé
+      // (facultatif) prévisualisations
       const clubIds = Array.from(new Set((pos?.clubs || []).map((c) => c.id)));
       const previews = await Promise.all(
         clubIds.map(async (id) => [id, await fetchPackPreviewFor(id)])
@@ -573,6 +575,16 @@ export default function RoiForever() {
       setLoading(false);
     }
   }
+
+  // rôle par club, d'après les achats de packs
+  const roleByClub = useMemo(() => {
+    const m = new Map();
+    for (const [cid, rows] of packBuysByClub.entries()) {
+      const hasMain = rows.some((r) => r.role === "main");
+      m.set(cid, hasMain ? "main" : "secondary");
+    }
+    return m; // clubs sans entrée => pas d'achat détecté
+  }, [packBuysByClub]);
 
   const aggregated = useMemo(
     () =>
@@ -618,10 +630,10 @@ export default function RoiForever() {
     return dir === "asc" ? a - b : b - a;
   };
 
-  const clubs = useMemo(() => {
-    let arr = [...aggregated.clubs];
-
-    if (hideNoROI) arr = arr.filter((r) => r.roiUSD != null);
+  // applique filtre + tri à un tableau de clubs
+  const prepareClubs = (arr) => {
+    let out = [...arr];
+    if (hideNoROI) out = out.filter((r) => r.roiUSD != null);
 
     if (sortKey) {
       const numericKeys = new Set([
@@ -633,22 +645,27 @@ export default function RoiForever() {
         "depensePacksAffineeUSD",
         "roiUSD",
       ]);
-
-      arr.sort((a, b) => {
+      out.sort((a, b) => {
         const va = a[sortKey];
         const vb = b[sortKey];
-
-        if (numericKeys.has(sortKey)) {
-          return sortNullsLast(va, vb, sortDir);
-        }
-        // tri alpha par défaut
+        if (numericKeys.has(sortKey)) return sortNullsLast(va, vb, sortDir);
         return sortDir === "asc"
           ? String(va ?? "").localeCompare(String(vb ?? ""))
           : String(vb ?? "").localeCompare(String(va ?? ""));
       });
     }
-    return arr;
-  }, [aggregated.clubs, sortKey, sortDir, hideNoROI]);
+    return out;
+  };
+
+  // split en deux groupes : principaux vs secondaires
+  const clubsMain = useMemo(
+    () => prepareClubs(aggregated.clubs.filter((c) => roleByClub.get(c.id) === "main")),
+    [aggregated.clubs, roleByClub, sortKey, sortDir, hideNoROI]
+  );
+  const clubsSecondary = useMemo(
+    () => prepareClubs(aggregated.clubs.filter((c) => roleByClub.get(c.id) === "secondary")),
+    [aggregated.clubs, roleByClub, sortKey, sortDir, hideNoROI]
+  );
 
   const { players } = aggregated;
 
@@ -688,6 +705,7 @@ export default function RoiForever() {
               <tr>
                 <th className="text-left py-2 px-3">Date</th>
                 <th className="text-left py-2 px-3">Tx</th>
+                <th className="text-left py-2 px-3">Rôle</th>
                 <th className="text-right py-2 px-3">Packs</th>
                 <th className="text-right py-2 px-3">Prix total ($)</th>
                 <th className="text-right py-2 px-3">Prix / pack ($)</th>
@@ -707,6 +725,7 @@ export default function RoiForever() {
                       {shortHash(r.txHash)}
                     </a>
                   </td>
+                  <td className="py-2 px-3 capitalize">{r.role}</td>
                   <td className="py-2 px-3 text-right">{fmtInt(r.packs)}</td>
                   <td className="py-2 px-3 text-right">{fmtUSD(r.priceUSDC)}</td>
                   <td className="py-2 px-3 text-right">{fmtUSD(r.unitPriceUSDC)}</td>
@@ -718,6 +737,165 @@ export default function RoiForever() {
       </div>
     );
   };
+
+  // Table réutilisable (pour Principaux et Secondaires)
+  const ClubTable = ({ title, rows }) => (
+    <div className="mb-10">
+      <h3 className="text-xl font-semibold mb-3">{title}</h3>
+      {rows.length === 0 ? (
+        <div className="text-gray-400">Aucun club.</div>
+      ) : (
+        <div className="rounded-xl border border-gray-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-800 text-gray-300">
+              <tr>
+                <th
+                  className="text-left py-2 px-3 cursor-pointer select-none hover:underline"
+                  onClick={() => toggleSort("name")}
+                  title="Trier par club"
+                >
+                  Club <Arrow active={sortKey === "name"} dir={sortDir} />
+                </th>
+                <th
+                  className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                  onClick={() => toggleSort("qty")}
+                  title="Trier par quantité"
+                >
+                  Quantité <Arrow active={sortKey === "qty"} dir={sortDir} />
+                </th>
+                <th className="text-right py-2 px-3">Packs achetés</th>
+                <th
+                  className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                  onClick={() => toggleSort("dernierAchatTs")}
+                  title="Trier par dernier achat"
+                >
+                  Dernier achat <Arrow active={sortKey === "dernierAchatTs"} dir={sortDir} />
+                </th>
+                <th className="text-right py-2 px-3">Achats via SVC</th>
+                <th
+                  className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                  onClick={() => toggleSort("gainsSvc")}
+                  title="Trier par gains SVC"
+                >
+                  Gains SVC <Arrow active={sortKey === "gainsSvc"} dir={sortDir} />
+                </th>
+                <th
+                  className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                  onClick={() => toggleSort("coutTotalUSD")}
+                  title="Trier par coût total ($)"
+                >
+                  Coût total ($) <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
+                </th>
+                <th
+                  className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                  onClick={() => toggleSort("depensePacksAffineeUSD")}
+                  title="Trier par coût packs (club) ($)"
+                >
+                  Coût packs (club) ($)
+                  <Arrow active={sortKey === "depensePacksAffineeUSD"} dir={sortDir} />
+                </th>
+                <th
+                  className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+                  onClick={() => toggleSort("roiUSD")}
+                  title="Trier par ROI ($)"
+                >
+                  ROI ($) <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
+                </th>
+                <th className="text-right py-2 px-3">Détails</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {rows.map((row) => {
+                const isOpen = openClub === row.id;
+                return (
+                  <React.Fragment key={`c-${row.id}`}>
+                    <tr className="hover:bg-white/5">
+                      <td className="py-2 px-3">
+                        <a
+                          href={row.link}
+                          className="text-indigo-400 hover:underline"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {row.name}
+                        </a>
+                      </td>
+                      <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
+                      <td className="py-2 px-3 text-right">{fmtInt(row.packsAchetes)}</td>
+                      <td className="py-2 px-3 text-right">
+                        {(() => {
+                          const buys = packBuysByClub.get(row.id) || [];
+                          const lastTs = buys[0]?.dateTs || null;
+                          const tip = tooltipDatesForClub(buys);
+                          if (!lastTs) return <span className="text-gray-500">—</span>;
+                          return (
+                            <span
+                              className="relative group cursor-help"
+                              title={tip}
+                              aria-label={tip.replace(/\n/g, ", ")}
+                            >
+                              {fmtDate(lastTs)}
+                              {buys.length > 1 && (
+                                <span className="ml-1 inline-flex items-center rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-gray-300">
+                                  +{buys.length - 1}
+                                </span>
+                              )}
+                              <span className="pointer-events-none absolute bottom-full left-1/2 z-20 hidden -translate-x-1/2 whitespace-pre rounded border border-white/10 bg-black/90 px-2 py-1 text-xs text-white shadow-lg group-hover:block">
+                                {tip}
+                              </span>
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
+                      <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
+                      <td className="py-2 px-3 text-right">
+                        {row.coutTotalUSD || row.coutTotalUSD === 0
+                          ? fmtUSD(row.coutTotalUSD)
+                          : <span className="text-gray-500">—</span>}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        {row.depensePacksAffineeUSD || row.depensePacksAffineeUSD === 0
+                          ? fmtUSD(row.depensePacksAffineeUSD)
+                          : <span className="text-gray-500">—</span>}
+                      </td>
+                      <td className="py-2 px-3">
+                        {row.roiUSD != null ? (
+                          <RoiBar pct={row.roiUSD * 100} />
+                        ) : (
+                          <span className="text-gray-500">n/a</span>
+                        )}
+                        {row.gainsUSD != null && (
+                          <div className="text-xs text-gray-500 text-right mt-1">
+                            gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD(row.coutTotalUSD || 0)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <button
+                          className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-xs"
+                          onClick={() => setOpenClub(isOpen ? null : row.id)}
+                        >
+                          {isOpen ? "fermer" : "voir"}
+                        </button>
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="bg-black/30">
+                        <td className="py-3 px-3" colSpan={11}>
+                          {renderDrawer(row.id)}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
@@ -778,186 +956,15 @@ export default function RoiForever() {
                 />
                 <span>Masquer les clubs sans ROI</span>
               </label>
-              {hideNoROI && (
-                <span className="text-xs text-gray-500">
-                  {aggregated.clubs.length - clubs.length} ligne(s) masquée(s)
-                </span>
-              )}
             </div>
 
-            <h2 className="text-2xl font-semibold mb-3">Clubs</h2>
+            <h2 className="text-2xl font-semibold mb-2">Clubs</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Découpés selon leur rôle dans les packs achetés (principal = 40 d&apos;influence / secondaire = 10).
+            </p>
 
-            {clubs.length === 0 ? (
-              <div className="text-gray-400">Aucune position club.</div>
-            ) : (
-              <div className="rounded-xl border border-gray-700 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-800 text-gray-300">
-                    <tr>
-                      <th
-                        className="text-left py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("name")}
-                        title="Trier par club"
-                      >
-                        Club <Arrow active={sortKey === "name"} dir={sortDir} />
-                      </th>
-
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("qty")}
-                        title="Trier par quantité"
-                      >
-                        Quantité <Arrow active={sortKey === "qty"} dir={sortDir} />
-                      </th>
-
-                      <th className="text-right py-2 px-3">Packs achetés</th>
-
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("dernierAchatTs")}
-                        title="Trier par dernier achat"
-                      >
-                        Dernier achat <Arrow active={sortKey === "dernierAchatTs"} dir={sortDir} />
-                      </th>
-
-                      <th className="text-right py-2 px-3">Achats via SVC</th>
-
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("gainsSvc")}
-                        title="Trier par gains SVC"
-                      >
-                        Gains SVC <Arrow active={sortKey === "gainsSvc"} dir={sortDir} />
-                      </th>
-
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("coutTotalUSD")}
-                        title="Trier par coût total ($)"
-                      >
-                        Coût total ($) <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
-                      </th>
-
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("depensePacksAffineeUSD")}
-                        title="Trier par coût packs (club) ($)"
-                      >
-                        Coût packs (club) ($)
-                        <Arrow active={sortKey === "depensePacksAffineeUSD"} dir={sortDir} />
-                      </th>
-
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("roiUSD")}
-                        title="Trier par ROI ($)"
-                      >
-                        ROI ($) <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
-                      </th>
-
-                      <th className="text-right py-2 px-3">Détails</th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-gray-700">
-                    {clubs.map((row) => {
-                      const isOpen = openClub === row.id;
-                      return (
-                        <React.Fragment key={`c-${row.id}`}>
-                          <tr className="hover:bg-white/5">
-                            <td className="py-2 px-3">
-                              <a
-                                href={row.link}
-                                className="text-indigo-400 hover:underline"
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {row.name}
-                              </a>
-                            </td>
-
-                            <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
-                            <td className="py-2 px-3 text-right">{fmtInt(row.packsAchetes)}</td>
-
-                            <td className="py-2 px-3 text-right">
-                              {(() => {
-                                const buys = packBuysByClub.get(row.id) || [];
-                                const lastTs = buys[0]?.dateTs || null;
-                                const tip = tooltipDatesForClub(buys);
-                                if (!lastTs) return <span className="text-gray-500">—</span>;
-                                return (
-                                  <span
-                                    className="relative group cursor-help"
-                                    title={tip}
-                                    aria-label={tip.replace(/\n/g, ", ")}
-                                  >
-                                    {fmtDate(lastTs)}
-                                    {buys.length > 1 && (
-                                      <span className="ml-1 inline-flex items-center rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-gray-300">
-                                        +{buys.length - 1}
-                                      </span>
-                                    )}
-                                    <span className="pointer-events-none absolute bottom-full left-1/2 z-20 hidden -translate-x-1/2 whitespace-pre rounded border border-white/10 bg-black/90 px-2 py-1 text-xs text-white shadow-lg group-hover:block">
-                                      {tip}
-                                    </span>
-                                  </span>
-                                );
-                              })()}
-                            </td>
-
-                            <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
-                            <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
-
-                            <td className="py-2 px-3 text-right">
-                              {row.coutTotalUSD || row.coutTotalUSD === 0
-                                ? fmtUSD(row.coutTotalUSD)
-                                : <span className="text-gray-500">—</span>}
-                            </td>
-
-                            <td className="py-2 px-3 text-right">
-                              {row.depensePacksAffineeUSD || row.depensePacksAffineeUSD === 0
-                                ? fmtUSD(row.depensePacksAffineeUSD)
-                                : <span className="text-gray-500">—</span>}
-                            </td>
-
-                            <td className="py-2 px-3">
-                              {row.roiUSD != null ? (
-                                <RoiBar pct={row.roiUSD * 100} />
-                              ) : (
-                                <span className="text-gray-500">n/a</span>
-                              )}
-                              {row.gainsUSD != null && (
-                                <div className="text-xs text-gray-500 text-right mt-1">
-                                  gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD(row.coutTotalUSD || 0)}
-                                </div>
-                              )}
-                            </td>
-
-                            <td className="py-2 px-3 text-right">
-                              <button
-                                className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-xs"
-                                onClick={() => setOpenClub(isOpen ? null : row.id)}
-                              >
-                                {isOpen ? "fermer" : "voir"}
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Drawer */}
-                          {isOpen && (
-                            <tr className="bg-black/30">
-                              <td className="py-3 px-3" colSpan={10}>
-                                {renderDrawer(row.id)}
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <ClubTable title="Principaux" rows={clubsMain} />
+            <ClubTable title="Secondaires" rows={clubsSecondary} />
           </section>
         )}
 
