@@ -1,5 +1,6 @@
 // app/wallet/[wallet]/packs/page.js
 import Link from "next/link";
+import { headers } from "next/headers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,20 @@ function fmt(n, d = 6) {
 function shortHash(h) {
   return h ? `${h.slice(0, 8)}…${h.slice(-6)}` : "—";
 }
+function getBaseUrl() {
+  // Priorité à variables explicites, sinon on lit les headers (Vercel/Proxy safe)
+  const h = headers();
+  const forwardedProto = (h.get("x-forwarded-proto") || "https").split(",")[0].trim();
+  const forwardedHost = (h.get("x-forwarded-host") || h.get("host") || "").split(",")[0].trim();
+
+  const envPublic = process.env.NEXT_PUBLIC_SITE_URL; // ex: https://svbase.vercel.app
+  if (envPublic) return envPublic.replace(/\/+$/, "");
+
+  const vercelUrl = process.env.VERCEL_URL; // ex: svbase.vercel.app
+  if (vercelUrl) return `https://${vercelUrl}`;
+
+  return `${forwardedProto}://${forwardedHost}`;
+}
 
 export default async function WalletPacksPage({ params, searchParams }) {
   const wallet = (params.wallet || "").toLowerCase();
@@ -19,42 +34,74 @@ export default async function WalletPacksPage({ params, searchParams }) {
   const pageSize = Number(searchParams?.pageSize ?? "100");
   const limit = Number(searchParams?.limit ?? "80");
 
-  // Clé API côté serveur si dispo (Etherscan v2 cross-chain)
-  const apikey =
-    process.env.POLYGONSCAN_API_KEY ||
-    process.env.POLYGONSCAN_KEY ||
-    process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY ||
-    "";
-
+  // On construit une URL ABSOLUE vers l’API (évite les 500 silencieuses en prod)
   const qs = new URLSearchParams({
     wallet,
     pages: String(pages),
     pageSize: String(pageSize),
     limit: String(limit),
   });
+
+  // On forward éventuellement la clé si dispo côté serveur (facultatif, l’API la lit déjà)
+  const apikey =
+    process.env.POLYGONSCAN_API_KEY ||
+    process.env.POLYGONSCAN_KEY ||
+    process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY ||
+    "";
   if (apikey) qs.set("apikey", apikey);
 
-  const res = await fetch(`/api/packs/by-wallet?${qs.toString()}`, { cache: "no-store" });
-  if (!res.ok) {
+  const baseUrl = getBaseUrl();
+  const apiUrl = `${baseUrl}/api/packs/by-wallet?${qs.toString()}`;
+
+  let data;
+  try {
+    const res = await fetch(apiUrl, {
+      cache: "no-store",
+      next: { revalidate: 0 },
+    });
+
+    const text = await res.text(); // évite un crash si ce n’est pas du JSON
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      return (
+        <div className="p-6">
+          <h1 className="text-xl font-semibold mb-2">Packs par wallet</h1>
+          <p className="text-red-600">
+            Réponse non-JSON de l’API ({res.status}) :
+          </p>
+          <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto">{text}</pre>
+        </div>
+      );
+    }
+
+    if (!res.ok || !data?.ok) {
+      return (
+        <div className="p-6">
+          <h1 className="text-xl font-semibold mb-2">Packs par wallet</h1>
+          <p className="text-red-600">
+            Erreur API {res.status}: {data?.error || "unknown"}
+          </p>
+        </div>
+      );
+    }
+  } catch (err) {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold mb-2">Packs par wallet</h1>
-        <p className="text-red-600">Erreur HTTP {res.status}</p>
-      </div>
-    );
-  }
-  const data = await res.json();
-  if (!data.ok) {
-    return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold mb-2">Packs par wallet</h1>
-        <p className="text-red-600">Erreur: {data.error || "unknown"}</p>
+        <p className="text-red-600">Fetch a échoué :</p>
+        <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto">
+          {String(err && (err.message || err))}
+        </pre>
+        <p className="mt-2 text-xs text-gray-500">
+          URL appelée : <code>{apiUrl}</code>
+        </p>
       </div>
     );
   }
 
-  const { totals, items } = data;
-  const rows = [...items].sort((a, b) => (b.blockNumber ?? 0) - (a.blockNumber ?? 0));
+  const { totals, items, scans } = data;
+  const rows = [...(items || [])].sort((a, b) => (b.blockNumber ?? 0) - (a.blockNumber ?? 0));
 
   return (
     <div className="p-6 space-y-6">
@@ -65,25 +112,25 @@ export default async function WalletPacksPage({ params, searchParams }) {
             Wallet: <span className="font-mono">{data.wallet}</span>
           </p>
           <p className="text-sm text-gray-500">
-            Source: {data.scans.source} • Candidates: {data.scans.candidates} • Analysées: {data.scans.analyzed}
+            Source: {scans?.source} • Candidates: {scans?.candidates} • Analysées: {scans?.analyzed}
           </p>
         </div>
         <div className="grid grid-cols-4 gap-3">
           <div className="rounded-2xl border p-3">
             <div className="text-xs text-gray-500">Total packs</div>
-            <div className="text-xl font-semibold">{totals.packs}</div>
+            <div className="text-xl font-semibold">{totals?.packs ?? 0}</div>
           </div>
           <div className="rounded-2xl border p-3">
             <div className="text-xs text-gray-500">Dépensé (USDC)</div>
-            <div className="text-xl font-semibold">{fmt(totals.spentUSDC, 6)}</div>
+            <div className="text-xl font-semibold">{fmt(totals?.spentUSDC, 6)}</div>
           </div>
           <div className="rounded-2xl border p-3">
             <div className="text-xs text-gray-500">Prix moyen / pack</div>
-            <div className="text-xl font-semibold">{fmt(totals.unitPriceAvgUSDC, 6)}</div>
+            <div className="text-xl font-semibold">{fmt(totals?.unitPriceAvgUSDC, 6)}</div>
           </div>
           <div className="rounded-2xl border p-3">
             <div className="text-xs text-gray-500">Influence</div>
-            <div className="text-xl font-semibold">{totals.influence}</div>
+            <div className="text-xl font-semibold">{totals?.influence ?? 0}</div>
           </div>
         </div>
       </div>
@@ -123,9 +170,9 @@ export default async function WalletPacksPage({ params, searchParams }) {
                       .map((s) => `${s.clubId} (${s.amount})`)
                       .join(", ") + (secs.length > 4 ? `, +${secs.length - 4}…` : "");
               const warn =
-                data.totals.unitPriceAvgUSDC != null &&
+                totals?.unitPriceAvgUSDC != null &&
                 it.unitPriceUSDC != null &&
-                Math.abs(it.unitPriceUSDC - data.totals.unitPriceAvgUSDC) / data.totals.unitPriceAvgUSDC > 0.1;
+                Math.abs(it.unitPriceUSDC - totals.unitPriceAvgUSDC) / totals.unitPriceAvgUSDC > 0.1;
 
               return (
                 <tr key={it.txHash} className="border-t hover:bg-gray-50">
@@ -173,10 +220,12 @@ export default async function WalletPacksPage({ params, searchParams }) {
       </div>
 
       <div className="text-xs text-gray-400">
-        API:{" "}
+        API :{" "}
         <code>
           /api/packs/by-wallet?wallet={wallet}&amp;pages={pages}&amp;pageSize={pageSize}&amp;limit={limit}
         </code>
+        <br />
+        (appelée via <code>{getBaseUrl()}</code>)
       </div>
     </div>
   );
