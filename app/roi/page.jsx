@@ -558,6 +558,16 @@ export default function RoiForever() {
     }
   }
 
+function cmpNullable(a, b, dir = "desc") {
+  const an = a == null || Number.isNaN(a);
+  const bn = b == null || Number.isNaN(b);
+  if (an && bn) return 0;
+  if (an) return 1;      // a va APRÈS b (=> null/NaN toujours en bas)
+  if (bn) return -1;     // b va APRÈS a
+  return dir === "asc" ? a - b : b - a;
+}
+
+
   const aggregated = useMemo(
     () =>
       aggregateForever({
@@ -597,36 +607,35 @@ const clubs = useMemo(() => {
   const arr = [...aggregated.clubs];
   if (!sortKey) return arr;
 
-  const dir = sortDir === "asc" ? 1 : -1;
-
   arr.sort((a, b) => {
-    const va = a[sortKey];
-    const vb = b[sortKey];
+    switch (sortKey) {
+      case "name": {
+        const av = (a.name || "").toLowerCase();
+        const bv = (b.name || "").toLowerCase();
+        if (av === bv) return 0;
+        return sortDir === "asc" ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1);
+      }
 
-    // Tri alpha pour le nom du club
-    if (sortKey === "name") {
-      return (
-        dir *
-        String(va || "").localeCompare(String(vb || ""), "fr", {
-          sensitivity: "base",
-        })
-      );
+      case "lastBuyTs": {
+        // si tu stockes la dernière date d’achat dans la ligne :
+        const av = a.lastBuyTs ?? null;
+        const bv = b.lastBuyTs ?? null;
+        return cmpNullable(av, bv, sortDir);
+      }
+
+      default: {
+        // ex: "qty", "gainsSvc", "coutTotalUSD", "depensePacksAffineeUSD", "roiUSD", etc.
+        const av = Number(a[sortKey]);
+        const bv = Number(b[sortKey]);
+        return cmpNullable(av, bv, sortDir);
+      }
     }
-
-    // Tri numérique pour le reste
-    const na = Number(va ?? Number.NEGATIVE_INFINITY);
-    const nb = Number(vb ?? Number.NEGATIVE_INFINITY);
-
-    // Met les valeurs manquantes à la fin
-    if (!Number.isFinite(na) && !Number.isFinite(nb)) return 0;
-    if (!Number.isFinite(na)) return 1 * dir;
-    if (!Number.isFinite(nb)) return -1 * dir;
-
-    return dir * (na - nb);
   });
 
   return arr;
 }, [aggregated.clubs, sortKey, sortDir]);
+
+
 
   const { players } = aggregated;
 
@@ -648,7 +657,7 @@ const clubs = useMemo(() => {
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-6">ROI — depuis toujours</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">ROI</h1>
 
         <form onSubmit={handleSearch} className="mb-4 flex flex-col sm:flex-row gap-2">
           <input
