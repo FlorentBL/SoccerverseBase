@@ -584,16 +584,40 @@ export default function RoiForever() {
   );
 
   // tri local si demandé
-  const clubs = useMemo(() => {
-    const arr = [...aggregated.clubs];
-    if (!sortKey) return arr;
-    arr.sort((a, b) => {
-      const va = a[sortKey] ?? -Infinity;
-      const vb = b[sortKey] ?? -Infinity;
-      return sortDir === "asc" ? va - vb : vb - va;
-    });
-    return arr;
-  }, [aggregated.clubs, sortKey, sortDir]);
+const clubs = useMemo(() => {
+  const arr = [...aggregated.clubs];
+  if (!sortKey) return arr;
+
+  const dir = sortDir === "asc" ? 1 : -1;
+
+  arr.sort((a, b) => {
+    const va = a[sortKey];
+    const vb = b[sortKey];
+
+    // Tri alpha pour le nom du club
+    if (sortKey === "name") {
+      return (
+        dir *
+        String(va || "").localeCompare(String(vb || ""), "fr", {
+          sensitivity: "base",
+        })
+      );
+    }
+
+    // Tri numérique pour le reste
+    const na = Number(va ?? Number.NEGATIVE_INFINITY);
+    const nb = Number(vb ?? Number.NEGATIVE_INFINITY);
+
+    // Met les valeurs manquantes à la fin
+    if (!Number.isFinite(na) && !Number.isFinite(nb)) return 0;
+    if (!Number.isFinite(na)) return 1 * dir;
+    if (!Number.isFinite(nb)) return -1 * dir;
+
+    return dir * (na - nb);
+  });
+
+  return arr;
+}, [aggregated.clubs, sortKey, sortDir]);
 
   const { players } = aggregated;
 
@@ -667,33 +691,71 @@ export default function RoiForever() {
             ) : (
               <div className="rounded-xl border border-gray-700 overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-800 text-gray-300">
-                    <tr>
-                      <th className="text-left py-2 px-3">Club</th>
-                      <th className="text-right py-2 px-3">Quantité</th>
-                      <th className="text-right py-2 px-3">Packs achetés</th>
-                      <th className="text-right py-2 px-3">Dernier achat</th>
-                      <th className="text-right py-2 px-3">Achats via SVC</th>
-                      <th className="text-right py-2 px-3">Gains SVC</th>
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("coutTotalUSD")}
-                        title="Trier par coût total ($)"
-                      >
-                        Coût total ($)
-                        <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
-                      </th>
-                      <th className="text-right py-2 px-3">Coût packs (club) ($)</th>
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("roiUSD")}
-                        title="Trier par ROI ($)"
-                      >
-                        ROI ($)
-                        <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
-                      </th>
-                    </tr>
-                  </thead>
+<thead className="bg-gray-800 text-gray-300">
+  <tr>
+    <th
+      className="text-left py-2 px-3 cursor-pointer select-none hover:underline"
+      onClick={() => toggleSort("name")}
+      title="Trier par club"
+    >
+      Club <Arrow active={sortKey === "name"} dir={sortDir} />
+    </th>
+
+    <th
+      className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+      onClick={() => toggleSort("qty")}
+      title="Trier par quantité"
+    >
+      Quantité <Arrow active={sortKey === "qty"} dir={sortDir} />
+    </th>
+
+    <th className="text-right py-2 px-3">Packs achetés</th>
+
+    <th
+      className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+      onClick={() => toggleSort("dernierAchatTs")}
+      title="Trier par dernier achat"
+    >
+      Dernier achat <Arrow active={sortKey === "dernierAchatTs"} dir={sortDir} />
+    </th>
+
+    <th className="text-right py-2 px-3">Achats via SVC</th>
+
+    <th
+      className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+      onClick={() => toggleSort("gainsSvc")}
+      title="Trier par gains SVC"
+    >
+      Gains SVC <Arrow active={sortKey === "gainsSvc"} dir={sortDir} />
+    </th>
+
+    <th
+      className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+      onClick={() => toggleSort("coutTotalUSD")}
+      title="Trier par coût total ($)"
+    >
+      Coût total ($) <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
+    </th>
+
+    <th
+      className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+      onClick={() => toggleSort("depensePacksAffineeUSD")}
+      title="Trier par coût packs (club) ($)"
+    >
+      Coût packs (club) ($)
+      <Arrow active={sortKey === "depensePacksAffineeUSD"} dir={sortDir} />
+    </th>
+
+    <th
+      className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
+      onClick={() => toggleSort("roiUSD")}
+      title="Trier par ROI ($)"
+    >
+      ROI ($) <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
+    </th>
+  </tr>
+</thead>
+
                   <tbody className="divide-y divide-gray-700">
                     {clubs.map((row) => (
                       <tr key={`c-${row.id}`} className="hover:bg-white/5">
