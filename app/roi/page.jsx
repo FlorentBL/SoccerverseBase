@@ -411,69 +411,65 @@ export default function RoiForever() {
   }
 
   // Récupère les achats de packs on-chain et répartit le coût par club
-  async function fetchPackCostsForWallet(w) {
-    // NOTE: pages/pageSize/limit → ajuste si tu veux couvrir “toute la vie” du wallet
-    const url = `/api/packs/by-wallet?wallet=${w}&pages=10&pageSize=100&limit=1000`;
-    const r = await fetch(url, { cache: "no-store" });
-    const j = await r.json();
-    if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
+async function fetchPackCostsForWallet(w) {
+  const url = `/api/packs/by-wallet?wallet=${w}&pages=1000&pageSize=100&limit=100000`; // large
+  const r = await fetch(url, { cache: "no-store" });
+  const j = await r.json();
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
 
-    // Répartition fine du prix de chaque achat selon l'influence réelle par club
-    const spend = new Map(); // clubId -> $ cumulé
-    const buysMap = new Map(); // clubId -> [{...purchaseForThisClub}]
-    for (const it of j.items || []) {
-      const price = Number(it.priceUSDC || 0);
-      const unit = Number(it.unitPriceUSDC || 0);
-      const packs = Number(it.packs || 0);
-      const blockTs = Number(it.blockTimestamp || 0); // si API renvoie le timestamp, sinon 0
-      const txHash = it.txHash;
-      const blockNumber = it.blockNumber;
+  const spend = new Map();
+  const buysMap = new Map();
 
-      // Composition (influences par club) présente via details.enrich
-      const parts = [];
-      const det = it.details || {};
-      const mainId = det?.shares?.mainClub?.clubId;
-      const mainInf = Number(det?.influence?.main || 0);
-      if (mainId && mainInf > 0) parts.push({ clubId: mainId, inf: mainInf });
+  for (const it of j.items || []) {
+    const price = Number(it.priceUSDC || 0);
+    const unit  = Number(it.unitPriceUSDC || 0);
+    const packs = Number(it.packs || 0);
+    const txHash = it.txHash;
+    const blockNumber = it.blockNumber;
+    const blockTs = Number(it.blockTimestamp || 0); // <-- maintenant dispo
 
-      for (const s of det?.shares?.secondaryClubs || []) {
-        const cid = Number(s.clubId);
-        const inf = Number(s.influence || 0);
-        if (cid && inf > 0) parts.push({ clubId: cid, inf });
-      }
-
-      const totalInf = parts.reduce((a, b) => a + b.inf, 0);
-      if (price <= 0 || totalInf <= 0) continue;
-
-      const usdPerInf = price / totalInf;
-
-      for (const p of parts) {
-        const partUSD = usdPerInf * p.inf;
-        spend.set(p.clubId, (spend.get(p.clubId) || 0) + partUSD);
-
-        const arr = buysMap.get(p.clubId) || [];
-        arr.push({
-          txHash,
-          dateTs: blockTs || null,
-          blockNumber,
-          packs,
-          priceUSDC: price,
-          unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
-          allocatedUSD: partUSD,
-          allocatedInf: p.inf,
-        });
-        buysMap.set(p.clubId, arr);
-      }
+    const det = it.details || {};
+    const parts = [];
+    const mainId  = det?.shares?.mainClub?.clubId;
+    const mainInf = Number(det?.influence?.main || 0);
+    if (mainId && mainInf > 0) parts.push({ clubId: mainId, inf: mainInf });
+    for (const s of det?.shares?.secondaryClubs || []) {
+      const cid = Number(s.clubId);
+      const inf = Number(s.influence || 0);
+      if (cid && inf > 0) parts.push({ clubId: cid, inf });
     }
+    const totalInf = parts.reduce((a, b) => a + b.inf, 0);
+    if (price <= 0 || totalInf <= 0) continue;
 
-    // Tri des achats par date desc (si timestamp dispo), sinon par blockNumber desc
-    for (const [cid, arr] of buysMap.entries()) {
-      arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0) || (b.blockNumber || 0) - (a.blockNumber || 0));
+    const usdPerInf = price / totalInf;
+
+    for (const p of parts) {
+      const partUSD = usdPerInf * p.inf;
+      spend.set(p.clubId, (spend.get(p.clubId) || 0) + partUSD);
+
+      const arr = buysMap.get(p.clubId) || [];
+      arr.push({
+        txHash,
+        dateTs: blockTs || null,          // <-- date affichée dans le drawer
+        blockNumber,
+        packs,
+        priceUSDC: price,
+        unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
+        allocatedUSD: partUSD,
+        allocatedInf: p.inf,
+      });
+      buysMap.set(p.clubId, arr);
     }
-
-    setPackSpendUSDByClub(spend);
-    setPackBuysByClub(buysMap);
   }
+
+  for (const [cid, arr] of buysMap.entries()) {
+    arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0) || (b.blockNumber || 0) - (a.blockNumber || 0));
+  }
+
+  setPackSpendUSDByClub(spend);
+  setPackBuysByClub(buysMap);
+}
+
 
   async function handleSearch(e) {
     e?.preventDefault();
