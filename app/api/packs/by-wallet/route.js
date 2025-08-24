@@ -27,7 +27,6 @@ async function rpc(method, params) {
   if (j.error) throw new Error(j.error.message || "RPC error");
   return j.result;
 }
-
 function hexToBytes(hex) {
   const clean = hex?.startsWith("0x") ? hex.slice(2) : hex || "";
   if (clean.length % 2 !== 0) return new Uint8Array();
@@ -39,15 +38,12 @@ function bytesToUtf8OrNull(bytes) {
   try {
     const txt = new TextDecoder().decode(bytes);
     return /[{}\[\]":,a-z0-9\s._-]/i.test(txt) ? txt.replace(/\u0000/g, "") : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 function tryParseJsonLoose(str) {
   if (!str) return null;
-  try {
-    return JSON.parse(str);
-  } catch {
+  try { return JSON.parse(str); }
+  catch {
     const m = str.match(/\{[\s\S]*\}/);
     if (!m) return null;
     try { return JSON.parse(m[0]); } catch { return null; }
@@ -55,9 +51,10 @@ function tryParseJsonLoose(str) {
 }
 function hexToBigInt(h) { try { return h ? BigInt(h) : 0n; } catch { return 0n; } }
 function hexToAddress(h) { return "0x" + (h?.slice(26) || "").toLowerCase(); }
+const to0x = (x) => (x.startsWith("0x") ? x : "0x" + x);
 
 // ───────────────────────────────────────────────────────────────────────────────
-// ERC events decoding nécessaires
+// ERC topics / decoders
 const TOPIC_TRANSFER_ERC20_721 =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"; // Transfer(address,address,uint256)
 const TOPIC_TRANSFER_SINGLE_1155 =
@@ -76,7 +73,6 @@ function decodeTransferERC20_721(log) {
     logIndex: parseInt(log.logIndex, 16),
   };
 }
-
 function decodeTransferSingle1155(log) {
   if (log.topics?.[0]?.toLowerCase() !== TOPIC_TRANSFER_SINGLE_1155) return null;
   const data = hexToBytes(log.data);
@@ -95,7 +91,7 @@ function decodeTransferSingle1155(log) {
   };
 }
 
-// Extraction heuristique des bytes/string JSON dans log.data
+// Extraction heuristique (bytes/string JSON dans log.data)
 function extractAbiLikeStringsFromLogData(logDataHex) {
   const bytes = hexToBytes(logDataHex);
   const res = [];
@@ -128,7 +124,6 @@ function extractAbiLikeStringsFromLogData(logDataHex) {
   }
   return res;
 }
-
 function extractJsonFromInput(inputHex) {
   const raw = bytesToUtf8OrNull(hexToBytes(inputHex));
   const json = tryParseJsonLoose(raw || "");
@@ -136,10 +131,8 @@ function extractJsonFromInput(inputHex) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Pack summary (identique à l’inspector)
-function normalizeUSDC(valueStr) {
-  try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; }
-}
+// Pack summary builders
+function normalizeUSDC(valueStr) { try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; } }
 
 function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const shares = [];
@@ -168,10 +161,7 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   if (buyerWallet) {
     const w = buyerWallet.toLowerCase();
     const usdcTransfers = transfers.filter(
-      (t) =>
-        t.standard === "ERC20/721" &&
-        (t.contract || "") === USDC_CONTRACT &&
-        (t.from || "").toLowerCase() === w
+      (t) => t.standard === "ERC20/721" && (t.contract || "") === USDC_CONTRACT && (t.from || "").toLowerCase() === w
     );
     if (usdcTransfers.length) {
       const amounts = usdcTransfers.map((t) => normalizeUSDC(t.amountOrId)).sort((a, b) => b - a);
@@ -193,18 +183,13 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
     isConsistent: Boolean(main && smcForMain && smcForMain.clubId === main.clubId),
   };
 }
-
 function enrichPackWithInfluenceAndUnitPrice(pack) {
   if (!pack?.shares?.mainClub) return pack;
   const mainShares = Number(pack.shares.mainClub.amount || 0);
   const packs = Math.floor(mainShares / SHARES_PER_PACK_MAIN);
   const mainModulo = mainShares % SHARES_PER_PACK_MAIN;
 
-  const pricePerPack =
-    packs > 0 && typeof pack.priceUSDC === "number"
-      ? pack.priceUSDC / packs
-      : null;
-
+  const pricePerPack = packs > 0 && typeof pack.priceUSDC === "number" ? pack.priceUSDC / packs : null;
   const mainInfluence = packs * INFLUENCE_MAIN_PER_PACK;
 
   const secondaries = (pack.shares.secondaryClubs || []).map((s) => {
@@ -212,12 +197,7 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
     const packsSec = Math.floor(secShares / SHARES_PER_PACK_SEC);
     const secModulo = secShares % SHARES_PER_PACK_SEC;
     const secInfluence = packsSec * INFLUENCE_SEC_PER_PACK;
-    return {
-      ...s,
-      packsFromShares: packsSec,
-      sharesModulo: secModulo,
-      influence: secInfluence,
-    };
+    return { ...s, packsFromShares: packsSec, sharesModulo: secModulo, influence: secInfluence };
   });
 
   const totalSecondaryInfluence = secondaries.reduce((acc, x) => acc + (x.influence || 0), 0);
@@ -231,19 +211,14 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
       mainSharesModulo: mainModulo,
       secondariesHaveModuloZero: secondaries.every((x) => x.sharesModulo === 0),
     },
-    influence: {
-      main: mainInfluence,
-      secondary: totalSecondaryInfluence,
-      total: totalInfluence,
-    },
+    influence: { main: mainInfluence, secondary: totalSecondaryInfluence, total: totalInfluence },
     shares: { ...pack.shares, secondaryClubs: secondaries },
   };
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Polygonscan helper — USDC transfers sort=desc
-async function fetchUsdcTransfersForWallet(wallet, { startblock = 0, endblock = 99999999, offset = 10000 } = {}) {
-  if (!POLYGONSCAN_KEY) throw new Error("Missing POLYGONSCAN_KEY");
+// Polygonscan (si clé disponible)
+async function fetchUsdcTransfersForWallet_Polygonscan(wallet, { startblock, endblock, offset = 10000 } = {}) {
   const url = new URL("https://api.polygonscan.com/api");
   url.searchParams.set("module", "account");
   url.searchParams.set("action", "tokentx");
@@ -259,14 +234,61 @@ async function fetchUsdcTransfersForWallet(wallet, { startblock = 0, endblock = 
   const r = await fetch(url, { cache: "no-store" });
   if (!r.ok) throw new Error(`Polygonscan HTTP ${r.status}`);
   const j = await r.json();
-  if (j.status !== "1" && j.message !== "OK") {
-    // status peut être "0" si aucun résultat
-    return [];
-  }
+  if (j.status !== "1" && j.message !== "OK") return [];
   return Array.isArray(j.result) ? j.result : [];
 }
 
-// Concurrency helper
+// ───────────────────────────────────────────────────────────────────────────────
+// Fallback RPC: eth_getLogs (USDC Transfer, topics[1] = from=wallet)
+function padTopicAddress(addr) {
+  const clean = addr.toLowerCase().replace(/^0x/, "");
+  return "0x" + "0".repeat(24) + clean; // 12 bytes de padding
+}
+async function getLatestBlockNumber() {
+  const hex = await rpc("eth_blockNumber", []);
+  return parseInt(hex, 16);
+}
+async function fetchUsdcTransfersForWallet_RPC(wallet, { startblock, endblock, step = 50000 } = {}) {
+  const logs = [];
+  const topicFrom = padTopicAddress(wallet);
+  for (let from = startblock; from <= endblock; from += step) {
+    const to = Math.min(endblock, from + step - 1);
+    const filter = {
+      fromBlock: to0x(from.toString(16)),
+      toBlock: to0x(to.toString(16)),
+      address: USDC_CONTRACT,
+      topics: [TOPIC_TRANSFER_ERC20_721, topicFrom], // Transfer + from=wallet
+    };
+    const chunk = await rpc("eth_getLogs", [filter]);
+    logs.push(...chunk);
+  }
+
+  // Récupérer timestamps par blockNumber (cache)
+  const blocks = [...new Set(logs.map((l) => l.blockNumber))];
+  const tsMap = new Map();
+  await Promise.all(
+    blocks.map(async (bnHex) => {
+      const b = await rpc("eth_getBlockByNumber", [bnHex, false]);
+      tsMap.set(parseInt(bnHex, 16), parseInt(b.timestamp, 16));
+    })
+  );
+
+  // Agréger par txHash (max timestamp par simplicité)
+  const byTx = new Map();
+  for (const l of logs) {
+    const tx = l.transactionHash;
+    const bn = parseInt(l.blockNumber, 16);
+    const ts = tsMap.get(bn) || null;
+    const prev = byTx.get(tx);
+    if (!prev || (ts && ts > prev.timeStamp)) byTx.set(tx, { hash: tx, timeStamp: ts });
+  }
+  return Array.from(byTx.values())
+    .map((x) => ({ hash: x.hash, timeStamp: String(x.timeStamp || 0) }))
+    .sort((a, b) => Number(b.timeStamp) - Number(a.timeStamp));
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Concurrency helper + analyse tx
 async function mapWithConcurrency(items, limit, fn) {
   const results = new Array(items.length);
   let i = 0;
@@ -274,34 +296,23 @@ async function mapWithConcurrency(items, limit, fn) {
     while (true) {
       const idx = i++;
       if (idx >= items.length) break;
-      try {
-        results[idx] = await fn(items[idx], idx);
-      } catch (e) {
-        results[idx] = { error: e.message || String(e) };
-      }
+      try { results[idx] = await fn(items[idx], idx); }
+      catch (e) { results[idx] = { error: e.message || String(e) }; }
     }
   });
   await Promise.all(workers);
   return results;
 }
-
-// Analyse d’une tx → packSummary
 async function analyzeTx(txHash, buyerWallet) {
   const [receipt, tx] = await Promise.all([
     rpc("eth_getTransactionReceipt", [txHash]),
     rpc("eth_getTransactionByHash", [txHash]),
   ]);
-
-  // Transfers
   const transfers = [];
   for (const log of receipt?.logs || []) {
-    const t20 = decodeTransferERC20_721(log);
-    if (t20) { transfers.push(t20); continue; }
-    const t1155 = decodeTransferSingle1155(log);
-    if (t1155) { transfers.push(t1155); continue; }
+    const t20 = decodeTransferERC20_721(log); if (t20) { transfers.push(t20); continue; }
+    const t1155 = decodeTransferSingle1155(log); if (t1155) { transfers.push(t1155); continue; }
   }
-
-  // JSON depuis logs
   const jsonCandidates = [];
   for (const [i, log] of (receipt?.logs || []).entries()) {
     if (!log?.data || log.data === "0x") continue;
@@ -316,16 +327,10 @@ async function analyzeTx(txHash, buyerWallet) {
       });
     }
   }
-
   const inputJsons = tx?.input ? extractJsonFromInput(tx.input) : [];
   const interesting = [...jsonCandidates, ...inputJsons].filter(
-    (e) =>
-      e.json &&
-      (e.json.mv ||
-        (e.json.cmd && typeof e.json.cmd === "object") ||
-        (e.json.mint && typeof e.json.mint === "object"))
+    (e) => e.json && (e.json.mv || (e.json.cmd && typeof e.json.cmd === "object") || (e.json.mint && typeof e.json.mint === "object"))
   );
-
   const packSummaryRaw = buildPackSummary({ jsonCandidates: interesting, transfers, buyerWallet });
   const packSummary = packSummaryRaw ? enrichPackWithInfluenceAndUnitPrice(packSummaryRaw) : null;
 
@@ -344,18 +349,30 @@ export async function GET(req) {
     const url = new URL(req.url);
     const wallet = (url.searchParams.get("wallet") || "").toLowerCase();
     const limit = Math.max(1, Math.min(500, parseInt(url.searchParams.get("limit") || "50", 10)));
-    const startblock = parseInt(url.searchParams.get("startblock") || "0", 10) || 0;
-    const endblock = parseInt(url.searchParams.get("endblock") || "99999999", 10) || 99999999;
+    let startblock = parseInt(url.searchParams.get("startblock") || "0", 10);
+    let endblock = parseInt(url.searchParams.get("endblock") || "0", 10);
 
     if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
       return NextResponse.json({ ok: false, error: "wallet invalide" }, { status: 400 });
     }
 
-    // 1) Candidats = sorties USDC de ce wallet (Polygonscan)
-    const transfers = await fetchUsdcTransfersForWallet(wallet, { startblock, endblock, offset: 10000 });
+    // Déterminer range par défaut si non fourni
+    if (!startblock || !endblock) {
+      const latest = await getLatestBlockNumber();
+      endblock = endblock || latest;
+      startblock = startblock || Math.max(0, latest - 1_000_000); // ~fenêtre par défaut
+    }
+
+    // 1) Candidats = sorties USDC de ce wallet (Polygonscan si clé, sinon RPC)
+    let transfers;
+    if (POLYGONSCAN_KEY) {
+      transfers = await fetchUsdcTransfersForWallet_Polygonscan(wallet, { startblock, endblock, offset: 10000 });
+    } else {
+      transfers = await fetchUsdcTransfersForWallet_RPC(wallet, { startblock, endblock, step: 50_000 });
+    }
     const outgoing = transfers.filter((t) => (t.from || "").toLowerCase() === wallet);
 
-    // Regrouper par txHash et garder le timestamp max (ou min → similaire)
+    // Regrouper par txHash
     const byTx = new Map();
     for (const t of outgoing) {
       const key = t.hash;
@@ -374,7 +391,7 @@ export async function GET(req) {
       return { ...c, ...r };
     });
 
-    // 3) Garder uniquement celles où un pack est détecté
+    // 3) Packs détectés
     const items = analyzed
       .filter((x) => x.packSummary && x.packSummary.packs > 0 && x.status === "success")
       .map((x) => ({
@@ -400,9 +417,11 @@ export async function GET(req) {
       ok: true,
       wallet,
       scans: {
+        source: POLYGONSCAN_KEY ? "polygonscan" : "rpc",
         candidates: candidates.length,
         analyzed: analyzed.length,
         packsDetected: items.length,
+        range: { startblock, endblock },
       },
       totals: {
         packs: totalPacks,
