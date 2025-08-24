@@ -17,6 +17,12 @@ function getPolygonscanKey() {
 // ── CONFIG
 const RPC_URL = process.env.POLYGON_RPC_URL || "https://polygon-rpc.com";
 
+// USDC natif & USDC.e (pour le calcul de prix)
+const USDC_NATIVE  = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowerCase();
+const USDC_BRIDGED = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174".toLowerCase();
+const USDC_SET = new Set([USDC_NATIVE, USDC_BRIDGED]);
+const isUsdc = (a) => USDC_SET.has((a || "").toLowerCase());
+
 // Packs / influence
 const SHARES_PER_PACK_MAIN = 40;
 const SHARES_PER_PACK_SEC  = 10;
@@ -36,7 +42,8 @@ async function rpc(method, params) {
   if (j.error) throw new Error(j.error.message || "RPC error");
   return j.result;
 }
-const to0x = (x) => (x.startsWith("0x") ? x : "0x" + x);
+const to0x = (x) => (x?.startsWith("0x") ? x : "0x" + x);
+
 function hexToBytes(hex){const s=hex?.startsWith("0x")?hex.slice(2):hex||"";if(s.length%2)return new Uint8Array();const o=new Uint8Array(s.length/2);for(let i=0;i<o.length;i++)o[i]=parseInt(s.slice(2*i,2*i+2),16);return o;}
 function bytesToUtf8OrNull(b){try{const t=new TextDecoder().decode(b);return /[{}\[\]":,a-z0-9\s._-]/i.test(t)?t.replace(/\u0000/g,""):null;}catch{return null;}}
 function tryParseJsonLoose(s){if(!s)return null;try{return JSON.parse(s);}catch{const m=s.match(/\{[\s\S]*\}/);if(!m)return null;try{return JSON.parse(m[0]);}catch{return null;}}}
@@ -124,12 +131,12 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }){
   const secondaries=shares.filter((s)=>s!==main);
   const smcForMain=clubSmc.find((x)=>x.clubId===main?.clubId)||null;
 
-  // prix = plus gros débit token (si USDC), sinon 0 (on ne convertit pas ici)
+  // prix: plus gros débit USDC (natif/bridgé) du wallet dans cette tx
   let priceUSDC=null, feeUSDC=0;
   if(buyerWallet){
     const w=buyerWallet.toLowerCase();
     const usdcTransfers=transfers.filter(
-      (t)=>t.standard==="ERC20/721" && (t.contract||"").toLowerCase().includes("3c499c542cef5e3811e1192ce70d8cc03d5c3359") && (t.from||"").toLowerCase()===w
+      (t)=>t.standard==="ERC20/721" && isUsdc(t.contract) && (t.from||"").toLowerCase()===w
     );
     if(usdcTransfers.length){
       const amounts=usdcTransfers.map((t)=>normalizeUSDC(t.amountOrId)).sort((a,b)=>b-a);
@@ -175,23 +182,26 @@ function enrichPackWithInfluenceAndUnitPrice(pack){
     ...pack,
     packs,
     unitPriceUSDC: pricePerPack,
-    validation: { mainSharesModulo: mainModulo, secondariesHaveModuloZero: secondaries.every((x)=>x.sharesModulo===0) },
+    validation: {
+      mainSharesModulo: mainModulo,
+      secondariesHaveModuloZero: secondaries.every((x)=>x.sharesModulo===0),
+    },
     influence: { main: mainInfluence, secondary: totalSecondaryInfluence, total: totalInfluence },
     shares: { ...pack.shares, secondaryClubs: secondaries },
   };
 }
 
-// ── Polygonscan: pagination de account.tokentx (tous tokens)
-async function fetchTokenTxsPaginated_Polygonscan(
+// ── Polygonscan: **pagination de account.txlist** (toutes les TX, comme /tokentxns UI)
+async function fetchTxListPaginated_Polygonscan(
   wallet,
   { startblock, endblock, pageSize = 100, maxPages = 20, sort = "desc" } = {},
   apiKey
 ){
-  const all = [];
+  const out = [];
   for (let page = 1; page <= maxPages; page++) {
     const url = new URL("https://api.polygonscan.com/api");
     url.searchParams.set("module", "account");
-    url.searchParams.set("action", "tokentx");
+    url.searchParams.set("action", "txlist");
     url.searchParams.set("address", wallet);
     if (Number.isFinite(startblock)) url.searchParams.set("startblock", String(startblock));
     if (Number.isFinite(endblock))   url.searchParams.set("endblock", String(endblock));
@@ -204,34 +214,31 @@ async function fetchTokenTxsPaginated_Polygonscan(
     if (!r.ok) throw new Error(`Polygonscan HTTP ${r.status}`);
     const j = await r.json();
 
-    // Polygonscan renvoie { status:"0", message:"No transactions found", result:[] } quand fini
+    // Quand il n'y a plus de résultats : result = []
     if (!Array.isArray(j.result) || j.result.length === 0) break;
 
     for (const x of j.result) {
-      all.push({
-        hash: x.hash || x.transactionHash,
+      out.push({
+        hash: x.hash,
         from: (x.from || "").toLowerCase(),
         to: (x.to || "").toLowerCase(),
         timeStamp: x.timeStamp,
-        contractAddress: (x.contractAddress || "").toLowerCase(),
+        blockNumber: Number(x.blockNumber || 0),
       });
     }
     if (j.result.length < pageSize) break; // dernière page
   }
 
-  // dédup par txHash, en gardant le plus récent timestamp
+  // dédup par hash, garder le plus récent
   const map = new Map();
-  for (const t of all) {
-    const key = t.hash;
-    if (!key) continue;
-    const ts = Number(t.timeStamp || 0);
-    const prev = map.get(key);
-    if (!prev || ts > Number(prev.timeStamp || 0)) map.set(key, t);
+  for (const t of out) {
+    const prev = map.get(t.hash);
+    if (!prev || Number(t.timeStamp || 0) > Number(prev.timeStamp || 0)) map.set(t.hash, t);
   }
-  return Array.from(map.values()).sort((a, b) => Number(b.timeStamp || 0) - Number(a.timeStamp || 0));
+  return Array.from(map.values()).sort((a,b)=>Number(b.timeStamp||0)-Number(a.timeStamp||0));
 }
 
-// ── Analyse d'une TX via RPC
+// ── Analyse d'une TX via RPC (on garde ce que tu avais)
 async function analyzeTx(txHash, buyerWallet){
   const [receipt, tx] = await Promise.all([
     rpc("eth_getTransactionReceipt", [txHash]),
@@ -275,7 +282,7 @@ async function analyzeTx(txHash, buyerWallet){
   };
 }
 
-// ── Util
+// ── Utils
 async function getLatestBlockNumber(){
   const hex=await rpc("eth_blockNumber",[]);
   return parseInt(hex,16);
@@ -321,35 +328,32 @@ export async function GET(req){
       return NextResponse.json({ ok:false, error:"POLYGONSCAN_API_KEY manquante côté serveur" }, { status:400 });
     }
 
-    // 1) Candidats = toutes les token tx (paginations) → on garde celles où from=wallet
-    let tokenTxs = [];
+    // 1) Pagination Polygonscan: **toutes les tx** de l'adresse
+    let baseTxs = [];
     if (sourceUsed === "polygonscan") {
-      tokenTxs = await fetchTokenTxsPaginated_Polygonscan(
+      baseTxs = await fetchTxListPaginated_Polygonscan(
         wallet,
         { startblock, endblock, pageSize, maxPages, sort: "desc" },
         apiKey
       );
     } else {
-      // Sur RPC on évite une requête trop large (non fiable) → on ne tente pas de "tous tokens"
-      // Si besoin absolu, on pourrait itérer des contrats connus, mais on privilégie Polygonscan ici.
-      tokenTxs = [];
+      baseTxs = []; // (optionnel: implémenter une pagination RPC, mais Polygonscan est préféré)
     }
 
-    const outgoing = tokenTxs.filter(t => (t.from || "").toLowerCase() === wallet);
+    // On ne garde que les tx où le wallet est **expéditeur**
+    const outgoing = baseTxs.filter(t => (t.from || "").toLowerCase() === wallet);
 
-    // Agrégation par tx (dedup + tri)
+    // Dédup + tri + limite
     const byTx = new Map();
     for (const t of outgoing) {
-      const key = t.hash;
-      const ts  = Number(t.timeStamp || 0);
-      const prev = byTx.get(key);
-      if (!prev || ts > prev.timeStamp) byTx.set(key, { txHash:key, timeStamp:ts });
+      const prev = byTx.get(t.hash);
+      if (!prev || Number(t.timeStamp||0) > Number(prev.timeStamp||0)) byTx.set(t.hash, t);
     }
-    const candidates = Array.from(byTx.values()).sort((a,b)=>b.timeStamp-a.timeStamp).slice(0, limit);
+    const candidates = Array.from(byTx.values()).sort((a,b)=>Number(b.timeStamp||0)-Number(a.timeStamp||0)).slice(0, limit);
 
     // 2) Analyse pack tx par tx (concurrence 4)
     const analyzed = await mapWithConcurrency(candidates, 4, async (c) => {
-      const r = await analyzeTx(c.txHash, wallet);
+      const r = await analyzeTx(c.hash, wallet);
       return { ...c, ...r };
     });
 
@@ -387,8 +391,8 @@ export async function GET(req){
         debug: {
           hasPolygonscanKey: Boolean(apiKey),
           requestedSource: sourceParam,
-          tokenTxPages: { pageSize, maxPages, fetched: Math.ceil(tokenTxs.length / Math.max(1,pageSize)) },
-          tokenTxCount: tokenTxs.length,
+          pageSize, maxPages,
+          baseTxCount: baseTxs.length,
           outgoingCount: outgoing.length,
         },
       },
