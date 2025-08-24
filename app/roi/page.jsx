@@ -7,13 +7,14 @@ import React, { useEffect, useMemo, useState } from "react";
  * ROI — “depuis toujours”
  * - Achats via SVC (clubs) = somme absolue des share trade négatifs en SVC (balance_sheet)
  * - Gains SVC (clubs)      = somme des dividends_club
- * - Coût packs ($)         = /api/packs/by-wallet (répartition sur clubs selon l’influence réelle des packs)
- * - ROI ($) = gains$ / (dépense$SVC + dépense$Packs)
- * - ROI affiné ($) = identique (on utilise directement la répartition fine par club)
+ * - Coût packs ($)         = /api/packs/by-wallet (répartition réelle par club selon l’influence des packs)
+ * - ROI ($)                = gains$ / (dépense$SVC + dépense$Packs)
  */
 
+//
 // ───────────────────────────────────────────────────────────────────────────────
-// Utils/format
+// Utils / format
+//
 
 const UNIT = 10000; // montants du balance_sheet en 1e-4 SVC
 const toSVC = (n) => (Number(n) || 0) / UNIT;
@@ -25,15 +26,15 @@ const SAFE_DIV = (num, den) => (den > 0 ? num / den : null);
 const fmtSVC = (n) =>
   typeof n === "number"
     ? `${n.toLocaleString("fr-FR", { maximumFractionDigits: 4 })} SVC`
-    : "-";
+    : "—";
 
 const fmtUSD = (n) =>
   typeof n === "number"
     ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
-    : "-";
+    : "—";
 
 const fmtInt = (n) =>
-  typeof n === "number" ? n.toLocaleString("fr-FR") : "-";
+  typeof n === "number" ? n.toLocaleString("fr-FR") : "—";
 
 const fmtDate = (ts) => {
   if (!ts) return "—";
@@ -50,15 +51,17 @@ const shortHash = (h) => (h ? `${h.slice(0, 6)}…${h.slice(-4)}` : "");
 // clé pour matcher un trade balance_sheet ↔ transactions
 const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
 
+//
 // ───────────────────────────────────────────────────────────────────────────────
-// Join trades → id club
+// Joins / helpers
+//
 
 function indexTradesByTimeAndCounterparty(txs) {
   const idx = new Map();
   for (const t of txs || []) {
     if (t?.type !== "share trade") continue;
     const share = t?.share;
-    if (!share?.type || !share?.id) continue;
+    if (!share?.type || share?.id == null) continue;
     const k = tradeKey(t?.other_name, t?.date);
     if (!idx.has(k)) idx.set(k, { type: share.type, id: share.id });
   }
@@ -87,8 +90,10 @@ function estimateQtyBoughtViaSVC(transactions) {
   return qtyByClub;
 }
 
+//
 // ───────────────────────────────────────────────────────────────────────────────
-// Agrégation
+// Agrégation principale
+//
 
 function aggregateForever({
   balanceSheet,
@@ -96,13 +101,13 @@ function aggregateForever({
   positions,
   clubMap,
   playerMap,
-  // anciens “preview” (facultatifs)
+  // (facultatif) preview pack unitaire
   packPriceUSDByClub,
   infPerPackByClub,
   allInfByClub,
-  // nouveau : coûts packs déjà répartis par club via l’historique on-chain
+  // coût packs réel réparti par club ($)
   packSpendUSDByClub,
-  // 1 SVC = $svcRateUSD (nullable)
+  // 1 SVC = $svcRateUSD
   svcRateUSD,
 }) {
   const tradeIdx = indexTradesByTimeAndCounterparty(transactions);
@@ -114,7 +119,7 @@ function aggregateForever({
   // SVC dépensés en achats directs (par club)
   const achatsSvcClub = new Map();
 
-  // À défaut d’info côté balance_sheet, on tentera d’estimer les quantités achetées via SVC
+  // À défaut d’info côté balance_sheet, estimation des quantités achetées via SVC
   const qtyAcheteeSvcClub = estimateQtyBoughtViaSVC(transactions);
 
   for (const it of balanceSheet || []) {
@@ -158,16 +163,16 @@ function aggregateForever({
     const gainsSvc = round4(payoutsClub.get(id) || 0);            // dividendes
     const achatsSvc = round2(achatsSvcClub.get(id) || 0);         // SVC dépensés
 
-    // (préviews éventuels, pas utilisés dans le coût final mais affichables si besoin)
+    // (préviews éventuels, juste informatifs)
     const packPriceUSD = Number(packPriceUSDByClub?.get(id) || 0);
     const infPerPack = Number(infPerPackByClub?.get(id) || 0);
 
-    // Quantité achetée en SVC si dispo (sinon 0)
+    // Quantité achetée via SVC si dispo
     const qtyAcheteeSvc = Number(qtyAcheteeSvcClub.get(id) || 0);
-    // Le reste est supposé venir des packs (indicatif)
+    // Le reste supposé venir des packs (indicatif)
     const qtyIssuePacks = Math.max(0, qty - qtyAcheteeSvc);
 
-    // Coûts packs par club ($), issus de l’historique on-chain
+    // Coûts packs par club ($) issus de l’historique on-chain
     const depensePacksAffineeUSD = round2(Number(packSpendUSDByClub?.get(id) || 0));
 
     // Conversion SVC -> USD
@@ -183,17 +188,17 @@ function aggregateForever({
       id,
       name,
       qty,
-      achatsSvc,         // SVC
-      gainsSvc,          // SVC
-      packPriceUSD,      // $ (indicatif)
-      infPerPack,        // influence/pack (indicatif)
-      depenseSvcUSD,     // $ SVC
-      depensePacksAffineeUSD, // $ Packs (réel réparti)
-      gainsUSD,          // $
-      roiUSD,            // ROI ($)
-      roiAffUSD,         // ROI ($)
-      coutTotalUSD,      // pour colonne dédiée
-      qtyIssuePacks,     // info
+      achatsSvc,               // SVC
+      gainsSvc,                // SVC
+      packPriceUSD,            // $ (indicatif)
+      infPerPack,              // influence/pack (indicatif)
+      depenseSvcUSD,           // $ SVC
+      depensePacksAffineeUSD,  // $ Packs (réel réparti)
+      gainsUSD,                // $
+      roiUSD,                  // ROI ($)
+      roiAffUSD,               // ROI ($)
+      coutTotalUSD,            // pour tri/affichage
+      qtyIssuePacks,           // info
       link: `https://play.soccerverse.com/club/${id}`,
     });
   }
@@ -225,8 +230,10 @@ function aggregateForever({
   return { clubs, players };
 }
 
+//
 // ───────────────────────────────────────────────────────────────────────────────
 // UI helpers
+//
 
 function RoiBar({ pct }) {
   const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
@@ -243,8 +250,10 @@ function RoiBar({ pct }) {
   );
 }
 
+//
 // ───────────────────────────────────────────────────────────────────────────────
 // Page
+//
 
 export default function RoiForever() {
   const [username, setUsername] = useState("");
@@ -259,26 +268,26 @@ export default function RoiForever() {
   const [transactions, setTransactions] = useState([]); // /api/transactions
   const [positions, setPositions] = useState({ clubs: [], players: [] }); // /api/user_positions
 
-  // Prix pack ($), inf./pack (principal) et composition du pack (preview, facultatif)
+  // (facultatif) preview unitaire par club
   const [packPriceUSDByClub, setPackPriceUSDByClub] = useState(new Map());
   const [infPerPackByClub, setInfPerPackByClub] = useState(new Map());
   const [allInfByClub, setAllInfByClub] = useState(new Map());
 
-  // Nouveau : coût packs réel par club ($) + détails d’achats par club
+  // coût packs réel par club ($) + détails d’achats (pour drawer)
   const [packSpendUSDByClub, setPackSpendUSDByClub] = useState(new Map());
   const [packBuysByClub, setPackBuysByClub] = useState(new Map());
 
   // 1 SVC = $svcRateUSD
   const [svcRateUSD, setSvcRateUSD] = useState(null);
 
-  // Tri (ROI / ROI affiné)
+  // Tri
   const [sortKey, setSortKey] = useState(null); // "roiUSD" | "roiAffUSD" | "coutTotalUSD" | null
   const [sortDir, setSortDir] = useState("desc");
 
   // wallet résolu (via /api/resolve_wallet)
   const [wallet, setWallet] = useState(null);
 
-  // Drawer ouvert (clubId → bool)
+  // Drawer ouvert
   const [openClub, setOpenClub] = useState(null);
 
   // mappings noms (club / player)
@@ -357,7 +366,7 @@ export default function RoiForever() {
     return res.json();
   }
 
-  // (facultatif) preview unitaire par club pour afficher un prix unitaire + inf/pack
+  // (facultatif) preview unitaire par club
   async function fetchPackPreviewFor(clubId) {
     const r = await fetch(`/api/pack_preview?clubId=${clubId}&numPacks=1`, { cache: "no-store" });
     if (!r.ok) return null;
@@ -370,12 +379,10 @@ export default function RoiForever() {
         ? j.resultNums[1] / 1e6
         : null;
 
-    // inf principale
     const infPerPack =
       j?.parsed?.mainClub?.influence ??
       (Array.isArray(j?.resultNums) ? j.resultNums[7] : null);
 
-    // composition complète depuis resultNums (si besoin)
     const influences = [];
     if (Array.isArray(j?.resultNums)) {
       for (let i = 6; i < j.resultNums.length; i += 2) {
@@ -411,65 +418,70 @@ export default function RoiForever() {
   }
 
   // Récupère les achats de packs on-chain et répartit le coût par club
-async function fetchPackCostsForWallet(w) {
-  const url = `/api/packs/by-wallet?wallet=${w}&pages=1000&pageSize=100&limit=100000`; // large
-  const r = await fetch(url, { cache: "no-store" });
-  const j = await r.json();
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
+  async function fetchPackCostsForWallet(w) {
+    // gros filetage (on enlève les limites pour couvrir des wallets très actifs)
+    const url = `/api/packs/by-wallet?wallet=${w}&pages=1000&pageSize=100&limit=100000`;
+    const r = await fetch(url, { cache: "no-store" });
+    const j = await r.json();
+    if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
 
-  const spend = new Map();
-  const buysMap = new Map();
+    const spend = new Map();
+    const buysMap = new Map();
 
-  for (const it of j.items || []) {
-    const price = Number(it.priceUSDC || 0);
-    const unit  = Number(it.unitPriceUSDC || 0);
-    const packs = Number(it.packs || 0);
-    const txHash = it.txHash;
-    const blockNumber = it.blockNumber;
-    const blockTs = Number(it.blockTimestamp || 0); // <-- maintenant dispo
+    for (const it of j.items || []) {
+      const price = Number(it.priceUSDC || 0);
+      const unit  = Number(it.unitPriceUSDC || 0);
+      const packs = Number(it.packs || 0);
+      const txHash = it.txHash;
+      const blockNumber = it.blockNumber;
+      const blockTs = Number(it.blockTimestamp || 0); // le backend peut le fournir
 
-    const det = it.details || {};
-    const parts = [];
-    const mainId  = det?.shares?.mainClub?.clubId;
-    const mainInf = Number(det?.influence?.main || 0);
-    if (mainId && mainInf > 0) parts.push({ clubId: mainId, inf: mainInf });
-    for (const s of det?.shares?.secondaryClubs || []) {
-      const cid = Number(s.clubId);
-      const inf = Number(s.influence || 0);
-      if (cid && inf > 0) parts.push({ clubId: cid, inf });
+      const det = it.details || {};
+      const parts = [];
+      const mainId  = det?.shares?.mainClub?.clubId;
+      const mainInf = Number(det?.influence?.main || 0);
+      if (mainId && mainInf > 0) parts.push({ clubId: mainId, inf: mainInf });
+      for (const s of det?.shares?.secondaryClubs || []) {
+        const cid = Number(s.clubId);
+        const inf = Number(s.influence || 0);
+        if (cid && inf > 0) parts.push({ clubId: cid, inf });
+      }
+      const totalInf = parts.reduce((a, b) => a + b.inf, 0);
+      if (price <= 0 || totalInf <= 0) continue;
+
+      const usdPerInf = price / totalInf;
+
+      for (const p of parts) {
+        const partUSD = usdPerInf * p.inf;
+        spend.set(p.clubId, (spend.get(p.clubId) || 0) + partUSD);
+
+        const arr = buysMap.get(p.clubId) || [];
+        arr.push({
+          txHash,
+          dateTs: blockTs || null,          // date pour le drawer
+          blockNumber,
+          packs,
+          priceUSDC: price,
+          unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
+          allocatedUSD: partUSD,
+          allocatedInf: p.inf,
+        });
+        buysMap.set(p.clubId, arr);
+      }
     }
-    const totalInf = parts.reduce((a, b) => a + b.inf, 0);
-    if (price <= 0 || totalInf <= 0) continue;
 
-    const usdPerInf = price / totalInf;
-
-    for (const p of parts) {
-      const partUSD = usdPerInf * p.inf;
-      spend.set(p.clubId, (spend.get(p.clubId) || 0) + partUSD);
-
-      const arr = buysMap.get(p.clubId) || [];
-      arr.push({
-        txHash,
-        dateTs: blockTs || null,          // <-- date affichée dans le drawer
-        blockNumber,
-        packs,
-        priceUSDC: price,
-        unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
-        allocatedUSD: partUSD,
-        allocatedInf: p.inf,
-      });
-      buysMap.set(p.clubId, arr);
+    // trie les achats par date/bloc
+    for (const [cid, arr] of buysMap.entries()) {
+      arr.sort(
+        (a, b) =>
+          (b.dateTs || 0) - (a.dateTs || 0) ||
+          (b.blockNumber || 0) - (a.blockNumber || 0)
+      );
     }
+
+    setPackSpendUSDByClub(spend);
+    setPackBuysByClub(buysMap);
   }
-
-  for (const [cid, arr] of buysMap.entries()) {
-    arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0) || (b.blockNumber || 0) - (a.blockNumber || 0));
-  }
-
-  setPackSpendUSDByClub(spend);
-  setPackBuysByClub(buysMap);
-}
-
 
   async function handleSearch(e) {
     e?.preventDefault();
@@ -496,7 +508,7 @@ async function fetchPackCostsForWallet(w) {
       const w = await resolveWallet(name);
       if (w) await fetchPackCostsForWallet(w);
 
-      // (facultatif) Prévisualisations de pack pour chaque club possédé
+      // (facultatif) previews unitaire pour info
       const clubIds = Array.from(new Set((pos?.clubs || []).map((c) => c.id)));
       const previews = await Promise.all(
         clubIds.map(async (id) => [id, await fetchPackPreviewFor(id)])
@@ -751,10 +763,14 @@ async function fetchPackCostsForWallet(w) {
                             <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
                             <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
                             <td className="py-2 px-3 text-right">
-                              {row.coutTotalUSD ? fmtUSD(row.coutTotalUSD) : <span className="text-gray-500">—</span>}
+                              {row.coutTotalUSD || row.coutTotalUSD === 0
+                                ? fmtUSD(row.coutTotalUSD)
+                                : <span className="text-gray-500">—</span>}
                             </td>
                             <td className="py-2 px-3 text-right">
-                              {row.depensePacksAffineeUSD ? fmtUSD(row.depensePacksAffineeUSD) : <span className="text-gray-500">—</span>}
+                              {row.depensePacksAffineeUSD || row.depensePacksAffineeUSD === 0
+                                ? fmtUSD(row.depensePacksAffineeUSD)
+                                : <span className="text-gray-500">—</span>}
                             </td>
                             <td className="py-2 px-3">
                               {row.roiUSD != null ? (
