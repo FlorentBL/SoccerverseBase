@@ -427,30 +427,41 @@ export default function RoiForever() {
       const blockNumber = it.blockNumber;
       const blockTs = Number(it.timeStamp || it.blockTimestamp || 0);
 
-      const det = it.details || {};
-      const parts = [];
-      const mainId = det?.shares?.mainClub?.clubId;
-      const mainInf = Number(det?.influence?.main || 0);
-      if (mainId && mainInf > 0) parts.push({ clubId: mainId, role: "main" });
-      for (const s of det?.shares?.secondaryClubs || []) {
-        const cid = Number(s.clubId);
-        const inf = Number(s.influence || 0);
-        if (cid && inf > 0) parts.push({ clubId: cid, role: "secondary" });
-      }
+const det = it.details || {};
+const parts = [];
 
-      for (const p of parts) {
-        const arr = buysMap.get(p.clubId) || [];
-        arr.push({
-          txHash,
-          role: p.role, // "main" | "secondary"
-          dateTs: blockTs || null,
-          blockNumber,
-          packs,
-          priceUSDC: price,
-          unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
-        });
-        buysMap.set(p.clubId, arr);
-      }
+// ✅ toujours number pour le principal
+const mainId = Number(det?.shares?.mainClub?.clubId);
+const mainInf = Number(det?.influence?.main || 0);
+if (Number.isFinite(mainId) && mainId > 0 && mainInf > 0) {
+  parts.push({ clubId: mainId, role: "main" });
+}
+
+// ✅ déjà number pour les secondaires (on garde)
+for (const s of det?.shares?.secondaryClubs || []) {
+  const cid = Number(s.clubId);
+  const inf = Number(s.influence || 0);
+  if (Number.isFinite(cid) && cid > 0 && inf > 0) {
+    parts.push({ clubId: cid, role: "secondary" });
+  }
+}
+
+// ✅ clés de la map toujours number
+for (const p of parts) {
+  const key = Number(p.clubId);
+  const arr = buysMap.get(key) || [];
+  arr.push({
+    txHash,
+    role: p.role,
+    dateTs: blockTs || null,
+    blockNumber,
+    packs,
+    priceUSDC: price,
+    unitPriceUSDC: unit || (packs > 0 ? price / packs : null),
+  });
+  buysMap.set(key, arr);
+}
+
     }
 
     // agrégats
@@ -482,6 +493,9 @@ export default function RoiForever() {
           (b.blockNumber || 0) - (a.blockNumber || 0)
       );
     }
+// normalise au cas où des clés string se seraient glissées
+const buysMapNum = new Map();
+for (const [k, v] of buysMap.entries()) buysMapNum.set(Number(k), v);
 
     setPackBuysByClub(buysMap);
     setPackRawTotalUSDByClub(totalUSD);

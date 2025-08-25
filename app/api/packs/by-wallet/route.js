@@ -61,6 +61,12 @@ function tryParseJsonLoose(str) {
 function hexToBigInt(h) { try { return h ? BigInt(h) : 0n; } catch { return 0n; } }
 function hexToAddress(h) { return "0x" + (h?.slice(26) || "").toLowerCase(); }
 
+// ✅ Normalise toute valeur de club en Number (ou null)
+const toClubId = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
 /* ──────────────────────────────────────────────────────────────────────────
    Topics / décodage ERC
 ────────────────────────────────────────────────────────────────────────── */
@@ -139,7 +145,7 @@ function extractJsonFromInput(inputHex) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Pack summary + enrichissement (dédup + agrégation par club)
+   Pack summary + enrichissement
 ────────────────────────────────────────────────────────────────────────── */
 function normalizeUSDC(valueStr) {
   try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; }
@@ -154,10 +160,10 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   for (const c of jsonCandidates) {
     const j = c.json;
 
-    // shares (dédup)
+    // --- shares (dedup) ---
     if (j?.cmd?.mint?.shares) {
       const s = j.cmd.mint.shares;
-      const clubId = s?.s?.club ?? s?.club ?? null;
+      const clubId = toClubId(s?.s?.club ?? s?.club);
       const n = Number(s?.n ?? 0);
       const r = s?.r ?? null;
       const sig = `${clubId}|${n}|${r || ""}`;
@@ -167,29 +173,31 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
       }
     }
 
-    // clubsmc (dédup)
+    // --- clubsmc (dedup) ---
     if (j?.cmd?.mint?.clubsmc) {
       const m = j.cmd.mint.clubsmc;
-      const sig = `${m?.c}|${m?.n}`;
-      if (m?.c && m?.n && !seenSmcSign.has(sig)) {
+      const cid = toClubId(m?.c);
+      const sig = `${cid}|${m?.n}`;
+      if (cid && m?.n && !seenSmcSign.has(sig)) {
         seenSmcSign.add(sig);
-        clubSmc.push({ clubId: m.c, n: m.n, fromLog: c.source, contract: c.contract });
+        clubSmc.push({ clubId: cid, n: m.n, fromLog: c.source, contract: c.contract });
       }
     }
   }
 
   if (!rawShares.length) return null;
 
-  // Agrégation par club (si plusieurs entrées du même club existent réellement)
+  // Agrégation par club
   const byClub = new Map();
   for (const s of rawShares) {
-    byClub.set(s.clubId, (byClub.get(s.clubId) || 0) + s.n);
+    const cid = Number(s.clubId);
+    byClub.set(cid, (byClub.get(cid) || 0) + s.n);
   }
-  const shares = [...byClub.entries()].map(([clubId, n]) => ({ clubId, n }));
+  const shares = [...byClub.entries()].map(([clubId, n]) => ({ clubId: Number(clubId), n }));
 
   const main = shares.reduce((a, b) => (b.n > (a?.n ?? 0) ? b : a), null);
   const secondaries = shares.filter((s) => s.clubId !== main.clubId);
-  const smcForMain = clubSmc.find((x) => x.clubId === main?.clubId) || null;
+  const smcForMain = clubSmc.find((x) => Number(x.clubId) === Number(main?.clubId)) || null;
 
   // Prix total = plus gros transfert USDC sortant de la tx
   let priceUSDC = null, feeUSDC = 0;
@@ -213,12 +221,12 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
     priceUSDC,
     extraFeesUSDC: feeUSDC || 0,
     shares: {
-      mainClub: main ? { clubId: main.clubId, amount: main.n, handle: null } : null,
-      secondaryClubs: secondaries.map((s) => ({ clubId: s.clubId, amount: s.n })),
+      mainClub: main ? { clubId: Number(main.clubId), amount: main.n, handle: main.r || null } : null,
+      secondaryClubs: secondaries.map((s) => ({ clubId: Number(s.clubId), amount: s.n })),
       totalShares: shares.reduce((s, x) => s + (x.n || 0), 0),
     },
-    clubsmc: smcForMain,
-    isConsistent: Boolean(main && smcForMain && smcForMain.clubId === main.clubId),
+    clubsmc: smcForMain ? { ...smcForMain, clubId: Number(smcForMain.clubId) } : null,
+    isConsistent: Boolean(main && smcForMain && Number(smcForMain.clubId) === Number(main.clubId)),
   };
 }
 
@@ -237,7 +245,13 @@ function enrichPackWithInfluenceAndUnitPrice(pack) {
     const packsSec = Math.floor(secShares / SHARES_PER_PACK_SEC);
     const secModulo = secShares % SHARES_PER_PACK_SEC;
     const secInfluence = packsSec * INFLUENCE_SEC_PER_PACK;
-    return { ...s, packsFromShares: packsSec, sharesModulo: secModulo, influence: secInfluence };
+    return {
+      ...s,
+      clubId: Number(s.clubId),         // ✅ force number
+      packsFromShares: packsSec,
+      sharesModulo: secModulo,
+      influence: secInfluence,
+    };
   });
 
   const totalSecondaryInfluence = secondaries.reduce((acc, x) => acc + (x.influence || 0), 0);
@@ -280,7 +294,7 @@ async function fetchTokenTxHashesEtherscan({
   wallet,
   contracts,
   pageSize = 100,
-  pages = 1000,          // peut être Infinity (pages=all)
+  pages = 1000,
   apikey,
   minAmountUSDC = 0,
 }) {
@@ -298,21 +312,16 @@ async function fetchTokenTxHashesEtherscan({
       url.searchParams.set("address", wallet);
       url.searchParams.set("contractaddress", contract);
       url.searchParams.set("page", String(p));
-      url.searchParams.set("offset", String(pageSize)); // 100 max
+      url.searchParams.set("offset", String(pageSize));
       url.searchParams.set("startblock", "0");
       url.searchParams.set("endblock", "99999999");
       url.searchParams.set("sort", "desc");
       if (apikey) url.searchParams.set("apikey", apikey);
 
-      // Mini backoff 429 (3 tentatives)
-      let r, j = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        r = await fetch(url, { cache: "no-store" });
-        if (r.status !== 429) break;
-        await new Promise(res => setTimeout(res, 350 * (attempt + 1)));
-      }
+      const r = await fetch(url, { cache: "no-store" });
       const ok = r.ok;
-      try { j = await r.json(); } catch { j = null; }
+      let j = null;
+      try { j = await r.json(); } catch {}
 
       const res = Array.isArray(j?.result) ? j.result : [];
       let kept = 0;
@@ -337,11 +346,10 @@ async function fetchTokenTxHashesEtherscan({
         status: j?.status, message: j?.message,
       });
 
-      if (res.length < pageSize) break; // plus de pages utiles pour ce contrat
+      if (res.length < pageSize) break; // page suivante probablement vide
     }
   }
 
-  // Tri du plus récent au plus ancien
   const txs = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
   return { txs, debug };
 }
@@ -419,20 +427,15 @@ export async function GET(req) {
     const url = new URL(req.url);
     const wallet = (url.searchParams.get("wallet") || "").toLowerCase();
 
-    // analyseLimit (fallback sur limit) : nombre de tx à analyser réellement
-    const rawAnalyzeLimit = url.searchParams.get("analyzeLimit") ?? url.searchParams.get("limit");
-    const analyzeLimit = rawAnalyzeLimit ? Math.max(1, parseInt(rawAnalyzeLimit, 10)) : Infinity;
+    // pas de limite "dure" : on peut tout prendre si limit non fourni
+    const rawLimit = url.searchParams.get("limit");
+    const limit = rawLimit ? Math.max(1, parseInt(rawLimit, 10)) : Infinity;
 
-    // pages: nombre, 'all' ou '0' → scan jusqu'à épuisement
-    const rawPages = (url.searchParams.get("pages") || "").toLowerCase();
-    const pages =
-      rawPages === "all" || rawPages === "0"
-        ? Infinity
-        : rawPages
-        ? Math.max(1, parseInt(rawPages, 10))
-        : 1000;
+    // pages très élevées par défaut si non fourni
+    const rawPages = url.searchParams.get("pages");
+    const pages = rawPages ? Math.max(1, parseInt(rawPages, 10)) : 1000;
 
-    // cap offset à 100 (Etherscan)
+    // cap Etherscan offset à 100 (sûr / stable)
     const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get("pageSize") || "100", 10)));
 
     const minAmountUSDC = Number(url.searchParams.get("minAmountUSDC") || "0");
@@ -456,7 +459,7 @@ export async function GET(req) {
       for (const c of contractsParam.split(",").map(s => s.trim()).filter(Boolean)) contracts.add(c);
     }
 
-    // 1) Découverte via Etherscan v2
+    // 1) Découverte via Etherscan v2 (avec minAmountUSDC) + pagination
     const { txs, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
       wallet,
       contracts: Array.from(contracts),
@@ -467,9 +470,9 @@ export async function GET(req) {
     });
 
     const candidatesAll = txs.map(({ hash, timeStamp }) => ({ txHash: hash, timeStamp }));
-    const candidates = Number.isFinite(analyzeLimit) ? candidatesAll.slice(0, analyzeLimit) : candidatesAll;
+    const candidates = Number.isFinite(limit) ? candidatesAll.slice(0, limit) : candidatesAll;
 
-    // 2) Analyse pack tx par tx (concurrence 6)
+    // 2) Analyse pack tx par tx (concurrence 6 pour accélérer un peu)
     const analyzed = await mapWithConcurrency(candidates, 6, async (c) => {
       const r = await analyzeTx(c.txHash, wallet);
       return { ...c, ...r }; // garde c.timeStamp
@@ -487,7 +490,7 @@ export async function GET(req) {
         unitPriceUSDC: x.packSummary.unitPriceUSDC,
         feesUSDC: x.packSummary.extraFeesUSDC || 0,
         influenceTotal: x.packSummary.influence?.total || 0,
-        mainClub: x.packSummary.shares?.mainClub?.clubId || null,
+        mainClub: toClubId(x.packSummary.shares?.mainClub?.clubId), // ✅ défensif
         secondariesCount: x.packSummary.shares?.secondaryClubs?.length || 0,
         details: x.packSummary,
       }));
@@ -503,14 +506,13 @@ export async function GET(req) {
       wallet,
       scans: {
         source: "etherscan-v2",
-        discovered: txs.length,
         candidates: candidates.length,
         analyzed: analyzed.length,
         packsDetected: items.length,
         debug: {
           apikeyProvided: Boolean(apikey),
           pageSize,
-          pagesRequested: pages === Infinity ? "all" : pages,
+          pagesRequested: pages,
           tokenTx: tokenDebug,
         },
       },
