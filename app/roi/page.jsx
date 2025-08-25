@@ -344,7 +344,14 @@ export default function RoiForever() {
   // Associe les paiements USDC à nos achats détectés
 async function fetchPackCostsForWallet(w, purchases) {
   const hintTs = purchases.map(p => p.ts);
-  if (!hintTs.length) { /* … reset maps … */ return; }
+ if (!hintTs.length) {
+  setPackBuysByClub(new Map());
+  setPackRawTotalUSDByClub(new Map());
+  setPackUnitAvgUSDByClub(new Map());
+  setPackLastDateByClub(new Map());
+  setPackTotalPacksByClub(new Map());
+  return;
+}
 
   const url = `/api/packs/by-wallet?wallet=${w}&blockWindow=1500&hintTs=${hintTs.join(",")}`;
   const r = await fetch(url, { cache: "no-store" });
