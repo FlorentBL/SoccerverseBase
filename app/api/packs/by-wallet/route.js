@@ -102,13 +102,19 @@ async function fetchUsdcTransfersPaged({
   }
 
   // tri anti-dupes par hash (garde timestamp le + récent)
-  const byHash = new Map();
-  for (const t of out) {
-    const prev = byHash.get(t.hash);
-    if (!prev || t.timeStamp > prev.timeStamp) byHash.set(t.hash, t);
+// Regroupement par (txHash + dir) en conservant la valeur USDC la plus élevée
+const byHashDir = new Map();
+for (const t of out) {
+  const key = `${t.hash}|${t.dir}`;
+  const prev = byHashDir.get(key);
+  if (!prev || Number(t.value ?? 0) > Number(prev.value ?? 0)) {
+    byHashDir.set(key, t);
   }
-  return Array.from(byHash.values())
-    .sort((a, b) => a.timeStamp - b.timeStamp); // asc pour matching
+}
+
+// On renvoie trié par timestamp croissant (utile pour le matching)
+return Array.from(byHashDir.values()).sort((a, b) => a.timeStamp - b.timeStamp);
+ // asc pour matching
 }
 
 /**
