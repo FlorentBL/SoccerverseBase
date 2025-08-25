@@ -61,6 +61,7 @@ function tryParseJsonLoose(str) {
 function hexToBigInt(h) { try { return h ? BigInt(h) : 0n; } catch { return 0n; } }
 function hexToAddress(h) { return "0x" + (h?.slice(26) || "").toLowerCase(); }
 
+
 /* ──────────────────────────────────────────────────────────────────────────
    Topics / décodage ERC
 ────────────────────────────────────────────────────────────────────────── */
@@ -392,6 +393,62 @@ async function fetchTokenTxHashesEtherscan({
   return { txs, debug };
 }
 
+// ── Fallback par timestamps ───────────────────────────────────────────────
+async function etherscanGetBlockByTime(ts, apikey) {
+  const u = new URL("https://api.etherscan.io/v2/api");
+  u.searchParams.set("chainid", "137");
+  u.searchParams.set("module", "block");
+  u.searchParams.set("action", "getblocknobytime");
+  u.searchParams.set("timestamp", String(ts));
+  u.searchParams.set("closest", "before");
+  if (apikey) u.searchParams.set("apikey", apikey);
+  const r = await fetch(u, { cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  const n = Number(j?.result?.blockNumber ?? j?.result);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function fetchNormalTxHashesAroundTimes({
+  wallet, apikey, hintTimestamps = [], blockWindow = 1500,
+}) {
+  const base = "https://api.etherscan.io/v2/api";
+  const out = new Map();
+  const addr = wallet.toLowerCase();
+
+  for (const ts of hintTimestamps) {
+    const b = await etherscanGetBlockByTime(ts, apikey);
+    if (!Number.isFinite(b)) continue;
+    const startblock = Math.max(0, b - blockWindow);
+    const endblock = b + blockWindow;
+
+    const u = new URL(base);
+    u.searchParams.set("chainid", "137");
+    u.searchParams.set("module", "account");
+    u.searchParams.set("action", "txlist");
+    u.searchParams.set("address", wallet);
+    u.searchParams.set("startblock", String(startblock));
+    u.searchParams.set("endblock", String(endblock));
+    u.searchParams.set("sort", "desc");
+    if (apikey) u.searchParams.set("apikey", apikey);
+
+    const r = await fetch(u, { cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    const rows = Array.isArray(j?.result) ? j.result : [];
+    for (const row of rows) {
+      const from = (row.from || "").toLowerCase();
+      const to   = (row.to   || "").toLowerCase();
+      if (from !== addr && to !== addr) continue;
+      const hash = row.hash;
+      if (!hash) continue;
+      const t = Number(row.timeStamp || 0);
+      const prev = out.get(hash);
+      if (!prev || t > prev) out.set(hash, t);
+    }
+  }
+  return Array.from(out.entries()).map(([hash, timeStamp]) => ({ hash, timeStamp }));
+}
+
+
 /* ──────────────────────────────────────────────────────────────────────────
    Analyse d’une transaction
 ────────────────────────────────────────────────────────────────────────── */
@@ -507,16 +564,45 @@ export async function GET(req) {
     }
 
     // 1) Découverte via Etherscan v2
-    const { txs, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
-      wallet,
-      contracts: Array.from(contracts),
-      pageSize,
-      pages,
-      apikey,
-      minAmountUSDC,
-    });
+// Hints passés par le front : ?hintTs=ts1,ts2,ts3
+const rawHints = (url.searchParams.get("hintTs") || "")
+  .split(",")
+  .map(s => Number(s.trim()))
+  .filter(n => Number.isFinite(n) && n > 0);
+const hintTimestamps = Array.from(new Set(rawHints));
 
-    const candidatesAll = txs.map(({ hash, timeStamp }) => ({ txHash: hash, timeStamp }));
+// 1) Découverte via USDC (tokentx) — comme avant
+const { txs: usdcTxs, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
+  wallet,
+  contracts: Array.from(contracts),
+  pageSize,
+  pages,
+  apikey,
+  minAmountUSDC,
+});
+
+// 1bis) Fallback par timestamps (petite fenêtre de blocks autour des dates)
+let timeTxs = [];
+if (hintTimestamps.length) {
+  timeTxs = await fetchNormalTxHashesAroundTimes({
+    wallet,
+    apikey,
+    hintTimestamps,
+    blockWindow: 1500, // ~5–10 minutes selon charge réseau
+  });
+}
+
+// 1ter) Fusion des deux sources par hash
+const byHash = new Map();
+for (const t of [...usdcTxs, ...timeTxs]) {
+  const prev = byHash.get(t.hash);
+  if (!prev || (t.timeStamp || 0) > (prev.timeStamp || 0)) byHash.set(t.hash, t);
+}
+const mergedTxs = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
+
+// on continue le pipeline comme avant, mais avec mergedTxs
+const candidatesAll = mergedTxs.map(({ hash, timeStamp }) => ({ txHash: hash, timeStamp }));
+
     const candidates = Number.isFinite(limit) ? candidatesAll.slice(0, limit) : candidatesAll;
 
     // 2) Analyse pack tx par tx

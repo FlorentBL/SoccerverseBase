@@ -370,10 +370,27 @@ export default function RoiForever() {
     }
   }
 
+function extractPackHintTimestamps(transactions = []) {
+  const out = new Set();
+  for (const t of transactions) {
+    // à adapter à tes données : ici on prend les tx sans SVC (USDC côté chain)
+    // ou celles qui ressemblent à un mint pack côté BS/tx.
+    const ts = Number(t?.date || t?.unix_time || t?.time || 0);
+    const looksLikePack =
+      t?.type === "mint" ||
+      (t?.type === "share trade" && Number(t?.amount) === 0) ||
+      /mint.*shares/i.test(JSON.stringify(t || {}));
+    if (looksLikePack && ts > 0) out.add(ts);
+  }
+  return Array.from(out).sort((a, b) => b - a).slice(0, 40); // limite raisonnable
+}
   // Packs — **fix** : rattacher par shares (amount) pas par influence
-  async function fetchPackCostsForWallet(w) {
-    const url = `/api/packs/by-wallet?wallet=${w}&pages=${PACKS_PAGES}&pageSize=${PACKS_PAGE_SIZE}&minAmountUSDC=${MIN_AMOUNT_USDC}`;
-    const r = await fetch(url, { cache: "no-store" });
+async function fetchPackCostsForWallet(w) {
+  const hintTs = extractPackHintTimestamps(transactions); // <- utilise tes tx chargées plus haut
+  const url = `/api/packs/by-wallet?wallet=${w}&pages=${PACKS_PAGES}` +
+              `&pageSize=${PACKS_PAGE_SIZE}&minAmountUSDC=${MIN_AMOUNT_USDC}` +
+              (hintTs.length ? `&hintTs=${hintTs.join(",")}` : "");
+  const r = await fetch(url, { cache: "no-store" });
     const j = await r.json();
     if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
 
