@@ -1,4 +1,3 @@
-// app/roi/page.jsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -265,7 +264,7 @@ function RoiBar({ pct }) {
 // ───────────────────────────────────────────────────────────────────────────────
 // Page
 
-export default function RoiForever() {
+export default function RoiPage({ lang = "fr" }) {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
