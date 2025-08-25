@@ -3,19 +3,20 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-/** ROI — “depuis toujours”
+/** ROI “depuis toujours”
  * - Achats via SVC (clubs) = somme absolue des share trade négatifs en SVC (balance_sheet)
  * - Gains SVC (clubs)      = somme des dividends_club
- * - Coût total ($)         = somme des “Prix total ($)” des achats packs où le club apparaît
- * - Coût packs (club) ($)  = prix / pack moyen (pondéré par #packs) sur ces achats
- * - ROI ($)                = gains$ / coût total$
+ * - Coût packs ($)         = somme des “Prix total ($)” des achats packs
+ * - Coût SVC ($)           = achatsSVC * SVC2USDC
+ * - Coût ROI ($)           = coût packs + (inclure SVC ? coût SVC : 0)
+ * - ROI ($)                = gains$ / coût ROI$
  */
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Utils/format
-const PACKS_PAGES = 1000;        // très large pour couvrir tout l'historique
-const PACKS_PAGE_SIZE = 100;     // offset max raisonnable pour Etherscan v2
-const MIN_AMOUNT_USDC = 2;       // filtre anti micro-fees
+// Config & utils
+const PACKS_PAGES = 1000;
+const PACKS_PAGE_SIZE = 100;
+const MIN_AMOUNT_USDC = 2;
 
 const UNIT = 10000; // montants du balance_sheet en 1e-4 SVC
 const toSVC = (n) => (Number(n) || 0) / UNIT;
@@ -34,8 +35,7 @@ const fmtUSD = (n) =>
     ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
     : "—";
 
-const fmtInt = (n) =>
-  typeof n === "number" ? n.toLocaleString("fr-FR") : "—";
+const fmtInt = (n) => (typeof n === "number" ? n.toLocaleString("fr-FR") : "—");
 
 const fmtDate = (ts) => {
   if (!ts) return "—";
@@ -47,7 +47,9 @@ const fmtDate = (ts) => {
   }
 };
 
-// Renvoie un texte multi-lignes avec toutes les dates d'achats d'un club
+const shortHash = (h) => (h ? `${h.slice(0, 6)}…${h.slice(-4)}` : "");
+const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
+
 function tooltipDatesForClub(buys = []) {
   return buys
     .filter((r) => r?.dateTs)
@@ -55,11 +57,8 @@ function tooltipDatesForClub(buys = []) {
     .join("\n");
 }
 
-const shortHash = (h) => (h ? `${h.slice(0, 6)}…${h.slice(-4)}` : "");
-const tradeKey = (otherName, unix) => `${otherName || ""}|${Number(unix) || 0}`;
-
 // ───────────────────────────────────────────────────────────────────────────────
-// Join trades → id club
+// Helpers: joindre les share-trades → id club
 
 function indexTradesByTimeAndCounterparty(txs) {
   const idx = new Map();
@@ -105,14 +104,17 @@ function aggregateForever({
   clubMap,
   playerMap,
 
-  // NOUVEAU : métriques dérivées côté front à partir de /api/packs/by-wallet
-  packRawTotalUSDByClub,   // somme des “Prix total ($)”
-  packUnitAvgUSDByClub,    // prix / pack moyen (pondéré)
-  packLastDateByClub,      // timestamp du dernier achat
-  packTotalPacksByClub,    // #packs total
+  // métriques packs (calculées côté front via /api/packs/by-wallet)
+  packRawTotalUSDByClub, // somme des “Prix total ($)”
+  packUnitAvgUSDByClub, // “Prix / pack” pondéré
+  packLastDateByClub, // ts dernier achat de pack
+  packTotalPacksByClub, // #packs cumulés
 
-  // Taux SVC → USDC (pour convertir gains en $)
+  // conversion SVC -> $
   svcRateUSD,
+
+  // options
+  includeSvcInCost = true, // additionner coût SVC au coût packs pour le ROI
 }) {
   const tradeIdx = indexTradesByTimeAndCounterparty(transactions);
 
@@ -120,14 +122,13 @@ function aggregateForever({
   const payoutsPlayer = new Map();
   const baseMintPlayer = new Map();
 
-  const achatsSvcClub = new Map();
-
+  const achatsSvcClub = new Map(); // coût SVC (absolu) via share trade-
   const qtyAcheteeSvcClub = estimateQtyBoughtViaSVC(transactions);
 
   for (const it of balanceSheet || []) {
     const amtSVC = toSVC(it?.amount);
 
-    // Gains (dividendes)
+    // Gains SVC (dividendes)
     if (it?.type?.startsWith("dividend")) {
       if (it?.other_type === "club" && it?.other_id != null) {
         payoutsClub.set(it.other_id, (payoutsClub.get(it.other_id) || 0) + amtSVC);
@@ -137,13 +138,13 @@ function aggregateForever({
       continue;
     }
 
-    // Base joueurs (mint négatifs)
+    // Base joueurs (mint)
     if (it?.type === "mint" && it?.other_type === "player" && it?.other_id != null && amtSVC < 0) {
       baseMintPlayer.set(it.other_id, (baseMintPlayer.get(it.other_id) || 0) + Math.abs(amtSVC));
       continue;
     }
 
-    // Achats via SVC (club)
+    // Achats via SVC (share trade négatifs)
     if (it?.type === "share trade" && amtSVC < 0) {
       const k = `${it?.other_name || ""}|${Number(it?.unix_time) || 0}`;
       const share = tradeIdx.get(k);
@@ -164,30 +165,52 @@ function aggregateForever({
     const gainsSvc = round4(payoutsClub.get(id) || 0);
     const achatsSvc = round2(achatsSvcClub.get(id) || 0);
 
-    // === valeurs demandées sur la ligne ===
-    const totalPriceUSD = round2(Number(packRawTotalUSDByClub?.get(id) || 0)); // “Prix total”
-    const unitAvgUSD    = round2(Number(packUnitAvgUSDByClub?.get(id) || 0)); // “Prix / pack”
-    const lastDateTs    = Number(packLastDateByClub?.get(id) || 0);
-    const totalPacks    = Number(packTotalPacksByClub?.get(id) || 0);
+    const qtyAcheteeSvc = Number(qtyAcheteeSvcClub.get(id) || 0);
+    const qtyIssuePacks = Math.max(0, qty - qtyAcheteeSvc);
 
-    // Conversion gains SVC → $ + ROI
+    // coûts packs + infos
+    const costPacksUSD = round2(Number(packRawTotalUSDByClub?.get(id) || 0));
+    const unitAvgUSD = round2(Number(packUnitAvgUSDByClub?.get(id) || 0));
+    const lastDateTs = Number(packLastDateByClub?.get(id) || 0);
+    const totalPacks = Number(packTotalPacksByClub?.get(id) || 0);
+
+    // conversion gains & achats SVC → $
     const gainsUSD = svcRateUSD != null ? round2(gainsSvc * svcRateUSD) : null;
-    const coutTotalUSD = totalPriceUSD;
-    const roiUSD = SAFE_DIV(gainsUSD ?? 0, coutTotalUSD);
+    const achatsSvcUSD = svcRateUSD != null ? round2(achatsSvc * svcRateUSD) : 0;
+
+    // coût utilisé pour le ROI : packs + (optionnel) SVC
+    const coutUtiliseUSD =
+      (costPacksUSD || 0) + (includeSvcInCost ? (achatsSvcUSD || 0) : 0);
+
+    let roiBase = null;
+    if (includeSvcInCost && costPacksUSD > 0 && achatsSvcUSD > 0) roiBase = "packs+svc";
+    else if (costPacksUSD > 0) roiBase = "packs";
+    else if (includeSvcInCost && achatsSvcUSD > 0) roiBase = "svc";
+
+    const roiUSD = SAFE_DIV(gainsUSD ?? 0, coutUtiliseUSD);
 
     clubs.push({
       id,
       name,
       qty,
-      achatsSvc,         // SVC
-      gainsSvc,          // SVC
-      gainsUSD,          // $
-      // colonnes affichées
-      coutTotalUSD,                   // = Prix total cumulé ($)
-      depensePacksAffineeUSD: unitAvgUSD, // = Prix / pack moyen ($)
+
+      // SVC bruts (affichage)
+      achatsSvc,
+      gainsSvc,
+
+      // conversions/affichages $
+      gainsUSD,
+      coutPacksUSD: costPacksUSD,
+      coutSvcUSD: achatsSvcUSD,
+      coutUtiliseUSD, // packs + svc si option active
+      roiBase, // "packs" | "svc" | "packs+svc" | null
+
+      // colonnes
+      depensePacksAffineeUSD: unitAvgUSD,
       packsAchetes: totalPacks,
       dernierAchatTs: lastDateTs,
-      // autres infos utiles
+
+      qtyIssuePacks,
       link: `https://play.soccerverse.com/club/${id}`,
       roiUSD,
     });
@@ -223,12 +246,10 @@ function aggregateForever({
 // UI helpers
 
 function RoiBar({ pct }) {
-  const val = Number(pct) || 0;                    // real ROI in %
-  const width = Math.max(0, Math.min(100, val));   // clamp only the bar
+  const val = Number(pct) || 0;
+  const width = Math.max(0, Math.min(100, val));
   const color =
-    val < 0 ? "bg-red-500"
-    : val >= 100 ? "bg-emerald-500"
-    : "bg-indigo-500";
+    val < 0 ? "bg-red-500" : val >= 100 ? "bg-emerald-500" : "bg-indigo-500";
 
   return (
     <div className="flex items-center gap-3 min-w-[180px]">
@@ -258,23 +279,28 @@ export default function RoiForever() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
+
   const [hideNoROI, setHideNoROI] = useState(false);
+  const [includeSvcInCost, setIncludeSvcInCost] = useState(true); // ← addition SVC dans coût ROI
+
+  // Filtre par rôle déduit via les packs: "all" | "main" | "secondary" | "both" | "none"
+  const [roleFilter, setRoleFilter] = useState("all");
 
   const [clubMap, setClubMap] = useState({});
   const [playerMap, setPlayerMap] = useState({});
 
-  const [balanceSheet, setBalanceSheet] = useState([]); // /api/user_balance_sheet
-  const [transactions, setTransactions] = useState([]); // /api/transactions
-  const [positions, setPositions] = useState({ clubs: [], players: [] }); // /api/user_positions
+  const [balanceSheet, setBalanceSheet] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [positions, setPositions] = useState({ clubs: [], players: [] });
 
-  // NOUVEAU: métriques affichées sur la ligne
+  // Packs: métriques & détails pour drawer
   const [packRawTotalUSDByClub, setPackRawTotalUSDByClub] = useState(new Map());
   const [packUnitAvgUSDByClub, setPackUnitAvgUSDByClub] = useState(new Map());
   const [packLastDateByClub, setPackLastDateByClub] = useState(new Map());
   const [packTotalPacksByClub, setPackTotalPacksByClub] = useState(new Map());
-
-  // détails par club (drawer)
   const [packBuysByClub, setPackBuysByClub] = useState(new Map());
+
+  // Drawer
   const [openClub, setOpenClub] = useState(null);
 
   // 1 SVC = $svcRateUSD
@@ -284,13 +310,10 @@ export default function RoiForever() {
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("desc");
 
-  // Filtre visuel sur le rôle (packs) — par défaut, on affiche TOUT
-  const [roleFilter, setRoleFilter] = useState("all"); // all | main | secondary | both | none
-
-  // wallet résolu (via /api/resolve_wallet)
+  // Wallet
   const [wallet, setWallet] = useState(null);
 
-  // mappings noms (club / player) + taux SVC->USDC
+  // mappings
   useEffect(() => {
     (async () => {
       try {
@@ -308,12 +331,20 @@ export default function RoiForever() {
         /* ignore */
       }
     })();
+  }, []);
 
+  // Taux SVC → USDC
+  useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("https://services.soccerverse.com/api/market", { cache: "no-store" });
+        const res = await fetch(
+          "https://services.soccerverse.com/api/market",
+          { cache: "no-store" }
+        );
         const data = await res.json();
-        if (data && typeof data.SVC2USDC === "number") setSvcRateUSD(data.SVC2USDC);
+        if (data && typeof data.SVC2USDC === "number") {
+          setSvcRateUSD(data.SVC2USDC);
+        }
       } catch {
         /* ignore */
       }
@@ -324,7 +355,7 @@ export default function RoiForever() {
     const res = await fetch("/api/user_balance_sheet", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }), // pas de dates → depuis toujours
+      body: JSON.stringify({ name }),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -370,7 +401,7 @@ export default function RoiForever() {
         body: JSON.stringify({ name }),
       });
       const rwJson = await rw.json();
-      const w = rw.ok ? (rwJson.wallet || null) : null;
+      const w = rw.ok ? rwJson.wallet || null : null;
       setWallet(w);
       return w;
     } catch {
@@ -379,9 +410,8 @@ export default function RoiForever() {
     }
   }
 
-  // Récupère les achats de packs (on-chain) et calcule les métriques demandées
+  // Packs by wallet → détails & agrégats
   async function fetchPackCostsForWallet(w) {
-    // pas de 'limit' + pages très haut
     const url = `/api/packs/by-wallet?wallet=${w}&pages=${PACKS_PAGES}&pageSize=${PACKS_PAGE_SIZE}&minAmountUSDC=${MIN_AMOUNT_USDC}`;
 
     const r = await fetch(url, { cache: "no-store" });
@@ -391,7 +421,7 @@ export default function RoiForever() {
     const buysMap = new Map(); // clubId -> rows
     for (const it of j.items || []) {
       const price = Number(it.priceUSDC || 0);
-      const unit  = Number(it.unitPriceUSDC || 0);
+      const unit = Number(it.unitPriceUSDC || 0);
       const packs = Number(it.packs || 0);
       const txHash = it.txHash;
       const blockNumber = it.blockNumber;
@@ -399,7 +429,7 @@ export default function RoiForever() {
 
       const det = it.details || {};
       const parts = [];
-      const mainId  = det?.shares?.mainClub?.clubId;
+      const mainId = det?.shares?.mainClub?.clubId;
       const mainInf = Number(det?.influence?.main || 0);
       if (mainId && mainInf > 0) parts.push({ clubId: mainId, role: "main" });
       for (const s of det?.shares?.secondaryClubs || []) {
@@ -412,7 +442,7 @@ export default function RoiForever() {
         const arr = buysMap.get(p.clubId) || [];
         arr.push({
           txHash,
-          role: p.role,                      // main | secondary
+          role: p.role, // "main" | "secondary"
           dateTs: blockTs || null,
           blockNumber,
           packs,
@@ -423,14 +453,16 @@ export default function RoiForever() {
       }
     }
 
-    // Agrégats
+    // agrégats
     const totalUSD = new Map();
-    const unitAvg  = new Map();
+    const unitAvg = new Map();
     const lastDate = new Map();
     const totalPks = new Map();
 
     for (const [cid, arr] of buysMap.entries()) {
-      let sumPrice = 0, sumPacks = 0, last = 0;
+      let sumPrice = 0,
+        sumPacks = 0,
+        last = 0;
       for (const r of arr) {
         sumPrice += Number(r.priceUSDC || 0);
         sumPacks += Number(r.packs || 0);
@@ -442,9 +474,13 @@ export default function RoiForever() {
       totalPks.set(cid, sumPacks);
     }
 
-    // ordre décroissant (plus récent en premier)
+    // ordre décroissant
     for (const [cid, arr] of buysMap.entries()) {
-      arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0) || (b.blockNumber || 0) - (a.blockNumber || 0));
+      arr.sort(
+        (a, b) =>
+          (b.dateTs || 0) - (a.dateTs || 0) ||
+          (b.blockNumber || 0) - (a.blockNumber || 0)
+      );
     }
 
     setPackBuysByClub(buysMap);
@@ -475,7 +511,6 @@ export default function RoiForever() {
       setTransactions(txs);
       setPositions(pos);
 
-      // wallet détecté + coûts packs (lignes)
       const w = await resolveWallet(name);
       if (w) await fetchPackCostsForWallet(w);
     } catch (err) {
@@ -494,16 +529,50 @@ export default function RoiForever() {
     }
   }
 
-  // Rôle (packs) dérivé des lignes d'achat pour un club
-  function computePackRole(rows = []) {
-    if (!rows || rows.length === 0) return "none";
-    const hasMain = rows.some(r => r.role === "main");
-    const hasSec  = rows.some(r => r.role === "secondary");
-    if (hasMain && hasSec) return "both";
-    return hasMain ? "main" : "secondary";
-  }
+  // Rôles dérivés des achats de packs
+  const roleByClub = useMemo(() => {
+    const m = new Map();
+    for (const [cid, rows] of packBuysByClub.entries()) {
+      const hasMain = rows.some((r) => r.role === "main");
+      const hasSec = rows.some((r) => r.role === "secondary");
+      const role =
+        hasMain && hasSec ? "both" : hasMain ? "main" : hasSec ? "secondary" : null;
+      m.set(cid, role || null);
+    }
+    return m; // clubs sans entrée => null (aucun achat pack)
+  }, [packBuysByClub]);
 
-  // sort helper that puts nulls last
+  const aggregated = useMemo(
+    () =>
+      aggregateForever({
+        balanceSheet,
+        transactions,
+        positions,
+        clubMap,
+        playerMap,
+        packRawTotalUSDByClub,
+        packUnitAvgUSDByClub,
+        packLastDateByClub,
+        packTotalPacksByClub,
+        svcRateUSD,
+        includeSvcInCost, // ← addition SVC au coût ROI
+      }),
+    [
+      balanceSheet,
+      transactions,
+      positions,
+      clubMap,
+      playerMap,
+      packRawTotalUSDByClub,
+      packUnitAvgUSDByClub,
+      packLastDateByClub,
+      packTotalPacksByClub,
+      svcRateUSD,
+      includeSvcInCost,
+    ]
+  );
+
+  // Sort helper nulls-last
   const sortNullsLast = (va, vb, dir) => {
     const a = va ?? null;
     const b = vb ?? null;
@@ -513,10 +582,22 @@ export default function RoiForever() {
     return dir === "asc" ? a - b : b - a;
   };
 
-  // applique filtre ROI + tri à un tableau de clubs
-  const prepareClubs = (arr) => {
-    let out = [...arr];
-    if (hideNoROI) out = out.filter((r) => r.roiUSD != null);
+  // Prépare les lignes : filtre “Masquer sans ROI” + filtre rôle + tri
+  const clubs = useMemo(() => {
+    let arr = [...aggregated.clubs];
+
+    if (hideNoROI) arr = arr.filter((r) => r.roiUSD != null);
+
+    if (roleFilter !== "all") {
+      arr = arr.filter((r) => {
+        const role = roleByClub.get(r.id) || "none";
+        if (roleFilter === "none") return role === "none";
+        if (roleFilter === "both") return role === "both";
+        if (roleFilter === "main") return role === "main";
+        if (roleFilter === "secondary") return role === "secondary";
+        return true;
+      });
+    }
 
     if (sortKey) {
       const numericKeys = new Set([
@@ -524,11 +605,11 @@ export default function RoiForever() {
         "packsAchetes",
         "dernierAchatTs",
         "gainsSvc",
-        "coutTotalUSD",
+        "coutPacksUSD",
         "depensePacksAffineeUSD",
         "roiUSD",
       ]);
-      out.sort((a, b) => {
+      arr.sort((a, b) => {
         const va = a[sortKey];
         const vb = b[sortKey];
         if (numericKeys.has(sortKey)) return sortNullsLast(va, vb, sortDir);
@@ -537,57 +618,11 @@ export default function RoiForever() {
           : String(vb ?? "").localeCompare(String(va ?? ""));
       });
     }
-    return out;
-  };
 
-  // Tous les clubs (positions) enrichis avec le rôle issu des achats packs
-  const clubsAll = useMemo(() => {
-    const prepared = prepareClubs(aggregateForever({
-      balanceSheet,
-      transactions,
-      positions,
-      clubMap,
-      playerMap,
-      packRawTotalUSDByClub,
-      packUnitAvgUSDByClub,
-      packLastDateByClub,
-      packTotalPacksByClub,
-      svcRateUSD,
-    }).clubs);
+    return arr;
+  }, [aggregated.clubs, hideNoROI, roleFilter, roleByClub, sortKey, sortDir]);
 
-    let rows = prepared.map(row => {
-      const rowsForClub = packBuysByClub.get(row.id) || [];
-      return { ...row, packRole: computePackRole(rowsForClub) };
-    });
-
-    if (roleFilter !== "all") {
-      rows = rows.filter(r => r.packRole === roleFilter);
-    }
-    return rows;
-  }, [
-    balanceSheet, transactions, positions, clubMap, playerMap,
-    packRawTotalUSDByClub, packUnitAvgUSDByClub, packLastDateByClub, packTotalPacksByClub,
-    svcRateUSD, packBuysByClub, sortKey, sortDir, hideNoROI, roleFilter
-  ]);
-
-  const aggregatedPlayers = useMemo(() => {
-    return aggregateForever({
-      balanceSheet,
-      transactions,
-      positions,
-      clubMap,
-      playerMap,
-      packRawTotalUSDByClub,
-      packUnitAvgUSDByClub,
-      packLastDateByClub,
-      packTotalPacksByClub,
-      svcRateUSD,
-    }).players;
-  }, [
-    balanceSheet, transactions, positions, clubMap, playerMap,
-    packRawTotalUSDByClub, packUnitAvgUSDByClub, packLastDateByClub, packTotalPacksByClub,
-    svcRateUSD
-  ]);
+  const { players } = aggregated;
 
   function toggleSort(key) {
     if (sortKey === key) {
@@ -604,7 +639,7 @@ export default function RoiForever() {
     </span>
   );
 
-  // Drawer de détail (liste des hashes)
+  // Drawer
   const renderDrawer = (clubId) => {
     const rows = packBuysByClub.get(clubId) || [];
     if (!rows.length) {
@@ -658,6 +693,15 @@ export default function RoiForever() {
     );
   };
 
+  // Petite aide pour le badge de rôle dans la table
+  const roleLabel = (clubId) => {
+    const r = roleByClub.get(clubId);
+    if (r === "main") return "Principal";
+    if (r === "secondary") return "Secondaire";
+    if (r === "both") return "Les deux";
+    return "—";
+  };
+
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
       <div className="max-w-6xl mx-auto">
@@ -704,10 +748,10 @@ export default function RoiForever() {
           </div>
         )}
 
-        {/* Clubs — un seul tableau avec toutes les positions */}
+        {/* Clubs */}
         {searched && (
           <section className="mb-10">
-            <div className="mb-3 flex items-center gap-4 text-sm text-gray-300">
+            <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-gray-300">
               <label className="inline-flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -718,29 +762,35 @@ export default function RoiForever() {
                 <span>Masquer les clubs sans ROI</span>
               </label>
 
-              {/* Filtre visuel rôle packs (facultatif, "all" = aucun filtrage) */}
-              <div className="flex items-center gap-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={includeSvcInCost}
+                  onChange={(e) => setIncludeSvcInCost(e.target.checked)}
+                />
+                <span>Inclure les achats SVC dans le coût (packs + SVC)</span>
+              </label>
+
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-gray-400">Rôle (packs) :</span>
-                {["all","main","secondary","both","none"].map(v => (
+                {[
+                  ["all", "Tous"],
+                  ["main", "Principal"],
+                  ["secondary", "Secondaire"],
+                  ["both", "Les deux"],
+                  ["none", "Aucun achat"],
+                ].map(([val, lab]) => (
                   <button
-                    key={v}
-                    onClick={() => setRoleFilter(v)}
-                    className={`px-2 py-1 rounded text-xs border ${
-                      roleFilter === v ? "bg-indigo-600 border-indigo-500" : "bg-gray-800 border-gray-700 hover:bg-gray-700"
+                    key={val}
+                    onClick={() => setRoleFilter(val)}
+                    className={`px-2 py-1 rounded border ${
+                      roleFilter === val
+                        ? "bg-indigo-600 border-indigo-500"
+                        : "bg-gray-800 border-gray-700 hover:bg-gray-700"
                     }`}
-                    title={
-                      v === "all" ? "Tous"
-                      : v === "main" ? "Principal uniquement"
-                      : v === "secondary" ? "Secondaire uniquement"
-                      : v === "both" ? "A la fois principal et secondaire"
-                      : "Aucun achat de pack détecté"
-                    }
                   >
-                    {v === "all" ? "Tous"
-                    : v === "main" ? "Principal"
-                    : v === "secondary" ? "Secondaire"
-                    : v === "both" ? "Les deux"
-                    : "Aucun achat"}
+                    {lab}
                   </button>
                 ))}
               </div>
@@ -748,11 +798,13 @@ export default function RoiForever() {
 
             <h2 className="text-2xl font-semibold mb-2">Clubs</h2>
             <p className="text-sm text-gray-400 mb-4">
-              Tous vos clubs sont affichés. La colonne “Rôle (packs)” indique comment le club apparaît dans vos achats de packs (principal = 40 d&apos;influence, secondaire = 10). “—” signifie qu’aucun achat de pack détecté n’implique ce club.
+              Tous vos clubs sont affichés. La colonne “Rôle (packs)” indique le rôle
+              du club dans vos achats de packs (principal = 40 d&apos;influence,
+              secondaire = 10). “—” signifie qu&apos;aucun achat de pack n&apos;implique ce club.
             </p>
 
-            {clubsAll.length === 0 ? (
-              <div className="text-gray-400">Aucun club.</div>
+            {clubs.length === 0 ? (
+              <div className="text-gray-400">Aucune position club.</div>
             ) : (
               <div className="rounded-xl border border-gray-700 overflow-hidden">
                 <table className="w-full text-sm">
@@ -765,10 +817,7 @@ export default function RoiForever() {
                       >
                         Club <Arrow active={sortKey === "name"} dir={sortDir} />
                       </th>
-
-                      {/* Nouvelle colonne */}
                       <th className="text-left py-2 px-3">Rôle (packs)</th>
-
                       <th
                         className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
                         onClick={() => toggleSort("qty")}
@@ -776,9 +825,7 @@ export default function RoiForever() {
                       >
                         Quantité <Arrow active={sortKey === "qty"} dir={sortDir} />
                       </th>
-
                       <th className="text-right py-2 px-3">Packs achetés</th>
-
                       <th
                         className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
                         onClick={() => toggleSort("dernierAchatTs")}
@@ -786,9 +833,7 @@ export default function RoiForever() {
                       >
                         Dernier achat <Arrow active={sortKey === "dernierAchatTs"} dir={sortDir} />
                       </th>
-
                       <th className="text-right py-2 px-3">Achats via SVC</th>
-
                       <th
                         className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
                         onClick={() => toggleSort("gainsSvc")}
@@ -796,24 +841,14 @@ export default function RoiForever() {
                       >
                         Gains SVC <Arrow active={sortKey === "gainsSvc"} dir={sortDir} />
                       </th>
-
                       <th
                         className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("coutTotalUSD")}
-                        title="Trier par coût total ($)"
+                        onClick={() => toggleSort("coutPacksUSD")}
+                        title="Trier par coût packs ($)"
                       >
-                        Coût total ($) <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
+                        Coût total (packs) ($) <Arrow active={sortKey === "coutPacksUSD"} dir={sortDir} />
                       </th>
-
-                      <th
-                        className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
-                        onClick={() => toggleSort("depensePacksAffineeUSD")}
-                        title="Trier par coût packs (club) ($)"
-                      >
-                        Coût packs (club) ($)
-                        <Arrow active={sortKey === "depensePacksAffineeUSD"} dir={sortDir} />
-                      </th>
-
+                      <th className="text-right py-2 px-3">Coût packs (club) ($)</th>
                       <th
                         className="text-right py-2 px-3 cursor-pointer select-none hover:underline"
                         onClick={() => toggleSort("roiUSD")}
@@ -821,24 +856,12 @@ export default function RoiForever() {
                       >
                         ROI ($) <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
                       </th>
-
                       <th className="text-right py-2 px-3">Détails</th>
                     </tr>
                   </thead>
-
                   <tbody className="divide-y divide-gray-700">
-                    {clubsAll.map((row) => {
+                    {clubs.map((row) => {
                       const isOpen = openClub === row.id;
-                      const buys = packBuysByClub.get(row.id) || [];
-                      const lastTs = buys[0]?.dateTs || null;
-                      const tip = tooltipDatesForClub(buys);
-
-                      const roleLabel =
-                        row.packRole === "main" ? "Principal"
-                        : row.packRole === "secondary" ? "Secondaire"
-                        : row.packRole === "both" ? "Principal + Secondaire"
-                        : "—";
-
                       return (
                         <React.Fragment key={`c-${row.id}`}>
                           <tr className="hover:bg-white/5">
@@ -852,49 +875,50 @@ export default function RoiForever() {
                                 {row.name}
                               </a>
                             </td>
-
-                            <td className="py-2 px-3">{roleLabel}</td>
-
+                            <td className="py-2 px-3">{roleLabel(row.id)}</td>
                             <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
                             <td className="py-2 px-3 text-right">{fmtInt(row.packsAchetes)}</td>
-
                             <td className="py-2 px-3 text-right">
-                              {lastTs ? (
-                                <span
-                                  className="relative group cursor-help"
-                                  title={tip}
-                                  aria-label={tip.replace(/\n/g, ", ")}
-                                >
-                                  {fmtDate(lastTs)}
-                                  {buys.length > 1 && (
-                                    <span className="ml-1 inline-flex items-center rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-gray-300">
-                                      +{buys.length - 1}
+                              {(() => {
+                                const buys = packBuysByClub.get(row.id) || [];
+                                const lastTs = buys[0]?.dateTs || null;
+                                const tip = tooltipDatesForClub(buys);
+                                if (!lastTs) return <span className="text-gray-500">—</span>;
+                                return (
+                                  <span
+                                    className="relative group cursor-help"
+                                    title={tip}
+                                    aria-label={tip.replace(/\n/g, ", ")}
+                                  >
+                                    {fmtDate(lastTs)}
+                                    {buys.length > 1 && (
+                                      <span className="ml-1 inline-flex items-center rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-gray-300">
+                                        +{buys.length - 1}
+                                      </span>
+                                    )}
+                                    <span className="pointer-events-none absolute bottom-full left-1/2 z-20 hidden -translate-x-1/2 whitespace-pre rounded border border-white/10 bg-black/90 px-2 py-1 text-xs text-white shadow-lg group-hover:block">
+                                      {tip}
                                     </span>
-                                  )}
-                                  <span className="pointer-events-none absolute bottom-full left-1/2 z-20 hidden -translate-x-1/2 whitespace-pre rounded border border-white/10 bg-black/90 px-2 py-1 text-xs text-white shadow-lg group-hover:block">
-                                    {tip}
                                   </span>
-                                </span>
+                                );
+                              })()}
+                            </td>
+                            <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
+                            <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
+                            <td className="py-2 px-3 text-right">
+                              {row.coutPacksUSD || row.coutPacksUSD === 0 ? (
+                                fmtUSD(row.coutPacksUSD)
                               ) : (
                                 <span className="text-gray-500">—</span>
                               )}
                             </td>
-
-                            <td className="py-2 px-3 text-right">{fmtSVC(row.achatsSvc)}</td>
-                            <td className="py-2 px-3 text-right">{fmtSVC(row.gainsSvc)}</td>
-
                             <td className="py-2 px-3 text-right">
-                              {row.coutTotalUSD || row.coutTotalUSD === 0
-                                ? fmtUSD(row.coutTotalUSD)
-                                : <span className="text-gray-500">—</span>}
+                              {row.depensePacksAffineeUSD || row.depensePacksAffineeUSD === 0 ? (
+                                fmtUSD(row.depensePacksAffineeUSD)
+                              ) : (
+                                <span className="text-gray-500">—</span>
+                              )}
                             </td>
-
-                            <td className="py-2 px-3 text-right">
-                              {row.depensePacksAffineeUSD || row.depensePacksAffineeUSD === 0
-                                ? fmtUSD(row.depensePacksAffineeUSD)
-                                : <span className="text-gray-500">—</span>}
-                            </td>
-
                             <td className="py-2 px-3">
                               {row.roiUSD != null ? (
                                 <RoiBar pct={row.roiUSD * 100} />
@@ -903,11 +927,26 @@ export default function RoiForever() {
                               )}
                               {row.gainsUSD != null && (
                                 <div className="text-xs text-gray-500 text-right mt-1">
-                                  gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD(row.coutTotalUSD || 0)}
+                                  {row.roiBase === "packs+svc" ? (
+                                    <>
+                                      gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD(row.coutUtiliseUSD || 0)}{" "}
+                                      (packs+SVC)
+                                    </>
+                                  ) : row.roiBase === "svc" ? (
+                                    <>
+                                      base SVC — gains: {fmtUSD(row.gainsUSD)} / coût:{" "}
+                                      {fmtUSD(row.coutUtiliseUSD || 0)}
+                                    </>
+                                  ) : row.roiBase === "packs" ? (
+                                    <>
+                                      gains: {fmtUSD(row.gainsUSD)} / coût: {fmtUSD(row.coutUtiliseUSD || 0)}
+                                    </>
+                                  ) : (
+                                    <>gains: {fmtUSD(row.gainsUSD)} / coût: —</>
+                                  )}
                                 </div>
                               )}
                             </td>
-
                             <td className="py-2 px-3 text-right">
                               <button
                                 className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-xs"
@@ -917,7 +956,6 @@ export default function RoiForever() {
                               </button>
                             </td>
                           </tr>
-
                           {isOpen && (
                             <tr className="bg-black/30">
                               <td className="py-3 px-3" colSpan={11}>
@@ -935,11 +973,11 @@ export default function RoiForever() {
           </section>
         )}
 
-        {/* Joueurs (inchangé) */}
+        {/* Joueurs */}
         {searched && (
           <section className="mb-20">
             <h2 className="text-2xl font-semibold mb-3">Joueurs</h2>
-            {aggregatedPlayers.length === 0 ? (
+            {players.length === 0 ? (
               <div className="text-gray-400">Aucune position joueur.</div>
             ) : (
               <div className="rounded-xl border border-gray-700 overflow-hidden">
@@ -954,7 +992,7 @@ export default function RoiForever() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
-                    {aggregatedPlayers.map((row) => (
+                    {players.map((row) => (
                       <tr key={`p-${row.id}`} className="hover:bg-white/5">
                         <td className="py-2 px-3">
                           <a
