@@ -14,13 +14,6 @@ const USDC_NATIVE_POLYGON  = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowe
 const USDC_BRIDGED_POLYGON = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174".toLowerCase(); // PoS bridged
 const USDC_CONTRACTS = new Set([USDC_NATIVE_POLYGON, USDC_BRIDGED_POLYGON]);
 
-// Contrats Soccerverse impliqués dans les achats de packs
-const DEFAULT_PACK_CONTRACTS = new Set([
-  "0x3d25cb3139811c6aee9d5ae8a01b2e5824b5db91", // achat / ReferralBonusGiven
-  "0x8c12253f71091b9582908c8a44f78870ec6f304f", // Move (JSON avec cmd/mint/…)
-  "0xeee0d855112b71dc68d72053594af03f92c586ae", // SharesMinted
-].map(x => x.toLowerCase()));
-
 // Règles d’un pack
 const SHARES_PER_PACK_MAIN = 40;
 const SHARES_PER_PACK_SEC  = 10;
@@ -291,6 +284,8 @@ async function fetchTokenTxHashesEtherscan({
 }) {
   const base = "https://api.etherscan.io/v2/api";
   const byHash = new Map(); // hash -> {hash, timeStamp}
+  const debug = [];
+  const addr = wallet.toLowerCase();
 
   for (const contract of contracts) {
     for (let p = 1; p <= pages; p++) {
@@ -308,75 +303,43 @@ async function fetchTokenTxHashesEtherscan({
       if (apikey) url.searchParams.set("apikey", apikey);
 
       const r = await fetch(url, { cache: "no-store" });
+      const ok = r.ok;
       let j = null;
       try { j = await r.json(); } catch {}
+
       const res = Array.isArray(j?.result) ? j.result : [];
+      let kept = 0;
+
       for (const it of res) {
-        if ((it.from || "").toLowerCase() !== wallet.toLowerCase()) continue;
+        if ((it.from || "").toLowerCase() !== addr) continue; // sortant seulement
         const amt = normalizeFromEtherscanTx(it);
-        if (amt < minAmountUSDC) continue;
+        if (amt < minAmountUSDC) continue; // filtre micro-fees
         const ts = Number(it.timeStamp || 0);
         const prev = byHash.get(it.hash);
-        if (!prev || ts > prev.timeStamp) byHash.set(it.hash, { hash: it.hash, timeStamp: ts });
+        if (!prev || ts > prev.timeStamp) {
+          byHash.set(it.hash, { hash: it.hash, timeStamp: ts });
+          kept++;
+        }
       }
+
+      debug.push({
+        contract, page: p, ok,
+        url: url.toString(),
+        fetched: res.length,
+        keptOutgoing: kept,
+        status: j?.status, message: j?.message,
+      });
+
       if (res.length < pageSize) break;
     }
   }
 
   const txs = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
-  return { txs };
-}
-
-// ➕ NOUVEAU : découverte via transactions “normales” vers contrats packs
-async function fetchNormalTxHashesEtherscan({
-  wallet,
-  toAddresses,
-  pageSize = 100,
-  pages = 1000,
-  apikey,
-}) {
-  const base = "https://api.etherscan.io/v2/api";
-  const setTo = new Set((toAddresses || []).map(x => x.toLowerCase()));
-  const byHash = new Map(); // hash -> {hash, timeStamp}
-
-  for (let p = 1; p <= pages; p++) {
-    const url = new URL(base);
-    url.searchParams.set("chainid", "137");
-    url.searchParams.set("module", "account");
-    url.searchParams.set("action", "txs");
-    url.searchParams.set("address", wallet);
-    url.searchParams.set("page", String(p));
-    url.searchParams.set("offset", String(pageSize));
-    url.searchParams.set("startblock", "0");
-    url.searchParams.set("endblock", "99999999");
-    url.searchParams.set("sort", "desc");
-    if (apikey) url.searchParams.set("apikey", apikey);
-
-    const r = await fetch(url, { cache: "no-store" });
-    let j = null;
-    try { j = await r.json(); } catch {}
-    const res = Array.isArray(j?.result) ? j.result : [];
-
-    let added = 0;
-    for (const it of res) {
-      const to = (it.to || "").toLowerCase();
-      if (!setTo.has(to)) continue;
-      if (it.txreceipt_status && String(it.txreceipt_status) !== "1") continue; // success only
-      const ts = Number(it.timeStamp || 0);
-      if (!byHash.has(it.hash) || ts > byHash.get(it.hash).timeStamp) {
-        byHash.set(it.hash, { hash: it.hash, timeStamp: ts });
-        added++;
-      }
-    }
-    if (res.length < pageSize) break; // fin de pagination
-  }
-
-  const txs = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
-  return { txs };
+  return { txs, debug };
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Analyse d’une transaction (logs + json embedded)
+   Analyse d’une transaction
 ────────────────────────────────────────────────────────────────────────── */
 async function analyzeTx(txHash, buyerWallet) {
   const [receipt, tx] = await Promise.all([
@@ -455,6 +418,7 @@ export async function GET(req) {
     const pages = rawPages ? Math.max(1, parseInt(rawPages, 10)) : 1000;
 
     const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get("pageSize") || "100", 10)));
+
     const minAmountUSDC = Number(url.searchParams.get("minAmountUSDC") || "0");
 
     if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
@@ -469,56 +433,33 @@ export async function GET(req) {
       );
     }
 
-    // Contrats USDC à scanner
+    // Contrats à scanner — par défaut USDC natif + bridgé
     const contractsParam = (url.searchParams.get("contracts") || "").toLowerCase();
-    const usdcContracts = new Set([USDC_NATIVE_POLYGON, USDC_BRIDGED_POLYGON]);
+    const contracts = new Set([USDC_NATIVE_POLYGON, USDC_BRIDGED_POLYGON]);
     if (contractsParam) {
-      for (const c of contractsParam.split(",").map(s => s.trim()).filter(Boolean)) usdcContracts.add(c);
+      for (const c of contractsParam.split(",").map(s => s.trim()).filter(Boolean)) contracts.add(c);
     }
 
-    // Contrats packs (normal txs)
-    const packParam = (url.searchParams.get("packContracts") || "").toLowerCase();
-    const packContracts = new Set([...DEFAULT_PACK_CONTRACTS]);
-    if (packParam) {
-      for (const c of packParam.split(",").map(s => s.trim()).filter(Boolean)) packContracts.add(c);
-    }
-
-    // 1) Découverte via Etherscan v2 : transferts USDC sortants
-    const { txs: tokenTxs } = await fetchTokenTxHashesEtherscan({
+    // 1) Découverte via Etherscan v2
+    const { txs, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
       wallet,
-      contracts: Array.from(usdcContracts),
+      contracts: Array.from(contracts),
       pageSize,
       pages,
       apikey,
       minAmountUSDC,
     });
 
-    // 2) ➕ Découverte via “normal txs” vers les contrats packs
-    const { txs: normalTxs } = await fetchNormalTxHashesEtherscan({
-      wallet,
-      toAddresses: Array.from(packContracts),
-      pageSize,
-      pages,
-      apikey,
-    });
+    const candidatesAll = txs.map(({ hash, timeStamp }) => ({ txHash: hash, timeStamp }));
+    const candidates = Number.isFinite(limit) ? candidatesAll.slice(0, limit) : candidatesAll;
 
-    // 3) Fusion + dédup + tri
-    const byHash = new Map();
-    for (const t of tokenTxs) byHash.set(t.hash, t);
-    for (const t of normalTxs) {
-      const prev = byHash.get(t.hash);
-      if (!prev || (t.timeStamp || 0) > (prev.timeStamp || 0)) byHash.set(t.hash, t);
-    }
-    const discovered = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
-    const candidates = Number.isFinite(limit) ? discovered.slice(0, limit) : discovered;
-
-    // 4) Analyse pack tx par tx (concurrence 6)
+    // 2) Analyse pack tx par tx
     const analyzed = await mapWithConcurrency(candidates, 6, async (c) => {
-      const r = await analyzeTx(c.hash || c.txHash, wallet);
+      const r = await analyzeTx(c.txHash, wallet);
       return { ...c, ...r };
     });
 
-    // 5) Packs détectés
+    // 3) Packs détectés
     const items = analyzed
       .filter((x) => x.packSummary && x.packSummary.packs > 0 && x.status === "success")
       .map((x) => ({
@@ -535,7 +476,7 @@ export async function GET(req) {
         details: x.packSummary,
       }));
 
-    // 6) Agrégats
+    // 4) Agrégats
     const totalPacks = items.reduce((s, it) => s + (it.packs || 0), 0);
     const totalUSDC = items.reduce((s, it) => s + (it.priceUSDC || 0), 0);
     const totalInfluence = items.reduce((s, it) => s + (it.influenceTotal || 0), 0);
@@ -553,11 +494,7 @@ export async function GET(req) {
           apikeyProvided: Boolean(apikey),
           pageSize,
           pagesRequested: pages,
-          discovered: {
-            tokenTxs: tokenTxs.length,
-            normalTxs: normalTxs.length,
-            mergedUnique: discovered.length,
-          },
+          tokenTx: tokenDebug,
         },
       },
       totals: {
