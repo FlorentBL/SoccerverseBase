@@ -21,6 +21,7 @@ const MENU_LABELS = {
         { href: "/revenus", label: "Gains joueurs" },
       ],
     },
+    { href: "/support", label: "Nous soutenir" },
   ],
   en: [
     { href: "/comment-debuter", label: "Getting started" },
@@ -35,6 +36,7 @@ const MENU_LABELS = {
         { href: "/revenus", label: "Player earnings" },
       ],
     },
+    { href: "/support", label: "Support us" },
   ],
   it: [
     { href: "/comment-debuter", label: "Come iniziare" },
@@ -49,6 +51,7 @@ const MENU_LABELS = {
         { href: "/revenus", label: "Guadagni giocatori" },
       ],
     },
+    { href: "/support", label: "Sostienici" },
   ],
   es: [
     { href: "/comment-debuter", label: "Cómo empezar" },
@@ -63,6 +66,7 @@ const MENU_LABELS = {
         { href: "/revenus", label: "Ganancias jugadores" },
       ],
     },
+    { href: "/support", label: "Apóyanos" },
   ],
   ko: [
     { href: "/comment-debuter", label: "시작하기" },
@@ -77,6 +81,7 @@ const MENU_LABELS = {
         { href: "/revenus", label: "선수 수익" },
       ],
     },
+    { href: "/support", label: "후원하기" },
   ],
 };
 
