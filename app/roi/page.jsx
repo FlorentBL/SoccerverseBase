@@ -465,7 +465,7 @@ export default function RoiForever() {
         const cid = Number(s.clubId);
         const inf = Number(s.influence || 0);
         if (cid && inf > 0) parts.push({ clubId: cid, role: "secondary" });
-      }
+      } 
 
       // rattacher la transaction au(x) club(s) impliqués, avec role
       for (const p of parts) {

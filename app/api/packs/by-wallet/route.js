@@ -139,7 +139,7 @@ function extractJsonFromInput(inputHex) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Pack summary + enrichissement
+   Pack summary + enrichissement (dédup + agrégation par club)
 ────────────────────────────────────────────────────────────────────────── */
 function normalizeUSDC(valueStr) {
   try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; }
@@ -154,7 +154,7 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   for (const c of jsonCandidates) {
     const j = c.json;
 
-    // --- shares (dedup) ---
+    // shares (dédup)
     if (j?.cmd?.mint?.shares) {
       const s = j.cmd.mint.shares;
       const clubId = s?.s?.club ?? s?.club ?? null;
@@ -167,7 +167,7 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
       }
     }
 
-    // --- clubsmc (dedup) ---
+    // clubsmc (dédup)
     if (j?.cmd?.mint?.clubsmc) {
       const m = j.cmd.mint.clubsmc;
       const sig = `${m?.c}|${m?.n}`;
@@ -213,7 +213,7 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
     priceUSDC,
     extraFeesUSDC: feeUSDC || 0,
     shares: {
-      mainClub: main ? { clubId: main.clubId, amount: main.n, handle: main.r || null } : null,
+      mainClub: main ? { clubId: main.clubId, amount: main.n, handle: null } : null,
       secondaryClubs: secondaries.map((s) => ({ clubId: s.clubId, amount: s.n })),
       totalShares: shares.reduce((s, x) => s + (x.n || 0), 0),
     },
@@ -280,7 +280,7 @@ async function fetchTokenTxHashesEtherscan({
   wallet,
   contracts,
   pageSize = 100,
-  pages = 1000,
+  pages = 1000,          // peut être Infinity (pages=all)
   apikey,
   minAmountUSDC = 0,
 }) {
@@ -298,16 +298,21 @@ async function fetchTokenTxHashesEtherscan({
       url.searchParams.set("address", wallet);
       url.searchParams.set("contractaddress", contract);
       url.searchParams.set("page", String(p));
-      url.searchParams.set("offset", String(pageSize));
+      url.searchParams.set("offset", String(pageSize)); // 100 max
       url.searchParams.set("startblock", "0");
       url.searchParams.set("endblock", "99999999");
       url.searchParams.set("sort", "desc");
       if (apikey) url.searchParams.set("apikey", apikey);
 
-      const r = await fetch(url, { cache: "no-store" });
+      // Mini backoff 429 (3 tentatives)
+      let r, j = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        r = await fetch(url, { cache: "no-store" });
+        if (r.status !== 429) break;
+        await new Promise(res => setTimeout(res, 350 * (attempt + 1)));
+      }
       const ok = r.ok;
-      let j = null;
-      try { j = await r.json(); } catch {}
+      try { j = await r.json(); } catch { j = null; }
 
       const res = Array.isArray(j?.result) ? j.result : [];
       let kept = 0;
@@ -332,10 +337,11 @@ async function fetchTokenTxHashesEtherscan({
         status: j?.status, message: j?.message,
       });
 
-      if (res.length < pageSize) break; // page suivante probablement vide
+      if (res.length < pageSize) break; // plus de pages utiles pour ce contrat
     }
   }
 
+  // Tri du plus récent au plus ancien
   const txs = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
   return { txs, debug };
 }
@@ -413,15 +419,20 @@ export async function GET(req) {
     const url = new URL(req.url);
     const wallet = (url.searchParams.get("wallet") || "").toLowerCase();
 
-    // pas de limite "dure" : on peut tout prendre si limit non fourni
-    const rawLimit = url.searchParams.get("limit");
-    const limit = rawLimit ? Math.max(1, parseInt(rawLimit, 10)) : Infinity;
+    // analyseLimit (fallback sur limit) : nombre de tx à analyser réellement
+    const rawAnalyzeLimit = url.searchParams.get("analyzeLimit") ?? url.searchParams.get("limit");
+    const analyzeLimit = rawAnalyzeLimit ? Math.max(1, parseInt(rawAnalyzeLimit, 10)) : Infinity;
 
-    // pages très élevées par défaut si non fourni
-    const rawPages = url.searchParams.get("pages");
-    const pages = rawPages ? Math.max(1, parseInt(rawPages, 10)) : 1000;
+    // pages: nombre, 'all' ou '0' → scan jusqu'à épuisement
+    const rawPages = (url.searchParams.get("pages") || "").toLowerCase();
+    const pages =
+      rawPages === "all" || rawPages === "0"
+        ? Infinity
+        : rawPages
+        ? Math.max(1, parseInt(rawPages, 10))
+        : 1000;
 
-    // cap Etherscan offset à 100 (sûr / stable)
+    // cap offset à 100 (Etherscan)
     const pageSize = Math.max(1, Math.min(100, parseInt(url.searchParams.get("pageSize") || "100", 10)));
 
     const minAmountUSDC = Number(url.searchParams.get("minAmountUSDC") || "0");
@@ -445,7 +456,7 @@ export async function GET(req) {
       for (const c of contractsParam.split(",").map(s => s.trim()).filter(Boolean)) contracts.add(c);
     }
 
-    // 1) Découverte via Etherscan v2 (avec minAmountUSDC) + pagination
+    // 1) Découverte via Etherscan v2
     const { txs, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
       wallet,
       contracts: Array.from(contracts),
@@ -456,9 +467,9 @@ export async function GET(req) {
     });
 
     const candidatesAll = txs.map(({ hash, timeStamp }) => ({ txHash: hash, timeStamp }));
-    const candidates = Number.isFinite(limit) ? candidatesAll.slice(0, limit) : candidatesAll;
+    const candidates = Number.isFinite(analyzeLimit) ? candidatesAll.slice(0, analyzeLimit) : candidatesAll;
 
-    // 2) Analyse pack tx par tx (concurrence 6 pour accélérer un peu)
+    // 2) Analyse pack tx par tx (concurrence 6)
     const analyzed = await mapWithConcurrency(candidates, 6, async (c) => {
       const r = await analyzeTx(c.txHash, wallet);
       return { ...c, ...r }; // garde c.timeStamp
@@ -492,13 +503,14 @@ export async function GET(req) {
       wallet,
       scans: {
         source: "etherscan-v2",
+        discovered: txs.length,
         candidates: candidates.length,
         analyzed: analyzed.length,
         packsDetected: items.length,
         debug: {
           apikeyProvided: Boolean(apikey),
           pageSize,
-          pagesRequested: pages,
+          pagesRequested: pages === Infinity ? "all" : pages,
           tokenTx: tokenDebug,
         },
       },
