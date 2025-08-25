@@ -67,15 +67,17 @@ function extractPackPurchasesFromTransactions(transactions = []) {
     if (!clubId) continue;
 
     // delta de parts acheté
-    const shares = numberLike(t?.shares, t?.n, t?.qty, t?.quantity, t?.delta, t?.totalDelta);
+const shares = numberLike(
+  t?.shares, t?.n, t?.qty, t?.quantity, t?.delta, t?.totalDelta, t?.num
+);
     if (!(shares > 0)) continue;
 
     // achat pack = 0 SVC (sur chaîne) OU bien on voit "mint" quelque part
     const amtSvc = numberLike(t?.amount, t?.amount_svc, t?.svc, t?.price_svc);
-    const looksLikeMint =
-      /mint/i.test(String(t?.type || "")) ||
-      /mint/i.test(JSON.stringify(t || {}));
-    const isPackish = (amtSvc === 0) || looksLikeMint;
+const looksLikeMint =
+   String(t?.type || "").toLowerCase() === "mint" ||
+   /mint/i.test(JSON.stringify(t || {}));
+ const isPackish = looksLikeMint || (amtSvc === 0);
 
     if (!isPackish) continue;
 
@@ -353,7 +355,7 @@ async function fetchPackCostsForWallet(w, purchases) {
   return;
 }
 
-  const url = `/api/packs/by-wallet?wallet=${w}&blockWindow=1500&hintTs=${hintTs.join(",")}`;
+  const url = `/api/packs/by-wallet?wallet=${w}&blockWindow=5000&hintTs=${hintTs.join(",")}`;
   const r = await fetch(url, { cache: "no-store" });
   const j = await r.json();
   if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
@@ -364,7 +366,7 @@ async function fetchPackCostsForWallet(w, purchases) {
     .filter(p => Number.isFinite(p.ts))
     .sort((a, b) => a.ts - b.ts);
 
-  const TOL = 600; // secondes
+  const TOL = 1800; // secondes
 
   function nearestPayment(ts) {
     // binaire + voisinage simple vu les petites tailles
