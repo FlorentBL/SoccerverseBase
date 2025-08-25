@@ -27,7 +27,6 @@ const fmtSVC = (n) => (typeof n === "number" ? `${n.toLocaleString("fr-FR", { ma
 const fmtUSD = (n) => (typeof n === "number" ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "—");
 const fmtInt = (n) => (typeof n === "number" ? n.toLocaleString("fr-FR") : "—");
 const fmtDate = (ts) => (ts ? new Date(Number(ts) * 1000).toLocaleString("fr-FR") : "—");
-const shortHash = (h) => (h ? `${h.slice(0, 6)}…${h.slice(-4)}` : "");
 const tooltipDatesForClub = (buys = []) => buys.filter((r) => r?.dateTs).map((r) => fmtDate(r.dateTs)).join("\n");
 
 const LABELS = {
@@ -74,7 +73,7 @@ const LABELS = {
       totalDetected: (n) => `${n} achat(s) détecté(s) au total dont des achats in-game (SVC) masqués ici.`,
       header: (n) => `${n} achat${n > 1 ? "s" : ""} de pack`,
       onChain: "(on-chain)",
-      columns: { date: "Date", tx: "Tx", role: "Rôle", packs: "Packs", priceTotal: "Prix total ($)", priceUnit: "Prix / pack ($)" },
+      columns: { date: "Date", role: "Rôle", packs: "Packs", priceTotal: "Prix total ($)", priceUnit: "Prix / pack ($)" },
       masked: (n) => `${n} achat(s) in-game (SVC) masqué(s).`,
       close: "fermer",
       see: "voir",
@@ -131,7 +130,7 @@ const LABELS = {
       totalDetected: (n) => `${n} purchase(s) detected in total including hidden in-game (SVC) purchases.`,
       header: (n) => `${n} pack purchase${n > 1 ? "s" : ""}`,
       onChain: "(on-chain)",
-      columns: { date: "Date", tx: "Tx", role: "Role", packs: "Packs", priceTotal: "Total price ($)", priceUnit: "Price / pack ($)" },
+      columns: { date: "Date", role: "Role", packs: "Packs", priceTotal: "Total price ($)", priceUnit: "Price / pack ($)" },
       masked: (n) => `${n} hidden in-game (SVC) purchase(s).`,
       close: "close",
       see: "view",
@@ -188,7 +187,7 @@ const LABELS = {
       totalDetected: (n) => `${n} acquisto/i rilevato/i in totale, inclusi acquisti in-game (SVC) nascosti qui.`,
       header: (n) => `${n} acquisto${n > 1 ? "i" : ""} di pacchetto`,
       onChain: "(on-chain)",
-      columns: { date: "Data", tx: "Tx", role: "Ruolo", packs: "Pacchetti", priceTotal: "Prezzo totale ($)", priceUnit: "Prezzo / pacchetto ($)" },
+      columns: { date: "Data", role: "Ruolo", packs: "Pacchetti", priceTotal: "Prezzo totale ($)", priceUnit: "Prezzo / pacchetto ($)" },
       masked: (n) => `${n} acquisto/i in-game (SVC) nascosto/i.`,
       close: "chiudi",
       see: "vedi",
@@ -245,7 +244,7 @@ const LABELS = {
       totalDetected: (n) => `${n} compra(s) detectada(s) en total incluyendo compras in-game (SVC) ocultas aquí.`,
       header: (n) => `${n} compra${n > 1 ? "s" : ""} de pack`,
       onChain: "(on-chain)",
-      columns: { date: "Fecha", tx: "Tx", role: "Rol", packs: "Packs", priceTotal: "Precio total ($)", priceUnit: "Precio / pack ($)" },
+      columns: { date: "Fecha", role: "Rol", packs: "Packs", priceTotal: "Precio total ($)", priceUnit: "Precio / pack ($)" },
       masked: (n) => `${n} compra(s) in-game (SVC) ocultada(s).`,
       close: "cerrar",
       see: "ver",
@@ -302,7 +301,7 @@ const LABELS = {
       totalDetected: (n) => `${n}건의 구매가 감지되었으며, 숨겨진 인게임(SVC) 구매가 있습니다.`,
       header: (n) => `${n}건의 팩 구매`,
       onChain: "(온체인)",
-      columns: { date: "날짜", tx: "트랜잭션", role: "역할", packs: "팩", priceTotal: "총 가격 ($)", priceUnit: "팩당 가격 ($)" },
+      columns: { date: "날짜", role: "역할", packs: "팩", priceTotal: "총 가격 ($)", priceUnit: "팩당 가격 ($)" },
       masked: (n) => `${n}건의 인게임(SVC) 구매가 숨겨짐.`,
       close: "닫기",
       see: "보기",
@@ -881,7 +880,6 @@ const renderDrawer = (clubId) => {
           <thead className="bg-gray-800 text-gray-300">
             <tr>
               <th className="text-left py-2 px-3">{t.drawer.columns.date}</th>
-              <th className="text-left py-2 px-3">{t.drawer.columns.tx}</th>
               <th className="text-left py-2 px-3">{t.drawer.columns.role}</th>
               <th className="text-right py-2 px-3">{t.drawer.columns.packs}</th>
               <th className="text-right py-2 px-3">{t.drawer.columns.priceTotal}</th>
@@ -892,16 +890,6 @@ const renderDrawer = (clubId) => {
             {onchain.map((r, i) => (
               <tr key={`${r.txHash}-${i}`} className="hover:bg-white/5">
                 <td className="py-2 px-3">{fmtDate(r.dateTs)}</td>
-                <td className="py-2 px-3">
-                  <a
-                    className="text-indigo-400 hover:underline"
-                    href={`https://polygonscan.com/tx/${r.txHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortHash(r.txHash)}
-                  </a>
-                </td>
                 <td className="py-2 px-3 capitalize">{t.role[r.role] || r.role}</td>
                 <td className="py-2 px-3 text-right">{fmtInt(r.packs)}</td>
                 <td className="py-2 px-3 text-right">{fmtUSD(r.priceUSDC)}</td>
@@ -945,9 +933,7 @@ const renderDrawer = (clubId) => {
           <div className="mb-4 text-sm text-gray-300">
             {t.walletDetected}{" "}
             {wallet ? (
-              <a className="text-indigo-400 hover:underline" href={`https://polygonscan.com/address/${wallet}`} target="_blank" rel="noreferrer">
-                {wallet}
-              </a>
+              <span className="text-indigo-400">{wallet}</span>
             ) : (
               <span className="text-gray-500">{t.walletNotFound}</span>
             )}
