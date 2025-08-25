@@ -311,9 +311,11 @@ async function fetchTokenTxHashesEtherscan({
       let kept = 0;
 
       for (const it of res) {
-        if ((it.from || "").toLowerCase() !== addr) continue; // sortant seulement
+       const fromMatches = (it.from || "").toLowerCase() === addr;
+        const toMatches   = (it.to   || "").toLowerCase() === addr;
+        if (!fromMatches && !toMatches) continue; // sortant seulement
         const amt = normalizeFromEtherscanTx(it);
-        if (amt < minAmountUSDC) continue; // filtre micro-fees
+        if (fromMatches && amt < minAmountUSDC) continue; // on n’applique le seuil que sur les vrais sortants
         const ts = Number(it.timeStamp || 0);
         const prev = byHash.get(it.hash);
         if (!prev || ts > prev.timeStamp) {
