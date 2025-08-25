@@ -275,7 +275,6 @@ export default function RoiForever() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
-  const [hideNoROI, setHideNoROI] = useState(false);
 
   const [clubMap, setClubMap] = useState({});
   const [playerMap, setPlayerMap] = useState({});
@@ -633,7 +632,6 @@ export default function RoiForever() {
   // applique filtre + tri à un tableau de clubs
   const prepareClubs = (arr) => {
     let out = [...arr];
-    if (hideNoROI) out = out.filter((r) => r.roiUSD != null);
 
     if (sortKey) {
       const numericKeys = new Set([
@@ -660,11 +658,11 @@ export default function RoiForever() {
   // split en deux groupes : principaux vs secondaires
   const clubsMain = useMemo(
     () => prepareClubs(aggregated.clubs.filter((c) => roleByClub.get(c.id) === "main")),
-    [aggregated.clubs, roleByClub, sortKey, sortDir, hideNoROI]
+    [aggregated.clubs, roleByClub, sortKey, sortDir]
   );
   const clubsSecondary = useMemo(
     () => prepareClubs(aggregated.clubs.filter((c) => roleByClub.get(c.id) === "secondary")),
-    [aggregated.clubs, roleByClub, sortKey, sortDir, hideNoROI]
+    [aggregated.clubs, roleByClub, sortKey, sortDir]
   );
 
   const { players } = aggregated;
@@ -946,17 +944,7 @@ export default function RoiForever() {
         {/* Clubs */}
         {searched && (
           <section className="mb-10">
-            <div className="mb-3 flex items-center gap-4 text-sm text-gray-300">
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={hideNoROI}
-                  onChange={(e) => setHideNoROI(e.target.checked)}
-                />
-                <span>Masquer les clubs sans ROI</span>
-              </label>
-            </div>
+
 
             <h2 className="text-2xl font-semibold mb-2">Clubs</h2>
             <p className="text-sm text-gray-400 mb-4">
