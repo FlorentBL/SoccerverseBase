@@ -105,7 +105,9 @@ const looksLikeMint =
     }
 
     const totalPacks = parts.reduce((s, p) => s + p.packs, 0);
-    if (totalPacks > 0) purchases.push({ ts, parts, totalPacks });
+const mainPacks = parts.find(p => p.role === "main")?.packs ?? 0;
+    const packCount = mainPacks > 0 ? mainPacks : Math.max(0, ...parts.map(p => p.packs));
+    if (totalPacks > 0) purchases.push({ ts, parts, totalPacks, packCount });
   }
 
   purchases.sort((a, b) => b.ts - a.ts);
@@ -393,16 +395,20 @@ async function fetchPackCostsForWallet(w, purchases) {
     const pay = payByTs.get(Number(pu.ts)) || null;
     const price = pay?.priceUSDC ?? null;
     const txHash = pay?.txHash ?? null;
-    const unit = pu.totalPacks > 0 && price != null ? price / pu.totalPacks : null;
+    const packCount = Number(pu.packCount || 0);
+    const unit = packCount > 0 && price != null ? price / packCount : null;
 
     for (const part of pu.parts) {
       const arr = buysMap.get(part.clubId) || [];
+      const allocatedPriceUSDC =
+      price != null && packCount > 0 ? price * (part.packs / packCount) : null;
       arr.push({
         txHash,
         role: part.role,
         dateTs: pu.ts,
         packs: part.packs,
         priceUSDC: price,
+        allocatedPriceUSDC,
         unitPriceUSDC: unit,
       });
       buysMap.set(part.clubId, arr);
@@ -418,7 +424,7 @@ async function fetchPackCostsForWallet(w, purchases) {
   for (const [cid, arr] of buysMap.entries()) {
     let sumPrice = 0, sumPacks = 0, last = 0;
     for (const r of arr) {
-      sumPrice += Number(r.priceUSDC || 0);
+      sumPrice += Number(r.allocatedPriceUSDC || 0);
       sumPacks += Number(r.packs || 0);
       if ((r.dateTs || 0) > last) last = r.dateTs || 0;
     }
