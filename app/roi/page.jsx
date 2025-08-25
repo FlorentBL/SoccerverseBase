@@ -369,12 +369,21 @@ async function fetchPackCostsForWallet(w, purchases) {
   if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
 
   // index par ts pour retrouver le paiement associé
+ // index par ts en gardant le PLUS GROS montant USDC
   const payByTs = new Map();
   for (const m of j.matches || []) {
-    payByTs.set(Number(m.ts), {
+    const ts = Number(m.ts);
+    const candidate = {
       txHash: m.txHash || null,
       priceUSDC: typeof m.priceUSDC === "number" ? m.priceUSDC : null,
-    });
+    };
+
+    const prev = payByTs.get(ts);
+    // si plusieurs lignes (frais + achat) arrivent pour le même timestamp,
+    // on conserve celle avec le plus gros priceUSDC
+    if (!prev || ((candidate.priceUSDC ?? 0) > (prev.priceUSDC ?? 0))) {
+      payByTs.set(ts, candidate);
+    }
   }
 
   // construire les lignes par club
