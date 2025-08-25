@@ -22,6 +22,7 @@ const MENU_LABELS = {
         { href: "/roi", label: "ROI" },
       ],
     },
+    { href: "/support", label: "Nous soutenir" },
   ],
   en: [
     { href: "/comment-debuter", label: "Getting started" },
@@ -37,6 +38,7 @@ const MENU_LABELS = {
         { href: "/roi", label: "ROI" },
       ],
     },
+    { href: "/support", label: "Support us" },
   ],
   it: [
     { href: "/comment-debuter", label: "Come iniziare" },
@@ -52,6 +54,7 @@ const MENU_LABELS = {
         { href: "/roi", label: "ROI" },
       ],
     },
+    { href: "/support", label: "Sostienici" },
   ],
   es: [
     { href: "/comment-debuter", label: "Cómo empezar" },
@@ -67,6 +70,7 @@ const MENU_LABELS = {
         { href: "/roi", label: "ROI" },
       ],
     },
+    { href: "/support", label: "Apóyanos" },
   ],
   ko: [
     { href: "/comment-debuter", label: "시작하기" },
@@ -82,6 +86,7 @@ const MENU_LABELS = {
         { href: "/roi", label: "ROI" },
       ],
     },
+    { href: "/support", label: "후원하기" },
   ],
 };
 
