@@ -4,10 +4,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // ───────────────────────────────────────────────────────────────────────────────
-// Configuration
+// Config
 // ───────────────────────────────────────────────────────────────────────────────
-const SSE_URL = "/api/mcp/sse?url=https://mcp.soccerverse.io/sse"; // proxy local
-const MAX_BUFFER = 2000; // nombre max d'événements en mémoire (FIFO)
+const BASE_URL = "/api/mcp/sse?url=https://mcp.soccerverse.io/sse";
+const MAX_BUFFER = 2000; // nombre max d’événements en mémoire (FIFO)
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -24,6 +24,7 @@ function safeParse(data) {
 
 function detectType(payload) {
   if (!payload || typeof payload !== "object") return "unknown";
+  if (payload.method) return String(payload.method); // JSON-RPC style
   if (payload.type) return String(payload.type);
   if (payload.event) return String(payload.event);
   if (payload.kind) return String(payload.kind);
@@ -50,13 +51,12 @@ function downloadNdjson(filename, rows) {
 // ───────────────────────────────────────────────────────────────────────────────
 function useSSE({ url, paused }) {
   const [events, setEvents] = useState([]);
-  const [status, setStatus] = useState("idle"); // idle | connecting | open | error
+  const [status, setStatus] = useState("idle");
   const esRef = useRef(null);
   const retryRef = useRef({ attempt: 0, timer: null });
 
   useEffect(() => {
     if (paused) {
-      // Si on met en pause, on ferme la connexion pour ne rien recevoir
       if (esRef.current) {
         esRef.current.close();
         esRef.current = null;
@@ -92,7 +92,6 @@ function useSSE({ url, paused }) {
             },
             ...prev,
           ];
-          // Cap mémoire: on garde seulement les N plus récents
           if (next.length > MAX_BUFFER) next.length = MAX_BUFFER;
           return next;
         });
@@ -102,7 +101,6 @@ function useSSE({ url, paused }) {
         setStatus("error");
         es.close();
         esRef.current = null;
-        // Backoff exponentiel bourné: 1s, 2s, 4s, ... max 30s
         const attempt = Math.min(retryRef.current.attempt + 1, 10);
         retryRef.current.attempt = attempt;
         const delay = Math.min(1000 * 2 ** (attempt - 1), 30000);
@@ -132,23 +130,25 @@ export default function McpLivePage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [typeFilter, setTypeFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [extraParams, setExtraParams] = useState(""); // ex: "topic=matches&topic=market"
   const listRef = useRef(null);
 
-  const { events, status, clear } = useSSE({ url: SSE_URL, paused });
+  const sseUrl = useMemo(() => {
+    return extraParams.trim() ? `${BASE_URL}&${extraParams.trim()}` : BASE_URL;
+  }, [extraParams]);
 
-  // Dérive les types disponibles (pour filter dropdown)
+  const { events, status, clear } = useSSE({ url: sseUrl, paused });
+
   const knownTypes = useMemo(() => {
     const s = new Set(events.map((e) => e.type || "unknown"));
     return ["all", ...Array.from(s).sort()];
   }, [events]);
 
-  // Filtrage en mémoire (minimaliste & rapide)
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
       if (typeFilter !== "all" && e.type !== typeFilter) return false;
       if (!q) return true;
-      // Match plein-texte simple sur JSON stringifié (rapide et suffisant ici)
       try {
         const s = JSON.stringify(e.payload).toLowerCase();
         return s.includes(q);
@@ -158,10 +158,8 @@ export default function McpLivePage() {
     });
   }, [events, typeFilter, query]);
 
-  // Auto-scroll (vers le haut, car on pousse en tête)
   useEffect(() => {
     if (!autoScroll || !listRef.current) return;
-    // On maintient le scroll tout en haut (événements récents en premier)
     listRef.current.scrollTop = 0;
   }, [filtered, autoScroll]);
 
@@ -171,7 +169,7 @@ export default function McpLivePage() {
         <header className="mb-6">
           <h1 className="text-2xl font-bold">MCP Live (SSE)</h1>
           <p className="text-sm text-neutral-400">
-            Flux: <code className="text-neutral-300">{SSE_URL}</code> — Statut:{" "}
+            Flux: <code className="text-neutral-300">{sseUrl}</code> — Statut:{" "}
             <span
               className={{
                 idle: "text-neutral-400",
@@ -226,7 +224,16 @@ export default function McpLivePage() {
             />
           </div>
 
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              value={extraParams}
+              onChange={(e) => setExtraParams(e.target.value)}
+              placeholder="Params (ex: topic=matches&topic=market)"
+              className="w-full px-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 sm:col-span-2 lg:col-span-1">
             <label className="flex items-center gap-2 text-sm text-neutral-400">
               <input
                 type="checkbox"
@@ -236,7 +243,12 @@ export default function McpLivePage() {
               Auto-scroll
             </label>
             <button
-              onClick={() => downloadNdjson(`mcp_${new Date().toISOString()}.ndjson`, events.slice().reverse())}
+              onClick={() =>
+                downloadNdjson(
+                  `mcp_${new Date().toISOString()}.ndjson`,
+                  events.slice().reverse()
+                )
+              }
               className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
             >
               ⬇️ Export NDJSON
@@ -275,8 +287,8 @@ export default function McpLivePage() {
         </div>
 
         <footer className="mt-4 text-xs text-neutral-500">
-          Conseil perf : garde le cap {MAX_BUFFER} sauf besoin spécifique, et filtre côté client.
-          Pour persister, ajoute un worker qui poste en batch dans Supabase (JSONB + index GIN).
+          Conseil perf : laisse le cap {MAX_BUFFER}, filtre côté client.  
+          Pour persister, ajoute un worker qui upsert en batch dans Supabase (JSONB + index GIN).
         </footer>
       </div>
     </div>
