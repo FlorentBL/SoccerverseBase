@@ -146,26 +146,49 @@ function normalizeUSDC(valueStr) {
 }
 
 function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
-  const shares = [];
+  const rawShares = [];
   const clubSmc = [];
+  const seenShareSign = new Set();
+  const seenSmcSign = new Set();
+
   for (const c of jsonCandidates) {
     const j = c.json;
+
+    // --- shares (dedup) ---
     if (j?.cmd?.mint?.shares) {
       const s = j.cmd.mint.shares;
       const clubId = s?.s?.club ?? s?.club ?? null;
-      const n = s?.n ?? null;
-      const r = s?.r ?? j?.r ?? null;
-      if (clubId && n) shares.push({ clubId, n, r, fromLog: c.source, contract: c.contract });
+      const n = Number(s?.n ?? 0);
+      const r = s?.r ?? null;
+      const sig = `${clubId}|${n}|${r || ""}`;
+      if (clubId && n > 0 && !seenShareSign.has(sig)) {
+        seenShareSign.add(sig);
+        rawShares.push({ clubId, n, r, fromLog: c.source, contract: c.contract });
+      }
     }
+
+    // --- clubsmc (dedup) ---
     if (j?.cmd?.mint?.clubsmc) {
       const m = j.cmd.mint.clubsmc;
-      if (m?.c && m?.n) clubSmc.push({ clubId: m.c, n: m.n, fromLog: c.source, contract: c.contract });
+      const sig = `${m?.c}|${m?.n}`;
+      if (m?.c && m?.n && !seenSmcSign.has(sig)) {
+        seenSmcSign.add(sig);
+        clubSmc.push({ clubId: m.c, n: m.n, fromLog: c.source, contract: c.contract });
+      }
     }
   }
-  if (!shares.length) return null;
+
+  if (!rawShares.length) return null;
+
+  // Agrégation par club (si plusieurs entrées du même club existent réellement)
+  const byClub = new Map();
+  for (const s of rawShares) {
+    byClub.set(s.clubId, (byClub.get(s.clubId) || 0) + s.n);
+  }
+  const shares = [...byClub.entries()].map(([clubId, n]) => ({ clubId, n }));
 
   const main = shares.reduce((a, b) => (b.n > (a?.n ?? 0) ? b : a), null);
-  const secondaries = shares.filter((s) => s !== main);
+  const secondaries = shares.filter((s) => s.clubId !== main.clubId);
   const smcForMain = clubSmc.find((x) => x.clubId === main?.clubId) || null;
 
   // Prix total = plus gros transfert USDC sortant de la tx
