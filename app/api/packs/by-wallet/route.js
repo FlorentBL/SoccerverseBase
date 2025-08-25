@@ -170,6 +170,66 @@ function pickMintNode(anyJson) {
   return null;
 }
 
+function bytesToUtf8Loose(bytes) {
+  try {
+    // décode en remplaçant les séquences invalides
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes).replace(/\u0000/g, "");
+  } catch {
+    return "";
+  }
+}
+
+// Parcourt tous les octets et extrait des segments { ... } plausibles
+function extractJsonStringsFromBytes(bytes, { maxLen = 100_000 } = {}) {
+  const out = [];
+  const OPEN = "{".charCodeAt(0);
+  const CLOSE = "}".charCodeAt(0);
+
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] !== OPEN) continue;
+    let depth = 0;
+    for (let j = i; j < Math.min(bytes.length, i + maxLen); j++) {
+      const b = bytes[j];
+      if (b === OPEN) depth++;
+      else if (b === CLOSE) {
+        depth--;
+        if (depth === 0) {
+          const slice = bytes.slice(i, j + 1);
+          const txt = bytesToUtf8Loose(slice);
+          const jn = tryParseJsonLoose(txt);
+          if (jn) out.push({ txt, json: jn, offset: i, length: j + 1 - i });
+          i = j; // on avance juste après ce bloc
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// Unifie l’accès à "cmd.mint", y compris si encapsulé (mv string/objet)
+function pickMintNode(anyJson) {
+  if (!anyJson || typeof anyJson !== "object") return null;
+
+  const roots = [anyJson];
+
+  if (anyJson.mv) {
+    if (typeof anyJson.mv === "object") roots.push(anyJson.mv);
+    else if (typeof anyJson.mv === "string") {
+      const parsed = tryParseJsonLoose(anyJson.mv);
+      if (parsed && typeof parsed === "object") roots.push(parsed);
+    }
+  }
+  if (anyJson.payload && typeof anyJson.payload === "object") roots.push(anyJson.payload);
+
+  for (const r of roots) {
+    const mint = r?.cmd?.mint ?? r?.mint;
+    if (mint && typeof mint === "object") return mint;
+  }
+  return null;
+}
+
+
 function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const rawShares = [];
   const clubSmc = [];
@@ -177,32 +237,30 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const seenSmcSign = new Set();
 
   for (const c of jsonCandidates) {
-    const mint = pickMintNode(c.json);
-    if (!mint) continue;
+  const mint = pickMintNode(c.json);
+  if (!mint) continue;
 
-    // shares
-    if (mint.shares) {
-      const s = mint.shares;
-      const clubId = s?.s?.club ?? s?.club ?? null;
-      const n = Number(s?.n ?? 0);
-      const r = s?.r ?? null;
-      const sig = `${clubId}|${n}|${r || ""}`;
-      if (clubId && n > 0 && !seenShareSign.has(sig)) {
-        seenShareSign.add(sig);
-        rawShares.push({ clubId, n, r, fromLog: c.source, contract: c.contract });
-      }
-    }
-
-    // clubsmc
-    if (mint.clubsmc) {
-      const m = mint.clubsmc;
-      const sig = `${m?.c}|${m?.n}`;
-      if (m?.c && m?.n && !seenSmcSign.has(sig)) {
-        seenSmcSign.add(sig);
-        clubSmc.push({ clubId: m.c, n: m.n, fromLog: c.source, contract: c.contract });
-      }
+  if (mint.shares) {
+    const s = mint.shares;
+    const clubId = s?.s?.club ?? s?.club ?? null;
+    const n = Number(s?.n ?? 0);
+    const r = s?.r ?? null;
+    const sig = `${clubId}|${n}|${r || ""}`;
+    if (clubId && n > 0 && !seenShareSign.has(sig)) {
+      seenShareSign.add(sig);
+      rawShares.push({ clubId, n, r, fromLog: c.source, contract: c.contract });
     }
   }
+
+  if (mint.clubsmc) {
+    const m = mint.clubsmc;
+    const sig = `${m?.c}|${m?.n}`;
+    if (m?.c && m?.n && !seenSmcSign.has(sig)) {
+      seenSmcSign.add(sig);
+      clubSmc.push({ clubId: m.c, n: m.n, fromLog: c.source, contract: c.contract });
+    }
+  }
+}
 
   if (!rawShares.length) return null;
 
@@ -381,22 +439,38 @@ async function analyzeTx(txHash, buyerWallet) {
     const t1155 = decodeTransferSingle1155(log); if (t1155) { transfers.push(t1155); continue; }
   }
 
-  const jsonCandidates = [];
-  for (const [i, log] of (receipt?.logs || []).entries()) {
-    if (!log?.data || log.data === "0x") continue;
-    const found = extractAbiLikeStringsFromLogData(log.data);
-    for (const f of found) {
-      jsonCandidates.push({
-        source: `log[${i}].data`,
-        contract: (log.address || "").toLowerCase(),
-        logIndex: parseInt(log.logIndex, 16),
-        text: f.txt,
-        json: f.json || null,
-      });
-    }
+const jsonCandidates = [];
+
+// 2.1) Heuristique ABI (ton code existant)
+for (const [i, log] of (receipt?.logs || []).entries()) {
+  if (!log?.data || log.data === "0x") continue;
+  const foundAbi = extractAbiLikeStringsFromLogData(log.data);
+  for (const f of foundAbi) {
+    jsonCandidates.push({
+      source: `log[${i}].data[abi]`,
+      contract: (log.address || "").toLowerCase(),
+      logIndex: parseInt(log.logIndex, 16),
+      text: f.txt,
+      json: f.json || null,
+    });
   }
 
-  const inputJsons = tx?.input ? extractJsonFromInput(tx.input) : [];
+  // 2.2) **NOUVEAU** : scan inline/packed dans tout le buffer
+  const allBytes = hexToBytes(log.data);
+  const foundInline = extractJsonStringsFromBytes(allBytes);
+  for (const f of foundInline) {
+    jsonCandidates.push({
+      source: `log[${i}].data[inline:${f.offset}]`,
+      contract: (log.address || "").toLowerCase(),
+      logIndex: parseInt(log.logIndex, 16),
+      text: f.txt,
+      json: f.json || null,
+    });
+  }
+}
+
+// 2.3) input de la tx (inchangé)
+const inputJsons = tx?.input ? extractJsonFromInput(tx.input) : [];
   const interesting = [...jsonCandidates, ...inputJsons].filter(
     (e) =>
       e.json &&
