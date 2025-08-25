@@ -16,7 +16,7 @@ import React, { useEffect, useMemo, useState } from "react";
 // Config & utils
 const PACKS_PAGES = 1000;
 const PACKS_PAGE_SIZE = 100;
-const MIN_AMOUNT_USDC = 2;
+const MIN_AMOUNT_USDC = 0;
 
 const UNIT = 10000; // montants du balance_sheet en 1e-4 SVC
 const toSVC = (n) => (Number(n) || 0) / UNIT;
