@@ -558,47 +558,76 @@ async function fetchPackCostsForWallet(w, purchases) {
     <span className={`ml-1 text-xs ${active ? "opacity-100" : "opacity-30"}`}>{active ? (dir === "asc" ? "↑" : "↓") : "↕"}</span>
   );
 
-  const renderDrawer = (clubId) => {
-    const rows = packBuysByClub.get(clubId) || [];
-    if (!rows.length) return <div className="text-sm text-gray-400">Aucun achat de pack détecté pour ce club.</div>;
+const renderDrawer = (clubId) => {
+  // 1) toutes les lignes détectées (SV)
+  const all = packBuysByClub.get(clubId) || [];
+  // 2) on-chain uniquement = lignes matchées avec USDC (vrais achats blockchain)
+  const onchain = all.filter(r => r.txHash && typeof r.priceUSDC === "number");
+
+  if (!onchain.length) {
     return (
-      <div className="text-sm">
-        <div className="mb-2 text-gray-300">{rows.length} achat{rows.length > 1 ? "s" : ""} de pack impliquant ce club</div>
-        <div className="overflow-x-auto rounded-lg border border-gray-700">
-          <table className="w-full text-xs sm:text-sm">
-            <thead className="bg-gray-800 text-gray-300">
-              <tr>
-                <th className="text-left py-2 px-3">Date</th>
-                <th className="text-left py-2 px-3">Tx</th>
-                <th className="text-left py-2 px-3">Rôle</th>
-                <th className="text-right py-2 px-3">Packs</th>
-                <th className="text-right py-2 px-3">Prix total ($)</th>
-                <th className="text-right py-2 px-3">Prix / pack ($)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {rows.map((r, i) => (
-                <tr key={`${r.txHash || "nohash"}-${i}`} className="hover:bg-white/5">
-                  <td className="py-2 px-3">{fmtDate(r.dateTs)}</td>
-                  <td className="py-2 px-3">
-                    {r.txHash ? (
-                      <a className="text-indigo-400 hover:underline" href={`https://polygonscan.com/tx/${r.txHash}`} target="_blank" rel="noreferrer">
-                        {shortHash(r.txHash)}
-                      </a>
-                    ) : <span className="text-gray-500">—</span>}
-                  </td>
-                  <td className="py-2 px-3 capitalize">{r.role}</td>
-                  <td className="py-2 px-3 text-right">{fmtInt(r.packs)}</td>
-                  <td className="py-2 px-3 text-right">{fmtUSD(r.priceUSDC)}</td>
-                  <td className="py-2 px-3 text-right">{fmtUSD(r.unitPriceUSDC)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="text-sm text-gray-400">
+        Aucun achat de pack on-chain détecté pour ce club.
+        {/* Optionnel : indiquer s’il y avait des achats in-game masqués */}
+        {all.length > 0 && (
+          <div className="mt-1 text-[12px] text-gray-500">
+            {all.length} achat(s) détecté(s) au total dont des achats in-game (SVC) masqués ici.
+          </div>
+        )}
       </div>
     );
-  };
+  }
+
+  return (
+    <div className="text-sm">
+      <div className="mb-2 text-gray-300">
+        {onchain.length} achat{onchain.length > 1 ? "s" : ""} de pack <span className="opacity-70">(on-chain)</span>
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-gray-700">
+        <table className="w-full text-xs sm:text-sm">
+          <thead className="bg-gray-800 text-gray-300">
+            <tr>
+              <th className="text-left py-2 px-3">Date</th>
+              <th className="text-left py-2 px-3">Tx</th>
+              <th className="text-left py-2 px-3">Rôle</th>
+              <th className="text-right py-2 px-3">Packs</th>
+              <th className="text-right py-2 px-3">Prix total ($)</th>
+              <th className="text-right py-2 px-3">Prix / pack ($)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
+            {onchain.map((r, i) => (
+              <tr key={`${r.txHash}-${i}`} className="hover:bg-white/5">
+                <td className="py-2 px-3">{fmtDate(r.dateTs)}</td>
+                <td className="py-2 px-3">
+                  <a
+                    className="text-indigo-400 hover:underline"
+                    href={`https://polygonscan.com/tx/${r.txHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {shortHash(r.txHash)}
+                  </a>
+                </td>
+                <td className="py-2 px-3 capitalize">{r.role}</td>
+                <td className="py-2 px-3 text-right">{fmtInt(r.packs)}</td>
+                <td className="py-2 px-3 text-right">{fmtUSD(r.priceUSDC)}</td>
+                <td className="py-2 px-3 text-right">{fmtUSD(r.unitPriceUSDC)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Optionnel : badge indiquant combien ont été masqués car in-game */}
+      {onchain.length < all.length && (
+        <div className="mt-2 text-[12px] text-gray-500">
+          {all.length - onchain.length} achat(s) in-game (SVC) masqué(s).
+        </div>
+      )}
+    </div>
+  );
+};
 
   const RoleBadge = ({ id }) => {
     const r = roleByClub.get(id) || "none";
