@@ -1,4 +1,3 @@
-// app/roi/page.jsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -28,8 +27,295 @@ const fmtSVC = (n) => (typeof n === "number" ? `${n.toLocaleString("fr-FR", { ma
 const fmtUSD = (n) => (typeof n === "number" ? `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "—");
 const fmtInt = (n) => (typeof n === "number" ? n.toLocaleString("fr-FR") : "—");
 const fmtDate = (ts) => (ts ? new Date(Number(ts) * 1000).toLocaleString("fr-FR") : "—");
-const shortHash = (h) => (h ? `${h.slice(0, 6)}…${h.slice(-4)}` : "");
 const tooltipDatesForClub = (buys = []) => buys.filter((r) => r?.dateTs).map((r) => fmtDate(r.dateTs)).join("\n");
+
+const LABELS = {
+  fr: {
+    title: "ROI",
+    usernamePlaceholder: "Nom d'utilisateur Soccerverse",
+    analyze: "Analyser",
+    loading: "Chargement...",
+    walletDetected: "Wallet détecté :",
+    walletNotFound: "introuvable",
+    hideNoROI: "Masquer les clubs sans ROI",
+    includeSvcAsCost: "Inclure les achats SVC dans le coût (packs + SVC)",
+    roleFilter: "Rôle (packs) :",
+    role: { all: "Tous", main: "Principal", secondary: "Secondaire", both: "Les deux", none: "Aucun achat" },
+    clubsHeading: "Clubs",
+    noClubs: "Aucune position club.",
+    playersHeading: "Joueurs",
+    noPlayers: "Aucune position joueur.",
+    errorLoading: "Erreur lors du chargement.",
+    columns: {
+      club: "Club",
+      role: "Rôle (packs)",
+      qty: "Quantité",
+      packsBought: "Packs achetés",
+      lastBuy: "Dernier achat",
+      svcSpent: "Achats via SVC",
+      svcGains: "Gains SVC",
+      costPacks: "Coût total (packs) ($)",
+      costClub: "Coût packs (club) ($)",
+      costTotal: "Coût total ($)",
+      roiUsd: "ROI ($)",
+      details: "Détails",
+      sortByClub: "Trier par club",
+      sortByQty: "Trier par quantité",
+      sortByLastBuy: "Trier par dernier achat",
+      sortByGainsSvc: "Trier par gains SVC",
+      sortByCostPacks: "Trier par coût packs ($)",
+      sortByCostClub: "Trier par coût packs (club) ($)",
+      sortByCostTotal: "Trier par coût total ($)",
+      sortByRoi: "Trier par ROI ($)",
+    },
+    drawer: {
+      none: "Aucun achat de pack on-chain détecté pour ce club.",
+      totalDetected: (n) => `${n} achat(s) détecté(s) au total dont des achats in-game (SVC) masqués ici.`,
+      header: (n) => `${n} achat${n > 1 ? "s" : ""} de pack`,
+      onChain: "(on-chain)",
+      columns: { date: "Date", role: "Rôle", packs: "Packs", priceTotal: "Prix total ($)", priceUnit: "Prix / pack ($)" },
+      masked: (n) => `${n} achat(s) in-game (SVC) masqué(s).`,
+      close: "fermer",
+      see: "voir",
+    },
+    playerColumns: {
+      player: "Joueur",
+      qty: "Quantité",
+      base: "Base (mint, SVC)",
+      payouts: "Payouts cumulés (SVC)",
+      roi: "ROI (SVC)",
+      naBaseMint: "n/a (base mint)",
+    },
+  },
+  en: {
+    title: "ROI",
+    usernamePlaceholder: "Soccerverse username",
+    analyze: "Analyze",
+    loading: "Loading...",
+    walletDetected: "Detected wallet:",
+    walletNotFound: "not found",
+    hideNoROI: "Hide clubs without ROI",
+    includeSvcAsCost: "Include SVC purchases in cost (packs + SVC)",
+    roleFilter: "Role (packs):",
+    role: { all: "All", main: "Main", secondary: "Secondary", both: "Both", none: "No purchase" },
+    clubsHeading: "Clubs",
+    noClubs: "No club positions.",
+    playersHeading: "Players",
+    noPlayers: "No player positions.",
+    errorLoading: "Error while loading.",
+    columns: {
+      club: "Club",
+      role: "Role (packs)",
+      qty: "Quantity",
+      packsBought: "Packs bought",
+      lastBuy: "Last buy",
+      svcSpent: "SVC purchases",
+      svcGains: "SVC earnings",
+      costPacks: "Total cost (packs) ($)",
+      costClub: "Pack cost (club) ($)",
+      costTotal: "Total cost ($)",
+      roiUsd: "ROI ($)",
+      details: "Details",
+      sortByClub: "Sort by club",
+      sortByQty: "Sort by quantity",
+      sortByLastBuy: "Sort by last buy",
+      sortByGainsSvc: "Sort by SVC earnings",
+      sortByCostPacks: "Sort by pack cost ($)",
+      sortByCostClub: "Sort by club pack cost ($)",
+      sortByCostTotal: "Sort by total cost ($)",
+      sortByRoi: "Sort by ROI ($)",
+    },
+    drawer: {
+      none: "No on-chain pack purchase detected for this club.",
+      totalDetected: (n) => `${n} purchase(s) detected in total including hidden in-game (SVC) purchases.`,
+      header: (n) => `${n} pack purchase${n > 1 ? "s" : ""}`,
+      onChain: "(on-chain)",
+      columns: { date: "Date", role: "Role", packs: "Packs", priceTotal: "Total price ($)", priceUnit: "Price / pack ($)" },
+      masked: (n) => `${n} hidden in-game (SVC) purchase(s).`,
+      close: "close",
+      see: "view",
+    },
+    playerColumns: {
+      player: "Player",
+      qty: "Quantity",
+      base: "Base (mint, SVC)",
+      payouts: "Total payouts (SVC)",
+      roi: "ROI (SVC)",
+      naBaseMint: "n/a (mint base)",
+    },
+  },
+  it: {
+    title: "ROI",
+    usernamePlaceholder: "Nome utente Soccerverse",
+    analyze: "Analizza",
+    loading: "Caricamento...",
+    walletDetected: "Wallet rilevato:",
+    walletNotFound: "non trovato",
+    hideNoROI: "Nascondi club senza ROI",
+    includeSvcAsCost: "Includi acquisti SVC nel costo (pacchetti + SVC)",
+    roleFilter: "Ruolo (pacchetti):",
+    role: { all: "Tutti", main: "Principale", secondary: "Secondario", both: "Entrambi", none: "Nessun acquisto" },
+    clubsHeading: "Club",
+    noClubs: "Nessuna posizione club.",
+    playersHeading: "Giocatori",
+    noPlayers: "Nessuna posizione giocatore.",
+    errorLoading: "Errore durante il caricamento.",
+    columns: {
+      club: "Club",
+      role: "Ruolo (pacchetti)",
+      qty: "Quantità",
+      packsBought: "Pacchetti acquistati",
+      lastBuy: "Ultimo acquisto",
+      svcSpent: "Acquisti SVC",
+      svcGains: "Guadagni SVC",
+      costPacks: "Costo totale (pacchetti) ($)",
+      costClub: "Costo pacchetti (club) ($)",
+      costTotal: "Costo totale ($)",
+      roiUsd: "ROI ($)",
+      details: "Dettagli",
+      sortByClub: "Ordina per club",
+      sortByQty: "Ordina per quantità",
+      sortByLastBuy: "Ordina per ultimo acquisto",
+      sortByGainsSvc: "Ordina per guadagni SVC",
+      sortByCostPacks: "Ordina per costo pacchetti ($)",
+      sortByCostClub: "Ordina per costo pacchetti (club) ($)",
+      sortByCostTotal: "Ordina per costo totale ($)",
+      sortByRoi: "Ordina per ROI ($)",
+    },
+    drawer: {
+      none: "Nessun acquisto di pacchetto on-chain rilevato per questo club.",
+      totalDetected: (n) => `${n} acquisto/i rilevato/i in totale, inclusi acquisti in-game (SVC) nascosti qui.`,
+      header: (n) => `${n} acquisto${n > 1 ? "i" : ""} di pacchetto`,
+      onChain: "(on-chain)",
+      columns: { date: "Data", role: "Ruolo", packs: "Pacchetti", priceTotal: "Prezzo totale ($)", priceUnit: "Prezzo / pacchetto ($)" },
+      masked: (n) => `${n} acquisto/i in-game (SVC) nascosto/i.`,
+      close: "chiudi",
+      see: "vedi",
+    },
+    playerColumns: {
+      player: "Giocatore",
+      qty: "Quantità",
+      base: "Base (mint, SVC)",
+      payouts: "Payout cumulati (SVC)",
+      roi: "ROI (SVC)",
+      naBaseMint: "n/d (base mint)",
+    },
+  },
+  es: {
+    title: "ROI",
+    usernamePlaceholder: "Nombre de usuario Soccerverse",
+    analyze: "Analizar",
+    loading: "Cargando...",
+    walletDetected: "Billetera detectada:",
+    walletNotFound: "no encontrada",
+    hideNoROI: "Ocultar clubes sin ROI",
+    includeSvcAsCost: "Incluir compras SVC en el costo (packs + SVC)",
+    roleFilter: "Rol (packs):",
+    role: { all: "Todos", main: "Principal", secondary: "Secundario", both: "Ambos", none: "Sin compra" },
+    clubsHeading: "Clubes",
+    noClubs: "No hay posiciones de club.",
+    playersHeading: "Jugadores",
+    noPlayers: "No hay posiciones de jugador.",
+    errorLoading: "Error al cargar.",
+    columns: {
+      club: "Club",
+      role: "Rol (packs)",
+      qty: "Cantidad",
+      packsBought: "Packs comprados",
+      lastBuy: "Última compra",
+      svcSpent: "Compras con SVC",
+      svcGains: "Ganancias SVC",
+      costPacks: "Costo total (packs) ($)",
+      costClub: "Costo packs (club) ($)",
+      costTotal: "Costo total ($)",
+      roiUsd: "ROI ($)",
+      details: "Detalles",
+      sortByClub: "Ordenar por club",
+      sortByQty: "Ordenar por cantidad",
+      sortByLastBuy: "Ordenar por última compra",
+      sortByGainsSvc: "Ordenar por ganancias SVC",
+      sortByCostPacks: "Ordenar por costo packs ($)",
+      sortByCostClub: "Ordenar por costo packs (club) ($)",
+      sortByCostTotal: "Ordenar por costo total ($)",
+      sortByRoi: "Ordenar por ROI ($)",
+    },
+    drawer: {
+      none: "No se detectó ninguna compra de pack on-chain para este club.",
+      totalDetected: (n) => `${n} compra(s) detectada(s) en total incluyendo compras in-game (SVC) ocultas aquí.`,
+      header: (n) => `${n} compra${n > 1 ? "s" : ""} de pack`,
+      onChain: "(on-chain)",
+      columns: { date: "Fecha", role: "Rol", packs: "Packs", priceTotal: "Precio total ($)", priceUnit: "Precio / pack ($)" },
+      masked: (n) => `${n} compra(s) in-game (SVC) ocultada(s).`,
+      close: "cerrar",
+      see: "ver",
+    },
+    playerColumns: {
+      player: "Jugador",
+      qty: "Cantidad",
+      base: "Base (mint, SVC)",
+      payouts: "Pagos acumulados (SVC)",
+      roi: "ROI (SVC)",
+      naBaseMint: "n/a (base mint)",
+    },
+  },
+  ko: {
+    title: "ROI",
+    usernamePlaceholder: "Soccerverse 사용자명",
+    analyze: "분석",
+    loading: "로딩 중...",
+    walletDetected: "지갑 감지:",
+    walletNotFound: "없음",
+    hideNoROI: "ROI 없는 클럽 숨기기",
+    includeSvcAsCost: "비용에 SVC 구매 포함 (팩 + SVC)",
+    roleFilter: "역할 (팩):",
+    role: { all: "전체", main: "주요", secondary: "보조", both: "둘 다", none: "구매 없음" },
+    clubsHeading: "클럽",
+    noClubs: "클럽 포지션 없음.",
+    playersHeading: "선수",
+    noPlayers: "선수 포지션 없음.",
+    errorLoading: "로드 중 오류.",
+    columns: {
+      club: "클럽",
+      role: "역할 (팩)",
+      qty: "수량",
+      packsBought: "구매한 팩",
+      lastBuy: "마지막 구매",
+      svcSpent: "SVC 구매",
+      svcGains: "SVC 수익",
+      costPacks: "총 비용 (팩) ($)",
+      costClub: "팩 비용 (클럽) ($)",
+      costTotal: "총 비용 ($)",
+      roiUsd: "ROI ($)",
+      details: "세부정보",
+      sortByClub: "클럽별 정렬",
+      sortByQty: "수량별 정렬",
+      sortByLastBuy: "마지막 구매별 정렬",
+      sortByGainsSvc: "SVC 수익별 정렬",
+      sortByCostPacks: "팩 비용별 정렬 ($)",
+      sortByCostClub: "클럽 팩 비용별 정렬 ($)",
+      sortByCostTotal: "총 비용별 정렬 ($)",
+      sortByRoi: "ROI별 정렬 ($)",
+    },
+    drawer: {
+      none: "이 클럽에 대한 온체인 팩 구매가 감지되지 않았습니다.",
+      totalDetected: (n) => `${n}건의 구매가 감지되었으며, 숨겨진 인게임(SVC) 구매가 있습니다.`,
+      header: (n) => `${n}건의 팩 구매`,
+      onChain: "(온체인)",
+      columns: { date: "날짜", role: "역할", packs: "팩", priceTotal: "총 가격 ($)", priceUnit: "팩당 가격 ($)" },
+      masked: (n) => `${n}건의 인게임(SVC) 구매가 숨겨짐.`,
+      close: "닫기",
+      see: "보기",
+    },
+    playerColumns: {
+      player: "선수",
+      qty: "수량",
+      base: "기초 (민트, SVC)",
+      payouts: "누적 배당금 (SVC)",
+      roi: "ROI (SVC)",
+      naBaseMint: "해당 없음 (민트 기반)",
+    },
+  },
+};
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Détection des achats de pack dans les transactions SV
@@ -200,7 +486,7 @@ function aggregateForever({
   for (const b of positions?.clubs || []) {
     const id = b.id;
     const qty = Number(b.total || 0);
-    const name = clubMap?.[id]?.name || clubMap?.[id]?.n || `Club #${id}`;
+    const name = clubMap?.[id]?.name || clubMap?.[id]?.n || `${t.columns.club} #${id}`;
 
     const gainsSvc = round4(payoutsClub.get(id) || 0);
     const achatsSvc = round2(achatsSvcClub.get(id) || 0);
@@ -232,7 +518,7 @@ function aggregateForever({
     const id = b.id;
     const qty = Number(b.total || 0);
     const p = playerMap?.[id];
-    const name = p?.name || [p?.f, p?.s].filter(Boolean).join(" ") || `Joueur #${id}`;
+    const name = p?.name || [p?.f, p?.s].filter(Boolean).join(" ") || `${t.playerColumns.player} #${id}`;
     const payouts = round4(payoutsPlayer.get(id) || 0);
     const baseSvc = round2(baseMintPlayer.get(id) || 0);
     const roi = baseSvc > 0 ? payouts / baseSvc : null;
@@ -265,7 +551,8 @@ function RoiBar({ pct }) {
 // ───────────────────────────────────────────────────────────────────────────────
 // Page
 
-export default function RoiForever() {
+export default function RoiPage({ lang = "fr" }) {
+  const t = LABELS[lang] || LABELS.fr;
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -465,7 +752,7 @@ async function fetchPackCostsForWallet(w, purchases) {
       const w = await resolveWallet(name);
       if (w) await fetchPackCostsForWallet(w, purchases);
     } catch (err) {
-      setError(err?.message || "Erreur lors du chargement.");
+      setError(err?.message || t.errorLoading);
       setBalanceSheet([]); setTransactions([]); setPositions({ clubs: [], players: [] });
       setPackRawTotalUSDByClub(new Map());
       setPackUnitAvgUSDByClub(new Map());
@@ -573,11 +860,10 @@ const renderDrawer = (clubId) => {
   if (!onchain.length) {
     return (
       <div className="text-sm text-gray-400">
-        Aucun achat de pack on-chain détecté pour ce club.
-        {/* Optionnel : indiquer s’il y avait des achats in-game masqués */}
+        {t.drawer.none}
         {all.length > 0 && (
           <div className="mt-1 text-[12px] text-gray-500">
-            {all.length} achat(s) détecté(s) au total dont des achats in-game (SVC) masqués ici.
+            {t.drawer.totalDetected(all.length)}
           </div>
         )}
       </div>
@@ -587,35 +873,24 @@ const renderDrawer = (clubId) => {
   return (
     <div className="text-sm">
       <div className="mb-2 text-gray-300">
-        {onchain.length} achat{onchain.length > 1 ? "s" : ""} de pack <span className="opacity-70">(on-chain)</span>
+        {t.drawer.header(onchain.length)} <span className="opacity-70">{t.drawer.onChain}</span>
       </div>
       <div className="overflow-x-auto rounded-lg border border-gray-700">
         <table className="w-full text-xs sm:text-sm">
           <thead className="bg-gray-800 text-gray-300">
             <tr>
-              <th className="text-left py-2 px-3">Date</th>
-              <th className="text-left py-2 px-3">Tx</th>
-              <th className="text-left py-2 px-3">Rôle</th>
-              <th className="text-right py-2 px-3">Packs</th>
-              <th className="text-right py-2 px-3">Prix total ($)</th>
-              <th className="text-right py-2 px-3">Prix / pack ($)</th>
+              <th className="text-left py-2 px-3">{t.drawer.columns.date}</th>
+              <th className="text-left py-2 px-3">{t.drawer.columns.role}</th>
+              <th className="text-right py-2 px-3">{t.drawer.columns.packs}</th>
+              <th className="text-right py-2 px-3">{t.drawer.columns.priceTotal}</th>
+              <th className="text-right py-2 px-3">{t.drawer.columns.priceUnit}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
             {onchain.map((r, i) => (
               <tr key={`${r.txHash}-${i}`} className="hover:bg-white/5">
                 <td className="py-2 px-3">{fmtDate(r.dateTs)}</td>
-                <td className="py-2 px-3">
-                  <a
-                    className="text-indigo-400 hover:underline"
-                    href={`https://polygonscan.com/tx/${r.txHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortHash(r.txHash)}
-                  </a>
-                </td>
-                <td className="py-2 px-3 capitalize">{r.role}</td>
+                <td className="py-2 px-3 capitalize">{t.role[r.role] || r.role}</td>
                 <td className="py-2 px-3 text-right">{fmtInt(r.packs)}</td>
                 <td className="py-2 px-3 text-right">{fmtUSD(r.priceUSDC)}</td>
                 <td className="py-2 px-3 text-right">{fmtUSD(r.unitPriceUSDC)}</td>
@@ -628,7 +903,7 @@ const renderDrawer = (clubId) => {
       {/* Optionnel : badge indiquant combien ont été masqués car in-game */}
       {onchain.length < all.length && (
         <div className="mt-2 text-[12px] text-gray-500">
-          {all.length - onchain.length} achat(s) in-game (SVC) masqué(s).
+          {t.drawer.masked(all.length - onchain.length)}
         </div>
       )}
     </div>
@@ -637,31 +912,30 @@ const renderDrawer = (clubId) => {
 
   const RoleBadge = ({ id }) => {
     const r = roleByClub.get(id) || "none";
-    const label = r === "both" ? "Les deux" : r === "main" ? "Principal" : r === "secondary" ? "Secondaire" : "—";
+    const label =
+      r === "both" ? t.role.both : r === "main" ? t.role.main : r === "secondary" ? t.role.secondary : "—";
     return <span className="text-gray-300">{label}</span>;
   };
 
   return (
     <div className="min-h-screen text-white py-8 px-3 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-6">ROI</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6">{t.title}</h1>
 
         <form onSubmit={handleSearch} className="mb-4 flex flex-col sm:flex-row gap-2">
-          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Nom d'utilisateur Soccerverse" className="flex-1 rounded-lg p-2 bg-gray-900 border border-gray-700 text-white" />
+          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t.usernamePlaceholder} className="flex-1 rounded-lg p-2 bg-gray-900 border border-gray-700 text-white" />
           <button type="submit" disabled={loading || !username.trim()} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50">
-            {loading ? "Chargement..." : "Analyser"}
+            {loading ? t.loading : t.analyze}
           </button>
         </form>
 
         {searched && (
           <div className="mb-4 text-sm text-gray-300">
-            Wallet détecté :{" "}
+            {t.walletDetected}{" "}
             {wallet ? (
-              <a className="text-indigo-400 hover:underline" href={`https://polygonscan.com/address/${wallet}`} target="_blank" rel="noreferrer">
-                {wallet}
-              </a>
+              <span className="text-indigo-400">{wallet}</span>
             ) : (
-              <span className="text-gray-500">introuvable</span>
+              <span className="text-gray-500">{t.walletNotFound}</span>
             )}
           </div>
         )}
@@ -672,22 +946,22 @@ const renderDrawer = (clubId) => {
           <div className="mb-4 flex flex-wrap items-center gap-4 text-sm text-gray-300">
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="h-4 w-4" checked={hideNoROI} onChange={(e) => setHideNoROI(e.target.checked)} />
-              <span>Masquer les clubs sans ROI</span>
+              <span>{t.hideNoROI}</span>
             </label>
 
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="h-4 w-4" checked={includeSvcAsCost} onChange={(e) => setIncludeSvcAsCost(e.target.checked)} />
-              <span>Inclure les achats SVC dans le coût (packs + SVC)</span>
+              <span>{t.includeSvcAsCost}</span>
             </label>
 
             <div className="flex items-center gap-2">
-              <span>Rôle (packs) :</span>
+              <span>{t.roleFilter}</span>
               {[
-                ["all", "Tous"],
-                ["main", "Principal"],
-                ["secondary", "Secondaire"],
-                ["both", "Les deux"],
-                ["none", "Aucun achat"],
+                ["all", t.role.all],
+                ["main", t.role.main],
+                ["secondary", t.role.secondary],
+                ["both", t.role.both],
+                ["none", t.role.none],
               ].map(([key, label]) => (
                 <button key={key} onClick={() => setRoleFilter(key)} className={`px-2 py-1 rounded border ${roleFilter === key ? "bg-indigo-600 border-indigo-500" : "bg-gray-800 border-gray-700"}`}>
                   {label}
@@ -700,42 +974,42 @@ const renderDrawer = (clubId) => {
         {/* Clubs */}
         {searched && (
           <section className="mb-12">
-            <h2 className="text-2xl font-semibold mb-3">Clubs</h2>
+            <h2 className="text-2xl font-semibold mb-3">{t.clubsHeading}</h2>
             {clubs.length === 0 ? (
-              <div className="text-gray-400">Aucune position club.</div>
+              <div className="text-gray-400">{t.noClubs}</div>
             ) : (
               <div className="rounded-xl border border-gray-700 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-800 text-gray-300">
                     <tr>
-                      <th className="text-left py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("name")} title="Trier par club">
-                        Club <Arrow active={sortKey === "name"} dir={sortDir} />
+                      <th className="text-left py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("name")} title={t.columns.sortByClub}>
+                        {t.columns.club} <Arrow active={sortKey === "name"} dir={sortDir} />
                       </th>
-                      <th className="text-left py-2 px-3">Rôle (packs)</th>
-                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("qty")} title="Trier par quantité">
-                        Quantité <Arrow active={sortKey === "qty"} dir={sortDir} />
+                      <th className="text-left py-2 px-3">{t.columns.role}</th>
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("qty")} title={t.columns.sortByQty}>
+                        {t.columns.qty} <Arrow active={sortKey === "qty"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3">Packs achetés</th>
-                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("dernierAchatTs")} title="Trier par dernier achat">
-                        Dernier achat <Arrow active={sortKey === "dernierAchatTs"} dir={sortDir} />
+                      <th className="text-right py-2 px-3">{t.columns.packsBought}</th>
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("dernierAchatTs")} title={t.columns.sortByLastBuy}>
+                        {t.columns.lastBuy} <Arrow active={sortKey === "dernierAchatTs"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3">Achats via SVC</th>
-                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("gainsSvc")} title="Trier par gains SVC">
-                        Gains SVC <Arrow active={sortKey === "gainsSvc"} dir={sortDir} />
+                      <th className="text-right py-2 px-3">{t.columns.svcSpent}</th>
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("gainsSvc")} title={t.columns.sortByGainsSvc}>
+                        {t.columns.svcGains} <Arrow active={sortKey === "gainsSvc"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("coutPacksUSD")} title="Trier par coût packs ($)">
-                        Coût total (packs) ($) <Arrow active={sortKey === "coutPacksUSD"} dir={sortDir} />
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("coutPacksUSD")} title={t.columns.sortByCostPacks}>
+                        {t.columns.costPacks} <Arrow active={sortKey === "coutPacksUSD"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("depensePacksAffineeUSD")} title="Trier par coût packs (club) ($)">
-                        Coût packs (club) ($) <Arrow active={sortKey === "depensePacksAffineeUSD"} dir={sortDir} />
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("depensePacksAffineeUSD")} title={t.columns.sortByCostClub}>
+                        {t.columns.costClub} <Arrow active={sortKey === "depensePacksAffineeUSD"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("coutTotalUSD")} title="Trier par coût total ($)">
-                        Coût total ($) <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("coutTotalUSD")} title={t.columns.sortByCostTotal}>
+                        {t.columns.costTotal} <Arrow active={sortKey === "coutTotalUSD"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("roiUSD")} title="Trier par ROI ($)">
-                        ROI ($) <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("roiUSD")} title={t.columns.sortByRoi}>
+                        {t.columns.roiUsd} <Arrow active={sortKey === "roiUSD"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3">Détails</th>
+                      <th className="text-right py-2 px-3">{t.columns.details}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -779,7 +1053,7 @@ const renderDrawer = (clubId) => {
                             <td className="py-2 px-3">{row.roiUSD != null ? <RoiBar pct={row.roiUSD * 100} /> : <span className="text-gray-500">n/a</span>}</td>
                             <td className="py-2 px-3 text-right">
                               <button className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-xs" onClick={() => setOpenClub(isOpen ? null : row.id)}>
-                                {isOpen ? "fermer" : "voir"}
+                                {isOpen ? t.drawer.close : t.drawer.see}
                               </button>
                             </td>
                           </tr>
@@ -801,19 +1075,19 @@ const renderDrawer = (clubId) => {
         {/* Joueurs */}
         {searched && (
           <section className="mb-20">
-            <h2 className="text-2xl font-semibold mb-3">Joueurs</h2>
+            <h2 className="text-2xl font-semibold mb-3">{t.playersHeading}</h2>
             {players.length === 0 ? (
-              <div className="text-gray-400">Aucune position joueur.</div>
+              <div className="text-gray-400">{t.noPlayers}</div>
             ) : (
               <div className="rounded-xl border border-gray-700 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-800 text-gray-300">
                     <tr>
-                      <th className="text-left py-2 px-3">Joueur</th>
-                      <th className="text-right py-2 px-3">Quantité</th>
-                      <th className="text-right py-2 px-3">Base (mint, SVC)</th>
-                      <th className="text-right py-2 px-3">Payouts cumulés (SVC)</th>
-                      <th className="text-left py-2 px-3">ROI (SVC)</th>
+                      <th className="text-left py-2 px-3">{t.playerColumns.player}</th>
+                      <th className="text-right py-2 px-3">{t.playerColumns.qty}</th>
+                      <th className="text-right py-2 px-3">{t.playerColumns.base}</th>
+                      <th className="text-right py-2 px-3">{t.playerColumns.payouts}</th>
+                      <th className="text-left py-2 px-3">{t.playerColumns.roi}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -827,7 +1101,7 @@ const renderDrawer = (clubId) => {
                         <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
                         <td className="py-2 px-3 text-right">{fmtSVC(row.baseSvc)}</td>
                         <td className="py-2 px-3 text-right">{fmtSVC(row.payouts)}</td>
-                        <td className="py-2 px-3">{row.baseSvc > 0 ? <RoiBar pct={(row.payouts / row.baseSvc) * 100} /> : <span className="text-gray-500">n/a (base mint)</span>}</td>
+                        <td className="py-2 px-3">{row.baseSvc > 0 ? <RoiBar pct={(row.payouts / row.baseSvc) * 100} /> : <span className="text-gray-500">{t.playerColumns.naBaseMint}</span>}</td>
                       </tr>
                     ))}
                   </tbody>
