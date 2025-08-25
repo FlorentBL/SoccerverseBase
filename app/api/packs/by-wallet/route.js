@@ -145,6 +145,31 @@ function normalizeUSDC(valueStr) {
   try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; }
 }
 
+// ── helper juste au‑dessus de buildPackSummary ───────────────────────────
+function pickMintNode(anyJson) {
+  if (!anyJson || typeof anyJson !== "object") return null;
+
+  const roots = [anyJson];
+
+  // mv peut être un objet OU une string JSON
+  if (anyJson.mv) {
+    if (typeof anyJson.mv === "object") roots.push(anyJson.mv);
+    else if (typeof anyJson.mv === "string") {
+      const parsed = tryParseJsonLoose(anyJson.mv);
+      if (parsed && typeof parsed === "object") roots.push(parsed);
+    }
+  }
+
+  // éventuellement d’autres wrappers rencontrés dans certains logs
+  if (anyJson.payload && typeof anyJson.payload === "object") roots.push(anyJson.payload);
+
+  for (const r of roots) {
+    const mint = r?.cmd?.mint ?? r?.mint;
+    if (mint && typeof mint === "object") return mint;
+  }
+  return null;
+}
+
 function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const rawShares = [];
   const clubSmc = [];
@@ -152,11 +177,12 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const seenSmcSign = new Set();
 
   for (const c of jsonCandidates) {
-    const j = c.json;
+    const mint = pickMintNode(c.json);
+    if (!mint) continue;
 
     // shares
-    if (j?.cmd?.mint?.shares) {
-      const s = j.cmd.mint.shares;
+    if (mint.shares) {
+      const s = mint.shares;
       const clubId = s?.s?.club ?? s?.club ?? null;
       const n = Number(s?.n ?? 0);
       const r = s?.r ?? null;
@@ -168,8 +194,8 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
     }
 
     // clubsmc
-    if (j?.cmd?.mint?.clubsmc) {
-      const m = j.cmd.mint.clubsmc;
+    if (mint.clubsmc) {
+      const m = mint.clubsmc;
       const sig = `${m?.c}|${m?.n}`;
       if (m?.c && m?.n && !seenSmcSign.has(sig)) {
         seenSmcSign.add(sig);
