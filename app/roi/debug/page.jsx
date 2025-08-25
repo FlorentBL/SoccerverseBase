@@ -367,13 +367,14 @@ export default function DebugRoiPage() {
     return m;
   }, [packBuysByClub]);
 
-  // Diff sets pour trouver "qui manque"
-  const setPositions = useMemo(() => new Set((positions?.clubs || []).map((c) => c.id)), [positions]);
-  const setPacksAny = useMemo(() => new Set(Array.from(packBuysByClub.keys())), [packBuysByClub]);
-  const onlyPositions = useMemo(
-    () => Array.from(setPositions).filter((id) => !setPacksAny.has(id)),
-    [setPositions, setPacksAny]
-  );
+// Diff sets pour trouver "qui manque"
+const positionsSet = useMemo(() => new Set((positions?.clubs || []).map((c) => c.id)), [positions]);
+const packsAnySet  = useMemo(() => new Set(Array.from(packBuysByClub.keys())), [packBuysByClub]);
+const onlyPositions = useMemo(
+  () => Array.from(positionsSet).filter((id) => !packsAnySet.has(id)),
+  [positionsSet, packsAnySet]
+);
+
 
   async function handleRun(e) {
     e?.preventDefault();
