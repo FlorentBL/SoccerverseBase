@@ -5,16 +5,24 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /* ──────────────────────────────────────────────────────────────────────────
-   CONFIG
+   USDC contracts (Polygon)
 ────────────────────────────────────────────────────────────────────────── */
 const USDC_NATIVE_POLYGON  = "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359".toLowerCase(); // Circle native
 const USDC_BRIDGED_POLYGON = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174".toLowerCase(); // PoS bridged
-const USDC_CONTRACTS = new Set([USDC_NATIVE_POLYGON, USDC_BRIDGED_POLYGON]);
+const USDC_CONTRACTS = [USDC_NATIVE_POLYGON, USDC_BRIDGED_POLYGON];
 
 /* ──────────────────────────────────────────────────────────────────────────
    Helpers
 ────────────────────────────────────────────────────────────────────────── */
 function getApiKeyFromReqOrEnv(reqUrl) {
+  if (!reqUrl) {
+    return (
+      process.env.POLYGONSCAN_API_KEY ||
+      process.env.POLYGONSCAN_KEY ||
+      process.env.NEXT_PUBLIC_POLYGONSCAN_API_KEY ||
+      ""
+    );
+  }
   const u = new URL(reqUrl);
   const q = u.searchParams.get("apikey") || u.searchParams.get("apiKey");
   return (
@@ -31,138 +39,175 @@ function normalizeFromEtherscanTx(it) {
   return Number(it.value) / Math.pow(10, dec);
 }
 
-async function etherscanGetBlockByTime(ts, apikey) {
-  const u = new URL("https://api.etherscan.io/v2/api");
-  u.searchParams.set("chainid", "137");
-  u.searchParams.set("module", "block");
-  u.searchParams.set("action", "getblocknobytime");
-  u.searchParams.set("timestamp", String(ts));
-  u.searchParams.set("closest", "before");
-  if (apikey) u.searchParams.set("apikey", apikey);
-  const r = await fetch(u, { cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  const n = Number(j?.result?.blockNumber ?? j?.result);
-  return Number.isFinite(n) ? n : null;
-}
-
 /**
- * Pour chaque timestamp fourni, on récupère les transferts USDC (tokentx)
- * dans une petite fenêtre de blocks et on prend le plus gros sortant comme prix.
- * Retourne: Array<{ timeStamp, txHash, priceUSDC, feesUSDC }>
+ * Récupère les transferts USDC pour `wallet` sur Polygon
+ * en paginant tant que les timestamps >= (minTs - marginSec).
+ * On ramène uniquement ce qui implique le wallet (in/out),
+ * et on note `dir: "out" | "in"`.
  */
-async function fetchUsdcPaymentsAroundTimes({
+async function fetchUsdcTransfersPaged({
   wallet,
   apikey,
-  hintTimestamps = [],
-  blockWindow = 1500,
-  usdcContracts = Array.from(USDC_CONTRACTS),
+  minTs,
+  marginSec = 3600,
+  pageSize = 100,
+  maxPages = 2000,
 }) {
   const base = "https://api.etherscan.io/v2/api";
   const addr = wallet.toLowerCase();
+  const stopBefore = Math.max(0, Number(minTs || 0) - Math.max(0, marginSec));
   const out = [];
 
-  // map ts -> block
-  const blockByTs = new Map();
-  for (const ts of hintTimestamps) {
-    const b = await etherscanGetBlockByTime(ts, apikey);
-    if (Number.isFinite(b)) blockByTs.set(ts, b);
-  }
-
-  for (const ts of hintTimestamps) {
-    const b = blockByTs.get(ts);
-    if (!Number.isFinite(b)) {
-      out.push({ timeStamp: ts, txHash: null, priceUSDC: null, feesUSDC: 0 });
-      continue;
-    }
-
-    let transfers = [];
-    for (const contract of usdcContracts) {
+  for (const contract of USDC_CONTRACTS) {
+    for (let page = 1; page <= maxPages; page++) {
       const u = new URL(base);
       u.searchParams.set("chainid", "137");
       u.searchParams.set("module", "account");
       u.searchParams.set("action", "tokentx");
       u.searchParams.set("address", wallet);
       u.searchParams.set("contractaddress", contract);
-      u.searchParams.set("startblock", String(Math.max(0, b - blockWindow)));
-      u.searchParams.set("endblock", String(b + blockWindow));
+      u.searchParams.set("page", String(page));
+      u.searchParams.set("offset", String(pageSize));
+      u.searchParams.set("startblock", "0");
+      u.searchParams.set("endblock", "99999999");
       u.searchParams.set("sort", "desc");
       if (apikey) u.searchParams.set("apikey", apikey);
 
       const r = await fetch(u, { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
       const rows = Array.isArray(j?.result) ? j.result : [];
-      transfers.push(...rows);
+
+      if (!rows.length) break;
+
+      for (const t of rows) {
+        const ts = Number(t.timeStamp || 0);
+        const from = (t.from || "").toLowerCase();
+        const to   = (t.to   || "").toLowerCase();
+        const dir  = from === addr ? "out" : to === addr ? "in" : null;
+        if (!dir) continue;
+
+        out.push({
+          hash: t.hash,
+          timeStamp: ts,
+          value: normalizeFromEtherscanTx(t),
+          dir,
+          contract: (t.contractAddress || "").toLowerCase(),
+        });
+      }
+
+      // si la page ramène déjà des datas toutes < stopBefore => on peut sortir
+      const lastTs = Number(rows[rows.length - 1]?.timeStamp || 0);
+      if (lastTs < stopBefore) break;
     }
-
-    const outs = transfers
-      .filter(t => (t.from || "").toLowerCase() === addr)
-      .map(t => ({ hash: t.hash, value: normalizeFromEtherscanTx(t), timeStamp: Number(t.timeStamp || 0) }))
-      .sort((a, b) => Math.abs(ts - a.timeStamp) - Math.abs(ts - b.timeStamp));
-
-    if (!outs.length) {
-      out.push({ timeStamp: ts, txHash: null, priceUSDC: null, feesUSDC: 0 });
-      continue;
-    }
-
-    const max = outs.reduce((a, b) => (b.value > a.value ? b : a), outs[0]);
-    const price = max.value;
-    const fees  = outs.filter(x => x !== max).reduce((s, x) => s + x.value, 0);
-
-    out.push({ timeStamp: ts, txHash: max.hash, priceUSDC: price, feesUSDC: fees });
   }
 
-  return out;
+  // tri anti-dupes par hash (garde timestamp le + récent)
+  const byHash = new Map();
+  for (const t of out) {
+    const prev = byHash.get(t.hash);
+    if (!prev || t.timeStamp > prev.timeStamp) byHash.set(t.hash, t);
+  }
+  return Array.from(byHash.values())
+    .sort((a, b) => a.timeStamp - b.timeStamp); // asc pour matching
+}
+
+/**
+ * Matching greedy:
+ * - trie les hints par ts asc, puis par totalPacks desc (si même ts)
+ * - pour chaque hint, cherche la sortie USDC la plus proche non-utilisée
+ *   dans la fenêtre ± toleranceSec ; on privilégie la plus proche
+ */
+function matchPaymentsToHints({ hints, transfers, toleranceSec = 1800 }) {
+  const outs = transfers.filter(t => t.dir === "out");
+  const used = new Set();
+  const byTs = [];
+
+  const sortedHints = [...hints].sort((a, b) => {
+    if (a.ts !== b.ts) return a.ts - b.ts;
+    return (b.totalPacks || 0) - (a.totalPacks || 0);
+  });
+
+  for (const h of sortedHints) {
+    let best = null;
+    let bestDiff = Infinity;
+    let bestIdx = -1;
+
+    // recherche locale (outs triés asc)
+    for (let i = 0; i < outs.length; i++) {
+      if (used.has(i)) continue;
+      const t = outs[i];
+      const d = Math.abs(t.timeStamp - h.ts);
+      if (d <= toleranceSec && d < bestDiff) {
+        best = t; bestDiff = d; bestIdx = i;
+        if (bestDiff === 0) break; // parfait
+      }
+      // petite optimisation : si t.ts - h.ts > tolerance, on peut break
+      if (t.timeStamp - h.ts > toleranceSec) break;
+    }
+
+    if (best) {
+      used.add(bestIdx);
+      byTs.push({
+        ts: h.ts,
+        txHash: best.hash,
+        priceUSDC: best.value,
+        matchedDiffSec: bestDiff,
+      });
+    } else {
+      byTs.push({
+        ts: h.ts,
+        txHash: null,
+        priceUSDC: null,
+        matchedDiffSec: null,
+      });
+    }
+  }
+
+  return byTs;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Handler
+   POST  /api/packs/by-wallet
+   body: { wallet, hints:[{ts,totalPacks}], toleranceSec?, marginSec? }
 ────────────────────────────────────────────────────────────────────────── */
-export async function GET(req) {
+export async function POST(req) {
   try {
-    const url = new URL(req.url);
-    const wallet = (url.searchParams.get("wallet") || "").toLowerCase();
-    const apikey = getApiKeyFromReqOrEnv(req.url);
-
-    if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
+    const { wallet, hints, toleranceSec = 1800, marginSec = 7200 } = await req.json();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(wallet || "")) {
       return NextResponse.json({ ok: false, error: "wallet invalide" }, { status: 400 });
     }
+    if (!Array.isArray(hints) || !hints.length) {
+      return NextResponse.json({ ok: true, wallet, matches: [] });
+    }
+
+    const apikey = getApiKeyFromReqOrEnv();
     if (!apikey) {
       return NextResponse.json(
-        { ok: false, error: "API key manquante (Etherscan v2). Ajoute ?apikey=... ou POLYGONSCAN_API_KEY." },
+        { ok: false, error: "API key manquante (Etherscan v2). Ajoute POLYGONSCAN_API_KEY." },
         { status: 400 }
       );
     }
 
-    // timestamps hints: ?hintTs=ts1,ts2,ts3
-    const rawHints = (url.searchParams.get("hintTs") || "")
-      .split(",")
-      .map(s => Number(s.trim()))
-      .filter(n => Number.isFinite(n) && n > 0);
-    const hintTimestamps = Array.from(new Set(rawHints));
+    const minTs = Math.min(...hints.map(h => Number(h.ts)));
+    const transfers = await fetchUsdcTransfersPaged({
+      wallet, apikey, minTs, marginSec,
+    });
 
-    const blockWindow = Math.max(100, Number(url.searchParams.get("blockWindow") || 1500));
-
-    if (!hintTimestamps.length) {
-      return NextResponse.json({
-        ok: true,
-        wallet,
-        payments: [],
-        note: "Aucun timestamp fourni (hintTs).",
-      });
-    }
-
-    const payments = await fetchUsdcPaymentsAroundTimes({
-      wallet,
-      apikey,
-      hintTimestamps,
-      blockWindow,
+    const matches = matchPaymentsToHints({
+      hints: hints.map(h => ({ ts: Number(h.ts), totalPacks: Number(h.totalPacks || 0) })),
+      transfers,
+      toleranceSec: Number(toleranceSec) || 0,
     });
 
     return NextResponse.json({
       ok: true,
       wallet,
-      payments,
-      meta: { blockWindow },
+      matches,
+      meta: {
+        fetchedTransfers: transfers.length,
+        toleranceSec: Number(toleranceSec),
+        marginSec: Number(marginSec),
+      },
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message || "Unhandled error" }, { status: 500 });

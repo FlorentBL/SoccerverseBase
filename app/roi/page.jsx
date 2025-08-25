@@ -345,46 +345,44 @@ export default function RoiForever() {
 
   // Associe les paiements USDC à nos achats détectés
 async function fetchPackCostsForWallet(w, purchases) {
-  const hintTs = purchases.map(p => p.ts);
- if (!hintTs.length) {
-  setPackBuysByClub(new Map());
-  setPackRawTotalUSDByClub(new Map());
-  setPackUnitAvgUSDByClub(new Map());
-  setPackLastDateByClub(new Map());
-  setPackTotalPacksByClub(new Map());
-  return;
-}
+  // achats -> hints pour l’API
+  const hints = purchases.map(p => ({ ts: Number(p.ts), totalPacks: Number(p.totalPacks) }))
+                         .filter(h => Number.isFinite(h.ts) && h.totalPacks > 0);
 
-  const url = `/api/packs/by-wallet?wallet=${w}&blockWindow=5000&hintTs=${hintTs.join(",")}`;
-  const r = await fetch(url, { cache: "no-store" });
+  // reset si rien à matcher
+  if (!hints.length) {
+    setPackBuysByClub(new Map());
+    setPackRawTotalUSDByClub(new Map());
+    setPackUnitAvgUSDByClub(new Map());
+    setPackLastDateByClub(new Map());
+    setPackTotalPacksByClub(new Map());
+    return;
+  }
+
+  const r = await fetch("/api/packs/by-wallet", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // tu peux ajuster toleranceSec / marginSec si besoin
+    body: JSON.stringify({ wallet: w, hints, toleranceSec: 1800, marginSec: 7200 }),
+  });
   const j = await r.json();
   if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
 
-  // payments triés par ts pour nearest-match (tolérance 600s = 10min)
-  const payments = (j.payments || [])
-    .map(p => ({ ts: Number(p.timeStamp), price: Number(p.priceUSDC ?? 0), txHash: p.txHash || null }))
-    .filter(p => Number.isFinite(p.ts))
-    .sort((a, b) => a.ts - b.ts);
-
-  const TOL = 1800; // secondes
-
-  function nearestPayment(ts) {
-    // binaire + voisinage simple vu les petites tailles
-    let best = null, bestDiff = Infinity;
-    for (const p of payments) {
-      const d = Math.abs(p.ts - ts);
-      if (d < bestDiff) { best = p; bestDiff = d; }
-      // optimisation: si payments est trié et p.ts > ts + TOL on peut break
-      if (p.ts - ts > TOL) break;
-    }
-    return bestDiff <= TOL ? best : null;
+  // index par ts pour retrouver le paiement associé
+  const payByTs = new Map();
+  for (const m of j.matches || []) {
+    payByTs.set(Number(m.ts), {
+      txHash: m.txHash || null,
+      priceUSDC: typeof m.priceUSDC === "number" ? m.priceUSDC : null,
+    });
   }
 
+  // construire les lignes par club
   const buysMap = new Map();
 
   for (const pu of purchases) {
-    const pay = nearestPayment(pu.ts);
-    const price = pay?.price ?? null;
+    const pay = payByTs.get(Number(pu.ts)) || null;
+    const price = pay?.priceUSDC ?? null;
     const txHash = pay?.txHash ?? null;
     const unit = pu.totalPacks > 0 && price != null ? price / pu.totalPacks : null;
 
@@ -402,7 +400,7 @@ async function fetchPackCostsForWallet(w, purchases) {
     }
   }
 
-  // Agrégats par club (identique à avant)
+  // Agrégats
   const totalUSD = new Map();
   const unitAvg  = new Map();
   const lastDate = new Map();
@@ -428,6 +426,7 @@ async function fetchPackCostsForWallet(w, purchases) {
   setPackLastDateByClub(lastDate);
   setPackTotalPacksByClub(totalPks);
 }
+
 
 
   async function handleSearch(e) {
