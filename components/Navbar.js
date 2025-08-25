@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FiMenu, FiX, FiCoffee } from "react-icons/fi";
+import { FiMenu, FiX } from "react-icons/fi"; // 👈 FiCoffee supprimé
 import { usePathname } from "next/navigation";
 import SVCRate from "./SVCRate";
 
@@ -169,15 +169,7 @@ export default function Navbar() {
           </ul>
 
           <div className="flex items-center gap-3">
-            <a
-              href="https://buymeacoffee.com/klov"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500 text-gray-900"
-            >
-              <FiCoffee />
-            </a>
-
+            {/* 👇 BuyMeACoffee supprimé */}
             <div className="hidden md:flex gap-1">
               {LANGS.map((l) => (
                 <Link
@@ -207,7 +199,7 @@ export default function Navbar() {
 
       {open && (
         <div className="md:hidden fixed inset-0 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-6 text-2xl text-gray-100">
-          {menuItems.map((item) => (
+          {menuItems.map((item) =>
             item.children ? (
               <div key={item.label} className="flex flex-col items-center gap-2">
                 <span>{item.label}</span>
@@ -232,7 +224,7 @@ export default function Navbar() {
                 {item.label}
               </Link>
             )
-          ))}
+          )}
           <SVCRate />
           <div className="flex gap-3 mt-6">
             {LANGS.map((l) => (
@@ -255,4 +247,3 @@ export default function Navbar() {
     </header>
   );
 }
-
