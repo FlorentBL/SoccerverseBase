@@ -35,7 +35,7 @@ const tooltipDatesForClub = (buys = []) => buys.filter((r) => r?.dateTs).map((r)
 // Détection des achats de pack dans les transactions SV
 
 const SHARES_PER_PACK_MAIN = 40;
-const SHARES_PER_PACK_SEC = 10;
+const SHARES_PER_PACK_SEC  = 10;
 
 function numberLike(...xs) {
   for (const x of xs) {
@@ -46,33 +46,38 @@ function numberLike(...xs) {
 }
 
 /**
- * Retourne une liste d’achats:
- * [{ ts, totalPacks, parts: [{ clubId, shares, role, packs }] }]
- * Heuristique:
- *  - on prend les lignes "mint" (ou équivalent) qui mentionnent un club et un nombre de parts.
- *  - principal = club avec le plus de parts sur ce même timestamp
+ * Détecte les achats de packs dans les transactions Soccerverse,
+ * même si le champ `type` n'est pas strictement "mint".
+ * Règles :
+ *  - doit concerner un CLUB (share.id)
+ *  - delta/qty positif
+ *  - ET (amount SVC == 0/absent) OU on trouve "mint" quelque part dans l'objet
  */
 function extractPackPurchasesFromTransactions(transactions = []) {
-  // group by timestamp -> [{clubId, shares}]
   const byTs = new Map();
 
   for (const t of transactions) {
-    const ts = numberLike(t?.date, t?.unix_time, t?.time);
+    const ts = numberLike(t?.date, t?.unix_time, t?.time, t?.timestamp, t?.ts);
     if (!ts) continue;
 
-    const type = String(t?.type || "").toLowerCase();
-    if (!/mint/.test(type)) continue; // on cible les mints
-
-    // divers schémas possibles
-    const clubId =
-      t?.share?.type === "club" ? numberLike(t?.share?.id) :
+    const isClub = t?.share?.type === "club" && t?.share?.id != null;
+    const clubId = isClub ? numberLike(t.share.id) :
       numberLike(t?.club_id, t?.clubId, t?.club?.id, t?.other_id);
 
     if (!clubId) continue;
 
-    // nombre de parts
-    const shares = numberLike(t?.n, t?.qty, t?.quantity, t?.amount, t?.delta, t?.totalDelta);
-    if (!shares) continue;
+    // delta de parts acheté
+    const shares = numberLike(t?.shares, t?.n, t?.qty, t?.quantity, t?.delta, t?.totalDelta);
+    if (!(shares > 0)) continue;
+
+    // achat pack = 0 SVC (sur chaîne) OU bien on voit "mint" quelque part
+    const amtSvc = numberLike(t?.amount, t?.amount_svc, t?.svc, t?.price_svc);
+    const looksLikeMint =
+      /mint/i.test(String(t?.type || "")) ||
+      /mint/i.test(JSON.stringify(t || {}));
+    const isPackish = (amtSvc === 0) || looksLikeMint;
+
+    if (!isPackish) continue;
 
     const arr = byTs.get(ts) || [];
     arr.push({ clubId, shares });
@@ -83,19 +88,16 @@ function extractPackPurchasesFromTransactions(transactions = []) {
   for (const [ts, rows] of byTs.entries()) {
     if (!rows.length) continue;
 
-    // principal = max shares
+    // principal = club avec + de parts
     const main = rows.reduce((a, b) => (b.shares > (a?.shares ?? 0) ? b : a), null);
     const parts = [];
 
-    // principal
     if (main) {
       const packs = Math.floor(main.shares / SHARES_PER_PACK_MAIN);
       if (packs > 0) parts.push({ clubId: main.clubId, shares: main.shares, role: "main", packs });
     }
-
-    // secondaires
     for (const r of rows) {
-      if (r.clubId === main.clubId) continue;
+      if (r.clubId === main?.clubId) continue;
       const packs = Math.floor(r.shares / SHARES_PER_PACK_SEC);
       if (packs > 0) parts.push({ clubId: r.clubId, shares: r.shares, role: "secondary", packs });
     }
@@ -104,10 +106,10 @@ function extractPackPurchasesFromTransactions(transactions = []) {
     if (totalPacks > 0) purchases.push({ ts, parts, totalPacks });
   }
 
-  // ordre récent → ancien
   purchases.sort((a, b) => b.ts - a.ts);
   return purchases;
 }
+
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Agrégation (inchangée hormis l’entrée “packs”)
@@ -340,84 +342,84 @@ export default function RoiForever() {
   }
 
   // Associe les paiements USDC à nos achats détectés
-  async function fetchPackCostsForWallet(w, purchases) {
-    const hintTs = purchases.map(p => p.ts);
-    if (!hintTs.length) {
-      setPackBuysByClub(new Map());
-      setPackRawTotalUSDByClub(new Map());
-      setPackUnitAvgUSDByClub(new Map());
-      setPackLastDateByClub(new Map());
-      setPackTotalPacksByClub(new Map());
-      return;
+async function fetchPackCostsForWallet(w, purchases) {
+  const hintTs = purchases.map(p => p.ts);
+  if (!hintTs.length) { /* … reset maps … */ return; }
+
+  const url = `/api/packs/by-wallet?wallet=${w}&blockWindow=1500&hintTs=${hintTs.join(",")}`;
+  const r = await fetch(url, { cache: "no-store" });
+  const j = await r.json();
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
+
+  // payments triés par ts pour nearest-match (tolérance 600s = 10min)
+  const payments = (j.payments || [])
+    .map(p => ({ ts: Number(p.timeStamp), price: Number(p.priceUSDC ?? 0), txHash: p.txHash || null }))
+    .filter(p => Number.isFinite(p.ts))
+    .sort((a, b) => a.ts - b.ts);
+
+  const TOL = 600; // secondes
+
+  function nearestPayment(ts) {
+    // binaire + voisinage simple vu les petites tailles
+    let best = null, bestDiff = Infinity;
+    for (const p of payments) {
+      const d = Math.abs(p.ts - ts);
+      if (d < bestDiff) { best = p; bestDiff = d; }
+      // optimisation: si payments est trié et p.ts > ts + TOL on peut break
+      if (p.ts - ts > TOL) break;
     }
-
-    const url = `/api/packs/by-wallet?wallet=${w}` +
-                `&blockWindow=1500` +
-                `&hintTs=${hintTs.join(",")}`;
-    const r = await fetch(url, { cache: "no-store" });
-    const j = await r.json();
-    if (!r.ok || !j?.ok) throw new Error(j?.error || "packs fetch failed");
-
-    // map ts -> { priceUSDC, txHash }
-    const byTs = new Map();
-    for (const p of j.payments || []) {
-      byTs.set(Number(p.timeStamp), { priceUSDC: Number(p.priceUSDC ?? 0), feesUSDC: Number(p.feesUSDC ?? 0), txHash: p.txHash || null });
-    }
-
-    // Construire les lignes club à partir des achats + prix total
-    const buysMap = new Map(); // clubId -> rows[]
-    for (const pu of purchases) {
-      // associer prix avec tolérance ±300s
-      let price = null, txHash = null;
-      const candidate = byTs.get(pu.ts);
-      if (candidate && candidate.priceUSDC != null) { price = candidate.priceUSDC; txHash = candidate.txHash; }
-
-      const unit = pu.totalPacks > 0 && price != null ? price / pu.totalPacks : null;
-
-      for (const part of pu.parts) {
-        const arr = buysMap.get(part.clubId) || [];
-        arr.push({
-          txHash: txHash,
-          role: part.role,
-          dateTs: pu.ts,
-          packs: part.packs,
-          priceUSDC: price,                 // même prix total sur chaque club impliqué
-          unitPriceUSDC: unit,              // prix / pack global pour cet achat
-        });
-        buysMap.set(part.clubId, arr);
-      }
-    }
-
-    // Agrégats par club
-    const totalUSD = new Map();
-    const unitAvg  = new Map();
-    const lastDate = new Map();
-    const totalPks = new Map();
-
-    for (const [cid, arr] of buysMap.entries()) {
-      let sumPrice = 0, sumPacks = 0, last = 0;
-      for (const r of arr) {
-        // on additionne le prix total une seule fois par timestamp pour ne pas le dupliquer
-        // ici, simple: on additionne toujours, mais comme chaque timestamp est unique côté club,
-        // et que tu affiches coût “packs (club)”, tu peux préférer unitAvg (prix/pack) pour affiner.
-        sumPrice += Number(r.priceUSDC || 0);
-        sumPacks += Number(r.packs || 0);
-        if ((r.dateTs || 0) > last) last = r.dateTs || 0;
-      }
-      totalUSD.set(cid, sumPrice);
-      unitAvg.set(cid, sumPacks > 0 ? sumPrice / sumPacks : 0);
-      lastDate.set(cid, last);
-      totalPks.set(cid, sumPacks);
-      // tri récent → ancien
-      arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0));
-    }
-
-    setPackBuysByClub(buysMap);
-    setPackRawTotalUSDByClub(totalUSD);
-    setPackUnitAvgUSDByClub(unitAvg);
-    setPackLastDateByClub(lastDate);
-    setPackTotalPacksByClub(totalPks);
+    return bestDiff <= TOL ? best : null;
   }
+
+  const buysMap = new Map();
+
+  for (const pu of purchases) {
+    const pay = nearestPayment(pu.ts);
+    const price = pay?.price ?? null;
+    const txHash = pay?.txHash ?? null;
+    const unit = pu.totalPacks > 0 && price != null ? price / pu.totalPacks : null;
+
+    for (const part of pu.parts) {
+      const arr = buysMap.get(part.clubId) || [];
+      arr.push({
+        txHash,
+        role: part.role,
+        dateTs: pu.ts,
+        packs: part.packs,
+        priceUSDC: price,
+        unitPriceUSDC: unit,
+      });
+      buysMap.set(part.clubId, arr);
+    }
+  }
+
+  // Agrégats par club (identique à avant)
+  const totalUSD = new Map();
+  const unitAvg  = new Map();
+  const lastDate = new Map();
+  const totalPks = new Map();
+
+  for (const [cid, arr] of buysMap.entries()) {
+    let sumPrice = 0, sumPacks = 0, last = 0;
+    for (const r of arr) {
+      sumPrice += Number(r.priceUSDC || 0);
+      sumPacks += Number(r.packs || 0);
+      if ((r.dateTs || 0) > last) last = r.dateTs || 0;
+    }
+    totalUSD.set(cid, sumPrice);
+    unitAvg.set(cid, sumPacks > 0 ? sumPrice / sumPacks : 0);
+    lastDate.set(cid, last);
+    totalPks.set(cid, sumPacks);
+    arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0));
+  }
+
+  setPackBuysByClub(buysMap);
+  setPackRawTotalUSDByClub(totalUSD);
+  setPackUnitAvgUSDByClub(unitAvg);
+  setPackLastDateByClub(lastDate);
+  setPackTotalPacksByClub(totalPks);
+}
+
 
   async function handleSearch(e) {
     e?.preventDefault();
