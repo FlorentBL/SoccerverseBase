@@ -287,7 +287,6 @@ async function fetchTokenTxHashesEtherscan({
   const debug = [];
   const addr = wallet.toLowerCase();
 
-  // 1) TOKENTX (USDC) – wallet from/to (seuil appliqué seulement si from)
   for (const contract of contracts) {
     for (let p = 1; p <= pages; p++) {
       const url = new URL(base);
@@ -312,11 +311,11 @@ async function fetchTokenTxHashesEtherscan({
       let kept = 0;
 
       for (const it of res) {
-        const fromMatches = (it.from || "").toLowerCase() === addr;
+       const fromMatches = (it.from || "").toLowerCase() === addr;
         const toMatches   = (it.to   || "").toLowerCase() === addr;
-        if (!fromMatches && !toMatches) continue; // doit impliquer le wallet
+        if (!fromMatches && !toMatches) continue; // sortant seulement
         const amt = normalizeFromEtherscanTx(it);
-        if (fromMatches && amt < minAmountUSDC) continue; // seuil seulement si sortant
+        if (fromMatches && amt < minAmountUSDC) continue; // on n’applique le seuil que sur les vrais sortants
         const ts = Number(it.timeStamp || 0);
         const prev = byHash.get(it.hash);
         if (!prev || ts > prev.timeStamp) {
@@ -326,59 +325,15 @@ async function fetchTokenTxHashesEtherscan({
       }
 
       debug.push({
-        kind: "tokentx", contract, page: p, ok,
+        contract, page: p, ok,
         url: url.toString(),
         fetched: res.length,
-        kept,
+        keptOutgoing: kept,
         status: j?.status, message: j?.message,
       });
 
       if (res.length < pageSize) break;
     }
-  }
-
-  // 2) TXLIST (fallback) – aucune hypothèse sur USDC ; on rapatrie les hash
-  const TXLIST_MAX_PAGES = 20; // garde-fou
-  for (let p = 1; p <= Math.min(pages, TXLIST_MAX_PAGES); p++) {
-    const url = new URL(base);
-    url.searchParams.set("chainid", "137");
-    url.searchParams.set("module", "account");
-    url.searchParams.set("action", "txlist");
-    url.searchParams.set("address", wallet);
-    url.searchParams.set("startblock", "0");
-    url.searchParams.set("endblock", "99999999");
-    url.searchParams.set("page", String(p));
-    url.searchParams.set("offset", String(pageSize));
-    url.searchParams.set("sort", "desc");
-    if (apikey) url.searchParams.set("apikey", apikey);
-
-    const r = await fetch(url, { cache: "no-store" });
-    const ok = r.ok;
-    let j = null;
-    try { j = await r.json(); } catch {}
-    const res = Array.isArray(j?.result) ? j.result : [];
-    let kept = 0;
-
-    for (const it of res) {
-      const h = it?.hash;
-      if (!h) continue;
-      const ts = Number(it.timeStamp || 0);
-      const prev = byHash.get(h);
-      if (!prev || ts > prev.timeStamp) {
-        byHash.set(h, { hash: h, timeStamp: ts });
-        kept++;
-      }
-    }
-
-    debug.push({
-      kind: "txlist", page: p, ok,
-      url: url.toString(),
-      fetched: res.length,
-      kept,
-      status: j?.status, message: j?.message,
-    });
-
-    if (res.length < pageSize) break;
   }
 
   const txs = Array.from(byHash.values()).sort((a, b) => b.timeStamp - a.timeStamp);
@@ -487,7 +442,7 @@ export async function GET(req) {
       for (const c of contractsParam.split(",").map(s => s.trim()).filter(Boolean)) contracts.add(c);
     }
 
-    // 1) Découverte via Etherscan v2 (USDC + fallback txlist)
+    // 1) Découverte via Etherscan v2
     const { txs, debug: tokenDebug } = await fetchTokenTxHashesEtherscan({
       wallet,
       contracts: Array.from(contracts),
