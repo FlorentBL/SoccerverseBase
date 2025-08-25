@@ -153,6 +153,7 @@ function aggregateForever({
   packUnitAvgUSDByClub,
   packLastDateByClub,
   packTotalPacksByClub,
+  packSharesByClub,
 
   includeSvcAsCost,
   svcRateUSD,
@@ -202,6 +203,8 @@ function aggregateForever({
 
     const gainsSvc = round4(payoutsClub.get(id) || 0);
     const achatsSvc = round2(achatsSvcClub.get(id) || 0);
+    const influSvc = Number(qtyAcheteeSvcClub.get(id) || 0);
+    const influPacks = Number(packSharesByClub?.get(id) || 0);
 
     const totalPacksUSD = round2(Number(packRawTotalUSDByClub?.get(id) || 0));
     const unitAvgUSD    = round2(Number(packUnitAvgUSDByClub?.get(id) || 0));
@@ -215,6 +218,8 @@ function aggregateForever({
 
     clubs.push({
       id, name, qty,
+      qtySvc: influSvc,
+      qtyPacks: influPacks,
       achatsSvc, gainsSvc, gainsUSD,
       packsAchetes: totalPacks,
       dernierAchatTs: lastDateTs,
@@ -287,6 +292,7 @@ export default function RoiForever() {
   const [packUnitAvgUSDByClub, setPackUnitAvgUSDByClub] = useState(new Map());
   const [packLastDateByClub, setPackLastDateByClub] = useState(new Map());
   const [packTotalPacksByClub, setPackTotalPacksByClub] = useState(new Map());
+  const [packSharesByClub, setPackSharesByClub] = useState(new Map());
 
   const [openClub, setOpenClub] = useState(null);
   const [svcRateUSD, setSvcRateUSD] = useState(null);
@@ -356,6 +362,7 @@ async function fetchPackCostsForWallet(w, purchases) {
     setPackUnitAvgUSDByClub(new Map());
     setPackLastDateByClub(new Map());
     setPackTotalPacksByClub(new Map());
+    setPackSharesByClub(new Map());
     return;
   }
 
@@ -414,18 +421,22 @@ async function fetchPackCostsForWallet(w, purchases) {
   const unitAvg  = new Map();
   const lastDate = new Map();
   const totalPks = new Map();
+  const totalShares = new Map();
 
   for (const [cid, arr] of buysMap.entries()) {
-    let sumPrice = 0, sumPacks = 0, last = 0;
+    let sumPrice = 0, sumPacks = 0, sumShares = 0, last = 0;
     for (const r of arr) {
       sumPrice += Number(r.priceUSDC || 0);
-      sumPacks += Number(r.packs || 0);
+      const p = Number(r.packs || 0);
+      sumPacks += p;
+      sumShares += p * (r.role === "main" ? SHARES_PER_PACK_MAIN : SHARES_PER_PACK_SEC);
       if ((r.dateTs || 0) > last) last = r.dateTs || 0;
     }
     totalUSD.set(cid, sumPrice);
     unitAvg.set(cid, sumPacks > 0 ? sumPrice / sumPacks : 0);
     lastDate.set(cid, last);
     totalPks.set(cid, sumPacks);
+    totalShares.set(cid, sumShares);
     arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0));
   }
 
@@ -434,6 +445,7 @@ async function fetchPackCostsForWallet(w, purchases) {
   setPackUnitAvgUSDByClub(unitAvg);
   setPackLastDateByClub(lastDate);
   setPackTotalPacksByClub(totalPks);
+  setPackSharesByClub(totalShares);
 }
 
 
@@ -465,6 +477,7 @@ async function fetchPackCostsForWallet(w, purchases) {
       setPackUnitAvgUSDByClub(new Map());
       setPackLastDateByClub(new Map());
       setPackTotalPacksByClub(new Map());
+      setPackSharesByClub(new Map());
       setPackBuysByClub(new Map());
       setWallet(null);
     } finally {
@@ -496,6 +509,7 @@ async function fetchPackCostsForWallet(w, purchases) {
         packUnitAvgUSDByClub,
         packLastDateByClub,
         packTotalPacksByClub,
+        packSharesByClub,
         includeSvcAsCost,
         svcRateUSD,
       }),
@@ -509,6 +523,7 @@ async function fetchPackCostsForWallet(w, purchases) {
       packUnitAvgUSDByClub,
       packLastDateByClub,
       packTotalPacksByClub,
+      packSharesByClub,
       includeSvcAsCost,
       svcRateUSD,
     ]
@@ -537,7 +552,7 @@ async function fetchPackCostsForWallet(w, purchases) {
     if (hideNoROI) arr = arr.filter((r) => r.roiUSD != null);
 
     if (sortKey) {
-      const numericKeys = new Set(["qty","packsAchetes","dernierAchatTs","gainsSvc","coutPacksUSD","depensePacksAffineeUSD","coutTotalUSD","roiUSD"]);
+      const numericKeys = new Set(["qty","qtySvc","qtyPacks","packsAchetes","dernierAchatTs","gainsSvc","coutPacksUSD","depensePacksAffineeUSD","coutTotalUSD","roiUSD"]);
       arr.sort((a, b) => {
         const va = a[sortKey], vb = b[sortKey];
         if (numericKeys.has(sortKey)) return sortNullsLast(va, vb, sortDir);
@@ -709,11 +724,17 @@ const renderDrawer = (clubId) => {
                       <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("qty")} title="Trier par quantité">
                         Quantité <Arrow active={sortKey === "qty"} dir={sortDir} />
                       </th>
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("qtySvc")} title="Trier par influence via SVC">
+                        Infl. SVC <Arrow active={sortKey === "qtySvc"} dir={sortDir} />
+                      </th>
+                      <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("qtyPacks")} title="Trier par influence via packs">
+                        Infl. packs <Arrow active={sortKey === "qtyPacks"} dir={sortDir} />
+                      </th>
                       <th className="text-right py-2 px-3">Packs achetés</th>
                       <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("dernierAchatTs")} title="Trier par dernier achat">
                         Dernier achat <Arrow active={sortKey === "dernierAchatTs"} dir={sortDir} />
                       </th>
-                      <th className="text-right py-2 px-3">Achats via SVC</th>
+                      <th className="text-right py-2 px-3">Dépense SVC</th>
                       <th className="text-right py-2 px-3 cursor-pointer select-none hover:underline" onClick={() => toggleSort("gainsSvc")} title="Trier par gains SVC">
                         Gains SVC <Arrow active={sortKey === "gainsSvc"} dir={sortDir} />
                       </th>
@@ -745,6 +766,8 @@ const renderDrawer = (clubId) => {
                             </td>
                             <td className="py-2 px-3"><RoleBadge id={row.id} /></td>
                             <td className="py-2 px-3 text-right">{fmtInt(row.qty)}</td>
+                            <td className="py-2 px-3 text-right">{fmtInt(row.qtySvc)}</td>
+                            <td className="py-2 px-3 text-right">{fmtInt(row.qtyPacks)}</td>
                             <td className="py-2 px-3 text-right">{fmtInt(row.packsAchetes)}</td>
                             <td className="py-2 px-3 text-right">
                               {(() => {
