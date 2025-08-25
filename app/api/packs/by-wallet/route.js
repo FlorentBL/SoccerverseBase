@@ -145,46 +145,18 @@ function normalizeUSDC(valueStr) {
   try { return Number(BigInt(valueStr)) / 1e6; } catch { return 0; }
 }
 
-// ── helper juste au‑dessus de buildPackSummary ───────────────────────────
-function pickMintNode(anyJson) {
-  if (!anyJson || typeof anyJson !== "object") return null;
-
-  const roots = [anyJson];
-
-  // mv peut être un objet OU une string JSON
-  if (anyJson.mv) {
-    if (typeof anyJson.mv === "object") roots.push(anyJson.mv);
-    else if (typeof anyJson.mv === "string") {
-      const parsed = tryParseJsonLoose(anyJson.mv);
-      if (parsed && typeof parsed === "object") roots.push(parsed);
-    }
-  }
-
-  // éventuellement d’autres wrappers rencontrés dans certains logs
-  if (anyJson.payload && typeof anyJson.payload === "object") roots.push(anyJson.payload);
-
-  for (const r of roots) {
-    const mint = r?.cmd?.mint ?? r?.mint;
-    if (mint && typeof mint === "object") return mint;
-  }
-  return null;
-}
-
+/** Décode UTF‑8 “tolérant” (pour les JSON inline/packed) */
 function bytesToUtf8Loose(bytes) {
   try {
-    // décode en remplaçant les séquences invalides
     return new TextDecoder("utf-8", { fatal: false }).decode(bytes).replace(/\u0000/g, "");
-  } catch {
-    return "";
-  }
+  } catch { return ""; }
 }
 
-// Parcourt tous les octets et extrait des segments { ... } plausibles
+/** Scan byte‑à‑byte pour extraire des blocs { ... } plausibles */
 function extractJsonStringsFromBytes(bytes, { maxLen = 100_000 } = {}) {
   const out = [];
   const OPEN = "{".charCodeAt(0);
   const CLOSE = "}".charCodeAt(0);
-
   for (let i = 0; i < bytes.length; i++) {
     if (bytes[i] !== OPEN) continue;
     let depth = 0;
@@ -198,7 +170,7 @@ function extractJsonStringsFromBytes(bytes, { maxLen = 100_000 } = {}) {
           const txt = bytesToUtf8Loose(slice);
           const jn = tryParseJsonLoose(txt);
           if (jn) out.push({ txt, json: jn, offset: i, length: j + 1 - i });
-          i = j; // on avance juste après ce bloc
+          i = j;
           break;
         }
       }
@@ -207,12 +179,10 @@ function extractJsonStringsFromBytes(bytes, { maxLen = 100_000 } = {}) {
   return out;
 }
 
-// Unifie l’accès à "cmd.mint", y compris si encapsulé (mv string/objet)
+/** Unifie l’accès à cmd.mint, même si encapsulé sous mv (objet ou string) */
 function pickMintNode(anyJson) {
   if (!anyJson || typeof anyJson !== "object") return null;
-
   const roots = [anyJson];
-
   if (anyJson.mv) {
     if (typeof anyJson.mv === "object") roots.push(anyJson.mv);
     else if (typeof anyJson.mv === "string") {
@@ -221,14 +191,12 @@ function pickMintNode(anyJson) {
     }
   }
   if (anyJson.payload && typeof anyJson.payload === "object") roots.push(anyJson.payload);
-
   for (const r of roots) {
     const mint = r?.cmd?.mint ?? r?.mint;
     if (mint && typeof mint === "object") return mint;
   }
   return null;
 }
-
 
 function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const rawShares = [];
@@ -237,30 +205,30 @@ function buildPackSummary({ jsonCandidates, transfers, buyerWallet }) {
   const seenSmcSign = new Set();
 
   for (const c of jsonCandidates) {
-  const mint = pickMintNode(c.json);
-  if (!mint) continue;
+    const mint = pickMintNode(c.json);
+    if (!mint) continue;
 
-  if (mint.shares) {
-    const s = mint.shares;
-    const clubId = s?.s?.club ?? s?.club ?? null;
-    const n = Number(s?.n ?? 0);
-    const r = s?.r ?? null;
-    const sig = `${clubId}|${n}|${r || ""}`;
-    if (clubId && n > 0 && !seenShareSign.has(sig)) {
-      seenShareSign.add(sig);
-      rawShares.push({ clubId, n, r, fromLog: c.source, contract: c.contract });
+    if (mint.shares) {
+      const s = mint.shares;
+      const clubId = s?.s?.club ?? s?.club ?? null;
+      const n = Number(s?.n ?? 0);
+      const r = s?.r ?? null;
+      const sig = `${clubId}|${n}|${r || ""}`;
+      if (clubId && n > 0 && !seenShareSign.has(sig)) {
+        seenShareSign.add(sig);
+        rawShares.push({ clubId, n, r, fromLog: c.source, contract: c.contract });
+      }
+    }
+
+    if (mint.clubsmc) {
+      const m = mint.clubsmc;
+      const sig = `${m?.c}|${m?.n}`;
+      if (m?.c && m?.n && !seenSmcSign.has(sig)) {
+        seenSmcSign.add(sig);
+        clubSmc.push({ clubId: m.c, n: m.n, fromLog: c.source, contract: c.contract });
+      }
     }
   }
-
-  if (mint.clubsmc) {
-    const m = mint.clubsmc;
-    const sig = `${m?.c}|${m?.n}`;
-    if (m?.c && m?.n && !seenSmcSign.has(sig)) {
-      seenSmcSign.add(sig);
-      clubSmc.push({ clubId: m.c, n: m.n, fromLog: c.source, contract: c.contract });
-    }
-  }
-}
 
   if (!rawShares.length) return null;
 
@@ -395,11 +363,11 @@ async function fetchTokenTxHashesEtherscan({
       let kept = 0;
 
       for (const it of res) {
-       const fromMatches = (it.from || "").toLowerCase() === addr;
+        const fromMatches = (it.from || "").toLowerCase() === addr;
         const toMatches   = (it.to   || "").toLowerCase() === addr;
-        if (!fromMatches && !toMatches) continue; // sortant seulement
+        if (!fromMatches && !toMatches) continue; // implique le wallet
         const amt = normalizeFromEtherscanTx(it);
-        if (fromMatches && amt < minAmountUSDC) continue; // on n’applique le seuil que sur les vrais sortants
+        if (fromMatches && amt < minAmountUSDC) continue; // seuil seulement si sortant
         const ts = Number(it.timeStamp || 0);
         const prev = byHash.get(it.hash);
         if (!prev || ts > prev.timeStamp) {
@@ -412,7 +380,7 @@ async function fetchTokenTxHashesEtherscan({
         contract, page: p, ok,
         url: url.toString(),
         fetched: res.length,
-        keptOutgoing: kept,
+        kept,
         status: j?.status, message: j?.message,
       });
 
@@ -439,44 +407,40 @@ async function analyzeTx(txHash, buyerWallet) {
     const t1155 = decodeTransferSingle1155(log); if (t1155) { transfers.push(t1155); continue; }
   }
 
-const jsonCandidates = [];
+  const jsonCandidates = [];
 
-// 2.1) Heuristique ABI (ton code existant)
-for (const [i, log] of (receipt?.logs || []).entries()) {
-  if (!log?.data || log.data === "0x") continue;
-  const foundAbi = extractAbiLikeStringsFromLogData(log.data);
-  for (const f of foundAbi) {
-    jsonCandidates.push({
-      source: `log[${i}].data[abi]`,
-      contract: (log.address || "").toLowerCase(),
-      logIndex: parseInt(log.logIndex, 16),
-      text: f.txt,
-      json: f.json || null,
-    });
+  // 2.1) Heuristique ABI (offset/length)
+  for (const [i, log] of (receipt?.logs || []).entries()) {
+    if (!log?.data || log.data === "0x") continue;
+    const foundAbi = extractAbiLikeStringsFromLogData(log.data);
+    for (const f of foundAbi) {
+      jsonCandidates.push({
+        source: `log[${i}].data[abi]`,
+        contract: (log.address || "").toLowerCase(),
+        logIndex: parseInt(log.logIndex, 16),
+        text: f.txt,
+        json: f.json || null,
+      });
+    }
+
+    // 2.2) Scan inline/packed (byte‑à‑byte)
+    const allBytes = hexToBytes(log.data);
+    const foundInline = extractJsonStringsFromBytes(allBytes);
+    for (const f of foundInline) {
+      jsonCandidates.push({
+        source: `log[${i}].data[inline:${f.offset}]`,
+        contract: (log.address || "").toLowerCase(),
+        logIndex: parseInt(log.logIndex, 16),
+        text: f.txt,
+        json: f.json || null,
+      });
+    }
   }
 
-  // 2.2) **NOUVEAU** : scan inline/packed dans tout le buffer
-  const allBytes = hexToBytes(log.data);
-  const foundInline = extractJsonStringsFromBytes(allBytes);
-  for (const f of foundInline) {
-    jsonCandidates.push({
-      source: `log[${i}].data[inline:${f.offset}]`,
-      contract: (log.address || "").toLowerCase(),
-      logIndex: parseInt(log.logIndex, 16),
-      text: f.txt,
-      json: f.json || null,
-    });
-  }
-}
-
-// 2.3) input de la tx (inchangé)
-const inputJsons = tx?.input ? extractJsonFromInput(tx.input) : [];
+  // 2.3) input de la tx (inchangé)
+  const inputJsons = tx?.input ? extractJsonFromInput(tx.input) : [];
   const interesting = [...jsonCandidates, ...inputJsons].filter(
-    (e) =>
-      e.json &&
-      (e.json.mv ||
-        (e.json.cmd && typeof e.json.cmd === "object") ||
-        (e.json.mint && typeof e.json.mint === "object"))
+    (e) => e.json && (e.json.mv || e.json.cmd || e.json.mint)
   );
 
   const packSummaryRaw = buildPackSummary({ jsonCandidates: interesting, transfers, buyerWallet });
