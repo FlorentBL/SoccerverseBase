@@ -978,7 +978,7 @@ const renderDrawer = (clubId) => {
             {clubs.length === 0 ? (
               <div className="text-gray-400">{t.noClubs}</div>
             ) : (
-              <div className="rounded-xl border border-gray-700 overflow-hidden">
+              <div className="rounded-xl border border-gray-700 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-800 text-gray-300">
                     <tr>
@@ -1079,7 +1079,7 @@ const renderDrawer = (clubId) => {
             {players.length === 0 ? (
               <div className="text-gray-400">{t.noPlayers}</div>
             ) : (
-              <div className="rounded-xl border border-gray-700 overflow-hidden">
+              <div className="rounded-xl border border-gray-700 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-800 text-gray-300">
                     <tr>
