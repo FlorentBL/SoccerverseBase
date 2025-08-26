@@ -1,3 +1,5 @@
+"use client";
+
 import AnalyseTactiquePage from "@/components/AnalyseTactique/AnalyseTactiquePage";
 
 export default function Page() {
